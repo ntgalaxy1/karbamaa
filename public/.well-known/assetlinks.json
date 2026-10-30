@@ -1,0 +1,22 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.karbama.twa",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:DE:0F:73:98:E8:A6:49:15:32:89:12:34:56:78:90:AB:CD:EF:12:34:56:78:90:AB:CD:EF:12:34:56"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "net.karbama.app",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:DE:0F:73:98:E8:A6:49:15:32:89:12:34:56:78:90:AB:CD:EF:12:34:56:78:90:AB:CD:EF:12:34:56"
+      ]
+    }
+  }
+]
