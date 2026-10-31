@@ -1,0 +1,371 @@
+@import "leaflet/dist/leaflet.css";
+@import "tailwindcss";
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  html, body {
+    direction: rtl;
+    text-align: right;
+    scroll-behavior: smooth;
+    font-feature-settings: "ss01";
+  }
+
+  /* Safe area insets for iOS devices */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0.5rem);
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+/* Leaflet Custom Styling for Dark Theme & RTL */
+.leaflet-popup-content-wrapper {
+  background: #0f172a !important;
+  color: #f1f5f9 !important;
+  border: 1px solid rgba(71, 85, 105, 0.5) !important;
+  border-radius: 1rem !important;
+  padding: 0 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5) !important;
+  direction: rtl !important;
+  text-align: right !important;
+  overflow: hidden !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.5 !important;
+}
+
+.leaflet-popup-tip {
+  background: #0f172a !important;
+  border: 1px solid rgba(71, 85, 105, 0.5) !important;
+}
+
+.leaflet-container {
+  font-family: inherit !important;
+  z-index: 10 !important;
+}
+
+.leaflet-popup-close-button {
+  color: #94a3b8 !important;
+  padding: 8px !important;
+  right: auto !important;
+  left: 8px !important;
+  top: 8px !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #ffffff !important;
+}
+
+@custom-variant dark (&:where([class~="dark"], [class~="dark"] *));
+@custom-variant light (&:where([class~="light"], [class~="light"] *));
+
+/* Custom Marker Pulse */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
+.marker-pulse-active {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ========================================================== */
+/* COMPLETE DAY (LIGHT) & NIGHT (DARK) MODE STYLING */
+/* ========================================================== */
+
+:root {
+  color-scheme: light dark;
+  --primary-color: #dc2626;
+  --primary-hover: #b91c1c;
+  --primary-light: rgba(220, 38, 38, 0.16);
+  --primary-border: rgba(220, 38, 38, 0.42);
+  --primary-glow: rgba(220, 38, 38, 0.28);
+  --primary-banner: linear-gradient(135deg, rgba(220, 38, 38, 0.32) 0%, rgba(15, 23, 42, 0.96) 55%, rgba(2, 6, 23, 1) 100%);
+  --primary-topbar: linear-gradient(to right, rgba(15, 23, 42, 0.98), rgba(220, 38, 38, 0.35), rgba(15, 23, 42, 0.98));
+}
+
+/* Dynamic Primary Color overrides for customizable theme */
+.bg-red-600,
+.bg-red-500,
+.bg-primary-app {
+  background-color: var(--primary-color) !important;
+}
+
+.hover\:bg-red-500:hover,
+.hover\:bg-red-600:hover,
+.hover\:bg-primary-app:hover {
+  background-color: var(--primary-hover) !important;
+}
+
+.text-red-500,
+.text-red-600,
+.text-primary-app {
+  color: var(--primary-color) !important;
+}
+
+.text-red-400 {
+  color: var(--primary-color) !important;
+  filter: brightness(1.25);
+}
+
+.text-red-300 {
+  color: var(--primary-color) !important;
+  filter: brightness(1.4);
+}
+
+.border-red-500,
+.border-red-600,
+.border-primary-app {
+  border-color: var(--primary-border) !important;
+}
+
+.bg-red-500\/10,
+.bg-red-500\/15,
+.bg-red-500\/20,
+.bg-red-600\/10,
+.bg-red-600\/20,
+.bg-red-600\/30,
+.bg-red-950\/90,
+.bg-red-950\/80,
+.bg-red-950\/60,
+.bg-red-950\/40,
+.bg-red-950 {
+  background-color: var(--primary-light) !important;
+}
+
+.border-red-500\/20,
+.border-red-500\/30,
+.border-red-500\/40,
+.border-red-500\/50,
+.border-red-500\/60 {
+  border-color: var(--primary-border) !important;
+}
+
+.shadow-red-600\/20,
+.shadow-red-600\/30,
+.shadow-red-700\/30,
+.shadow-red-700\/40,
+.shadow-red-950\/80 {
+  box-shadow: 0 12px 25px -4px var(--primary-glow) !important;
+}
+
+/* Dynamic Header Banner and Top Bar overrides */
+.bg-theme-banner,
+.from-red-950 {
+  --tw-gradient-from: var(--primary-light) var(--tw-gradient-from-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.via-red-950,
+.via-red-950\/80 {
+  --tw-gradient-via: var(--primary-light) var(--tw-gradient-via-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to) !important;
+}
+
+.to-red-950,
+.to-red-950\/40 {
+  --tw-gradient-to: var(--primary-light) var(--tw-gradient-to-position) !important;
+}
+
+.bg-theme-topbar {
+  background: var(--primary-topbar) !important;
+  border-color: var(--primary-border) !important;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.light {
+  color-scheme: light;
+}
+
+/* Dark Mode Defaults */
+html.dark body {
+  background-color: #020617;
+  color: #f8fafc;
+}
+
+/* Light Mode Overrides: Transform entire app into crisp, elegant Day theme */
+html.light body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.light ::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.9);
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.6);
+}
+
+/* Light mode card and container backgrounds */
+html.light .bg-slate-950,
+html.light .bg-slate-900,
+html.light .bg-slate-850,
+html.light .bg-slate-950\/70,
+html.light .bg-slate-950\/80,
+html.light .bg-slate-950\/60,
+html.light .bg-slate-950\/90,
+html.light .bg-slate-900\/95,
+html.light .bg-slate-900\/90,
+html.light .bg-slate-900\/80 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Light mode secondary containers & form elements */
+html.light .bg-slate-800,
+html.light .bg-slate-800\/90,
+html.light .bg-slate-800\/80,
+html.light .bg-slate-800\/70,
+html.light .bg-slate-800\/60,
+html.light .bg-slate-800\/50,
+html.light .bg-slate-800\/40,
+html.light .bg-slate-700 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+/* Light mode typography */
+html.light .text-white,
+html.light .text-slate-100 {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-200,
+html.light .text-slate-300 {
+  color: #1e293b !important;
+}
+
+html.light .text-slate-400 {
+  color: #475569 !important;
+}
+
+html.light .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Light mode borders */
+html.light .border-slate-800,
+html.light .border-slate-700,
+html.light .border-slate-700\/80,
+html.light .border-slate-700\/60 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Light mode inputs, selects & textareas */
+html.light input:not([type="checkbox"]):not([type="radio"]),
+html.light select,
+html.light textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Ensure action buttons preserve bright text */
+html.light .bg-red-600,
+html.light .bg-red-500,
+html.light .bg-amber-600,
+html.light .bg-amber-500,
+html.light .bg-emerald-600,
+html.light .bg-emerald-500,
+html.light .bg-blue-600,
+html.light .bg-pink-600 {
+  color: #ffffff !important;
+}
+
+html.light .bg-red-600 .text-white,
+html.light .bg-amber-600 .text-white,
+html.light .bg-emerald-600 .text-white {
+  color: #ffffff !important;
+}
+
+/* Light Mode Leaflet Popup */
+html.light .leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light .leaflet-popup-tip {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* Dedicated Print Stylesheet for Karbama CV (A4 PDF export) */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 1.2cm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  header,
+  footer,
+  nav,
+  .pb-safe,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  #karbama-cv-printable,
+  #karbama-turkish-cv-document {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
+

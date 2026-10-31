@@ -1,0 +1,56 @@
+import fs from 'fs';
+
+const manifestObj = {
+  id: "/",
+  name: "کارباما | کاریابی و اقامت ترکیه",
+  short_name: "کارباما",
+  description: "سامانه جامع و هوشمند کاریابی، ساخت رزومه اداری، هتل‌ها و اقامت ایرانیان در ترکیه",
+  start_url: "/",
+  scope: "/",
+  display: "standalone",
+  orientation: "portrait",
+  background_color: "#0F172A",
+  theme_color: "#E30A17",
+  lang: "fa",
+  dir: "rtl",
+  prefer_related_applications: false,
+  categories: ["business", "productivity", "utilities"],
+  icons: [
+    {
+      src: "/pwa-192x192.png",
+      sizes: "192x192",
+      type: "image/png",
+      purpose: "any"
+    },
+    {
+      src: "/pwa-512x512.png",
+      sizes: "512x512",
+      type: "image/png",
+      purpose: "any"
+    },
+    {
+      src: "/pwa-maskable-512x512.png",
+      sizes: "512x512",
+      type: "image/png",
+      purpose: "maskable"
+    },
+    {
+      src: "/pwa-1024x1024.png",
+      sizes: "1024x1024",
+      type: "image/png",
+      purpose: "any"
+    }
+  ]
+};
+
+const jsonString = JSON.stringify(manifestObj, null, 2);
+
+fs.writeFileSync('public/manifest.json', jsonString);
+fs.writeFileSync('public/manifest.webmanifest', jsonString);
+
+if (fs.existsSync('dist')) {
+  fs.writeFileSync('dist/manifest.json', jsonString);
+  fs.writeFileSync('dist/manifest.webmanifest', jsonString);
+}
+
+console.log("PWA Manifests generated with clean standard relative URLs.");
