@@ -22,15 +22,17 @@ app.use((req, res, next) => {
 
 // Live Currency Rates API proxy (EZRate API integration: https://api.ezrate.me/v1/rates?symbols=usd,eur,try&quote=IRR&lang=fa)
 app.get('/api/fx-rates', async (req, res) => {
-  const customApiKey = (req.query.apiKey as string) || (req.headers['x-api-key'] as string) || process.env.EZRATE_API_KEY || '';
+  const rawKey = (req.query.apiKey as string) || (req.headers['x-api-key'] as string) || process.env.EZRATE_API_KEY || '';
+  // Strictly sanitize customApiKey to pure ASCII byte values (codes 32 to 126), stripping any non-ASCII characters like ellipsis (…)
+  const customApiKey = typeof rawKey === 'string' ? rawKey.replace(/[^\x20-\x7E]/g, '').trim() : '';
   const ezRateUrl = 'https://api.ezrate.me/v1/rates?symbols=usd,eur,try&quote=IRR&lang=fa';
 
   try {
     const headers: Record<string, string> = {
       'Accept': 'application/json',
-      'User-Agent': 'Mozilla/5.0 (Karbama App; https://karbama.app)',
+      'User-Agent': 'Mozilla/5.0 (compatible; KarbamaApp/10.0; +https://karbama.app)',
     };
-    if (customApiKey) {
+    if (customApiKey && customApiKey.length > 5) {
       headers['X-API-Key'] = customApiKey;
     }
 

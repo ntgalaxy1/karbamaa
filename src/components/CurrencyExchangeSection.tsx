@@ -31,9 +31,10 @@ export const CurrencyExchangeSection: React.FC = () => {
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // EZRate API Key state
+  // EZRate API Key state (Strictly ASCII sanitized)
   const [ezRateApiKey, setEzRateApiKey] = useState<string>(() => {
-    return safeStorage.getItem('karbama_ezrate_api_key') || '';
+    const raw = safeStorage.getItem('karbama_ezrate_api_key') || '';
+    return raw.replace(/[^\x20-\x7E]/g, '').trim();
   });
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
@@ -59,8 +60,9 @@ export const CurrencyExchangeSection: React.FC = () => {
   // Fetch Live Rates from EZRate API (/api/fx-rates proxy)
   const fetchLiveRates = async (silent = false) => {
     setIsRefreshing(true);
-    const keyToUse = ezRateApiKey || safeStorage.getItem('karbama_ezrate_api_key') || '';
-    const endpoint = keyToUse
+    const rawKey = ezRateApiKey || safeStorage.getItem('karbama_ezrate_api_key') || '';
+    const keyToUse = rawKey.replace(/[^\x20-\x7E]/g, '').trim();
+    const endpoint = keyToUse.length > 5
       ? `/api/fx-rates?apiKey=${encodeURIComponent(keyToUse)}`
       : '/api/fx-rates';
 
@@ -137,7 +139,9 @@ export const CurrencyExchangeSection: React.FC = () => {
 
   const handleSaveApiKey = (e: React.FormEvent) => {
     e.preventDefault();
-    safeStorage.setItem('karbama_ezrate_api_key', ezRateApiKey.trim());
+    const cleanKey = ezRateApiKey.replace(/[^\x20-\x7E]/g, '').trim();
+    setEzRateApiKey(cleanKey);
+    safeStorage.setItem('karbama_ezrate_api_key', cleanKey);
     setShowApiKeyInput(false);
     showToast('کلید API سرویس EZRate ذخیره شد. در حال استعلام نرخ‌های زنده...', 'success');
     fetchLiveRates(false);
@@ -266,8 +270,8 @@ export const CurrencyExchangeSection: React.FC = () => {
             <input
               type="text"
               value={ezRateApiKey}
-              onChange={(e) => setEzRateApiKey(e.target.value)}
-              placeholder="مثلاً ez_live_abc123..."
+              onChange={(e) => setEzRateApiKey(e.target.value.replace(/[^\x20-\x7E]/g, ''))}
+              placeholder="e.g. ez_live_abc123xyz"
               className="flex-1 bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white font-mono outline-none"
             />
             <div className="flex items-center gap-2">
