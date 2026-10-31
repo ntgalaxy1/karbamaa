@@ -641,10 +641,10 @@ export const JobSearch: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 text-xs font-semibold">
                 <Sparkles className="w-3.5 h-3.5" />
-                سامانه هوشمند کاریابی و اقامت کارباما
+                {t('smartSystemTag', appLanguage)}
               </div>
 
-              {/* Only show 'ثبت آگهی استخدام' if NOT in jobseeker mode (ثبت آگهی در پنل کارجو حذف) */}
+              {/* Only show 'ثبت آگهی استخدام' if NOT in jobseeker mode */}
               {(!currentSeeker || isAdminLoggedIn) && (
                 <button
                   type="button"
@@ -652,7 +652,7 @@ export const JobSearch: React.FC = () => {
                   className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/40 text-xs font-bold transition shadow-md animate-pulse"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  ثبت آگهی استخدام کارفرما ({paymentSettings.feeTL} لیر)
+                  {t('postEmployerJobBtn', appLanguage)}
                 </button>
               )}
 
@@ -662,7 +662,7 @@ export const JobSearch: React.FC = () => {
                 className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition shadow-xs"
               >
                 <BellRing className="w-3.5 h-3.5 text-amber-400" />
-                هشدار استخدام (Job Alert)
+                {t('jobAlertTitle', appLanguage)}
                 {jobAlerts.length > 0 && (
                   <span className="px-1.5 py-0.2 bg-amber-500 text-slate-950 rounded-full text-[10px] font-mono font-bold">
                     {jobAlerts.length}
@@ -678,11 +678,11 @@ export const JobSearch: React.FC = () => {
                 className="w-12 h-12 rounded-full object-cover border-2 border-amber-400/80 shadow-md md:hidden shrink-0"
               />
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-                کاریابی و استخدام رسمی در ترکیه
+                {t('bannerHeadline', appLanguage)}
               </h1>
             </div>
             <p className="text-sm text-slate-300 leading-relaxed mb-6">
-              فرصت‌های شغلی رسمی ترکیه با قابلیت جستجوی دقیق در کلمات کلیدی، نوع قرارداد (پاره وقت و تمام وقت)، شهر، حقوق و نشان‌کردن آگهی‌های دلخواه.
+              {t('bannerDescription', appLanguage)}
             </p>
           </div>
 
@@ -716,7 +716,7 @@ export const JobSearch: React.FC = () => {
                   onClick={() => setSearchQuery('')}
                   className="absolute left-4 top-3.5 text-xs text-slate-400 hover:text-white px-2.5 py-1 rounded-lg bg-slate-800 transition"
                 >
-                  پاک کردن
+                  {t('close', appLanguage)}
                 </button>
               )}
             </div>
@@ -724,7 +724,7 @@ export const JobSearch: React.FC = () => {
             {/* Search Target Mode Selector (Scope) */}
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
-                <span className="text-[11px] text-slate-400 px-2">محدوده جستجو:</span>
+                <span className="text-[11px] text-slate-400 px-2">{t('searchScopeLabel', appLanguage)}</span>
                 <button
                   type="button"
                   onClick={() => setSearchScope('all')}
@@ -734,7 +734,7 @@ export const JobSearch: React.FC = () => {
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  همه بخش‌ها
+                  {t('searchScopeAll', appLanguage)}
                 </button>
                 <button
                   type="button"
@@ -746,7 +746,7 @@ export const JobSearch: React.FC = () => {
                   }`}
                 >
                   <Briefcase className="w-3 h-3" />
-                  فقط عنوان شغل
+                  {t('searchScopeTitleOnly', appLanguage)}
                 </button>
                 <button
                   type="button"
@@ -758,7 +758,7 @@ export const JobSearch: React.FC = () => {
                   }`}
                 >
                   <Hash className="w-3 h-3" />
-                  فقط کلمات کلیدی
+                  {t('searchScopeKeywordsOnly', appLanguage)}
                 </button>
               </div>
 
@@ -766,7 +766,7 @@ export const JobSearch: React.FC = () => {
               <form onSubmit={handleAddCustomKeyword} className="flex items-center gap-1.5">
                 <input
                   type="text"
-                  placeholder="افزودن کلیدواژه دلخواه..."
+                  placeholder={t('addCustomKeywordPlaceholder', appLanguage)}
                   value={customKeywordInput}
                   onChange={(e) => setCustomKeywordInput(e.target.value)}
                   className="bg-slate-900/80 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 w-44"
@@ -775,7 +775,7 @@ export const JobSearch: React.FC = () => {
                   type="submit"
                   className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition"
                 >
-                  + افزودن
+                  {t('addBtn', appLanguage)}
                 </button>
               </form>
             </div>
@@ -789,7 +789,7 @@ export const JobSearch: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className={`w-2.5 h-2.5 rounded-full ${currentSeeker.verificationStatus === 'approved' ? 'bg-emerald-400' : 'bg-amber-400 animate-ping'}`} />
                 <span>
-                  شما با مشخصات <strong>{currentSeeker.fullName}</strong> (فرزند {currentSeeker.fatherName} - کد ملی: {currentSeeker.nationalId}) وارد شده‌اید.
+                  {t('loggedInAsNotice', appLanguage)} <strong>{currentSeeker.fullName}</strong> ({t('fatherNameLabel', appLanguage)} {currentSeeker.fatherName} - {t('nationalIdLabel', appLanguage)} {currentSeeker.nationalId}) {t('loggedNoticeEnd', appLanguage)}
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -799,7 +799,7 @@ export const JobSearch: React.FC = () => {
                   </span>
                 ) : (
                   <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold">
-                    در انتظار تایید مدیریت و واریز ۵۰۰ لیر ⏳
+                    {t('awaitingVerificationBadge', appLanguage)}
                   </span>
                 )}
               </div>

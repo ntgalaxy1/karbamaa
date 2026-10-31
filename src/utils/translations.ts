@@ -168,6 +168,104 @@ export const TRANSLATIONS: TranslationDictionary = {
     ar: 'مدير',
   },
 
+  // Banner & Search Filters
+  smartSystemTag: {
+    fa: 'سامانه هوشمند کاریابی و اقامت کارباما',
+    tr: 'Karbama Akıllı İş ve İkamet Sistemi',
+    en: 'Karbama Smart Job Placement System',
+    ar: 'منصة التوظيف والإقامة الذكية كارناما',
+  },
+  postEmployerJobBtn: {
+    fa: 'ثبت آگهی استخدام کارفرما (۵۰۰ لیر)',
+    tr: 'İşveren İlanı Yayınla (500 TL)',
+    en: 'Post Employer Job (500 TL)',
+    ar: 'نشر إعلان وظيفي (500 ليرة)',
+  },
+  jobAlertTitle: {
+    fa: 'هشدار استخدام (Job Alert)',
+    tr: 'İş Uyarısı (Job Alert)',
+    en: 'Job Alert',
+    ar: 'تنبيه الوظائف (Job Alert)',
+  },
+  bannerHeadline: {
+    fa: 'کاریابی و استخدام رسمی در ترکیه',
+    tr: 'Türkiye\'de Resmi İş Bulma ve İstihdam',
+    en: 'Official Job Placement in Turkey',
+    ar: 'التوظيف والتنسيق الرسمي في تركيا',
+  },
+  bannerDescription: {
+    fa: 'فرصت‌های شغلی رسمی ترکیه با قابلیت جستجوی دقیق در کلمات کلیدی، نوع قرارداد (پاره وقت و تمام وقت)، شهر، حقوق و نشان‌کردن آگهی‌های دلخواه.',
+    tr: 'Anahtar kelimeler, sözleşme türü, şehir, maaş ve kaydetme seçenekleri ile Türkiye\'deki resmi iş fırsatları.',
+    en: 'Official job opportunities in Turkey with precise search by keywords, contract type, city, salary, and saving options.',
+    ar: 'فرص العمل الرسمية في تركيا مع إمكانية البحث الدقيق في الكلمات المفتاحية، نوع العقد (دوام جزئي وكامل)، المدينة، الراتب وحفظ الوظائف.',
+  },
+  searchScopeLabel: {
+    fa: 'محدوده جستجو:',
+    tr: 'Arama Kapsamı:',
+    en: 'Search Scope:',
+    ar: 'نطاق البحث:',
+  },
+  searchScopeAll: {
+    fa: 'همه بخش‌ها',
+    tr: 'Tüm Bölümler',
+    en: 'All Fields',
+    ar: 'جميع الأقسام',
+  },
+  searchScopeTitleOnly: {
+    fa: 'فقط عنوان شغل',
+    tr: 'Sadece İş Unvanı',
+    en: 'Job Title Only',
+    ar: 'المسمى الوظيفي فقط',
+  },
+  searchScopeKeywordsOnly: {
+    fa: 'فقط کلمات کلیدی',
+    tr: 'Sadece Anahtar Kelimeler',
+    en: 'Keywords Only',
+    ar: 'الكلمات المفتاحية فقط',
+  },
+  addCustomKeywordPlaceholder: {
+    fa: 'افزودن کلیدواژه دلخواه...',
+    tr: 'Özel anahtar kelime ekle...',
+    en: 'Add custom keyword...',
+    ar: 'إضافة كلمة مفتاحية...',
+  },
+  addBtn: {
+    fa: '+ افزودن',
+    tr: '+ Ekle',
+    en: '+ Add',
+    ar: '+ إضافة',
+  },
+  loggedInAsNotice: {
+    fa: 'شما با مشخصات',
+    tr: 'Kullanıcı bilgileriyle giriş yaptınız:',
+    en: 'Logged in as:',
+    ar: 'لقد قمت بتسجيل الدخول باسم',
+  },
+  fatherNameLabel: {
+    fa: 'فرزند',
+    tr: 'Baba adı:',
+    en: 'Father:',
+    ar: 'ابن',
+  },
+  nationalIdLabel: {
+    fa: 'کد ملی:',
+    tr: 'Kimlik No:',
+    en: 'National ID:',
+    ar: 'الرقم الوطني:',
+  },
+  loggedNoticeEnd: {
+    fa: 'وارد شده‌اید.',
+    tr: '',
+    en: '',
+    ar: '.',
+  },
+  awaitingVerificationBadge: {
+    fa: 'در انتظار تایید مدیریت و واریز ۵۰۰ لیر ⏳',
+    tr: 'Yönetici onayı ve 500 TL ödeme bekleniyor ⏳',
+    en: 'Awaiting admin verification & 500 TL payment ⏳',
+    ar: 'في انتظار موافقة الإدارة وإيداع 500 ليرة ⏳',
+  },
+
   // Search & Filter Placeholders
   searchJobsPlaceholder: {
     fa: 'جستجوی عنوان شغل، رده، شهر یا مهارت...',

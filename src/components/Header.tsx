@@ -503,7 +503,7 @@ export const Header: React.FC = () => {
                         {currentSeeker.fullName}
                       </p>
                       <span className="px-2 py-0.5 rounded-lg bg-red-600/30 text-red-200 border border-red-500/50 text-[10px] font-black shrink-0 shadow-xs">
-                        کارجو 👤
+                        {t('jobseekerRole', appLanguage)} 👤
                       </span>
                     </div>
                     <ChevronDown className="w-4 h-4 text-slate-300 shrink-0" />
@@ -520,8 +520,8 @@ export const Header: React.FC = () => {
                         <div className="px-4 py-2 border-b border-slate-800 dark:border-slate-800 light:border-slate-200 text-right flex items-center justify-between">
                           <div>
                             <p className="font-bold text-white dark:text-white light:text-slate-900">{currentSeeker.fullName}</p>
-                            <p className="text-[11px] text-slate-400">نام پدر: {currentSeeker.fatherName}</p>
-                            <p className="text-[10px] text-slate-400 font-mono">نام کاربری: @{currentSeeker.username}</p>
+                            <p className="text-[11px] text-slate-400">{t('fatherNameLabel', appLanguage)} {currentSeeker.fatherName}</p>
+                            <p className="text-[10px] text-slate-400 font-mono">@{currentSeeker.username}</p>
                           </div>
                           <button
                             onClick={() => setUserDropdown(false)}
