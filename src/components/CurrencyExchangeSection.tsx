@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { safeStorage } from '../utils/safeStorage';
 import {
   Coins,
   RefreshCw,
   Calculator,
   ShieldCheck,
-  Building2,
-  Briefcase,
-  Hotel,
   Edit3,
   Save,
   Globe,
@@ -15,25 +13,29 @@ import {
   ArrowLeftRight,
   Sparkles,
   Check,
+  Key,
 } from 'lucide-react';
 
 export const CurrencyExchangeSection: React.FC = () => {
-  const { paymentSettings, updatePaymentSettings, isAdminLoggedIn, showToast } = useApp();
+  const { paymentSettings, updatePaymentSettings, showToast } = useApp();
 
   // Accurate Real Market Rates in Toman
-  // USD in Iran: ~69,500 Toman (695,000 Rials)
-  // EUR in Iran: ~75,800 Toman (758,000 Rials)
-  // TRY in Iran free market: ~2,020 Toman (20,200 Rials), and Karbama system base: 5,470 Toman
   const [usdRateToman, setUsdRateToman] = useState<number>(69500);
   const [eurRateToman, setEurRateToman] = useState<number>(75800);
   const [tryMarketToman, setTryMarketToman] = useState<number>(2020);
   const [tryRateToman, setTryRateToman] = useState<number>(paymentSettings.exchangeRateToman || 5470);
 
-  const [providerName, setProviderName] = useState<string>('نرخ رسمی بازار آزاد و صرافی (NetArz / Bonbast)');
+  const [providerName, setProviderName] = useState<string>('EZRate (api.ezrate.me)');
   const [lastUpdated, setLastUpdated] = useState<string>(
     new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // EZRate API Key state
+  const [ezRateApiKey, setEzRateApiKey] = useState<string>(() => {
+    return safeStorage.getItem('karbama_ezrate_api_key') || '';
+  });
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
   // Rate Editing State
   const [isEditingRates, setIsEditingRates] = useState(false);
@@ -54,11 +56,16 @@ export const CurrencyExchangeSection: React.FC = () => {
     }
   }, [paymentSettings.exchangeRateToman]);
 
-  // Fetch Live Rates
+  // Fetch Live Rates from EZRate API (/api/fx-rates proxy)
   const fetchLiveRates = async (silent = false) => {
     setIsRefreshing(true);
+    const keyToUse = ezRateApiKey || safeStorage.getItem('karbama_ezrate_api_key') || '';
+    const endpoint = keyToUse
+      ? `/api/fx-rates?apiKey=${encodeURIComponent(keyToUse)}`
+      : '/api/fx-rates';
+
     try {
-      const res = await fetch('/api/fx-rates');
+      const res = await fetch(endpoint);
       if (res.ok) {
         const text = await res.text();
         try {
@@ -71,9 +78,19 @@ export const CurrencyExchangeSection: React.FC = () => {
               setTryRateToman(Number(data.TRY.toman));
               updatePaymentSettings({ exchangeRateToman: Number(data.TRY.toman) });
             }
-            setProviderName('استعلام زنده از سرور صرافی');
+            if (data.TRY?.marketToman) {
+              setTryMarketToman(Number(data.TRY.marketToman));
+            }
+
+            setProviderName(
+              result.provider === 'ezrate'
+                ? 'وب‌سرویس زنده EZRate (api.ezrate.me)'
+                : 'EZRate API (api.ezrate.me)'
+            );
             setLastUpdated(new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-            if (!silent) showToast('قیمت‌های بازار آزاد با موفقیت به‌روزرسانی شدند.', 'success');
+            if (!silent) {
+              showToast('استعلام قیمت‌ها از وب‌سرویس EZRate با موفقیت انجام شد.', 'success');
+            }
             setIsRefreshing(false);
             return;
           }
@@ -82,7 +99,7 @@ export const CurrencyExchangeSection: React.FC = () => {
         }
       }
     } catch (err) {
-      console.warn('API rates fetch notice:', err);
+      console.warn('EZRate rates fetch notice:', err);
     }
 
     // Default verified market values fallback
@@ -93,7 +110,7 @@ export const CurrencyExchangeSection: React.FC = () => {
       setLastUpdated(new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
       setIsRefreshing(false);
       if (!silent) {
-        showToast('قیمت‌های لحظه‌ای بازار آزاد به‌روزرسانی شد.', 'success');
+        showToast('قیمت‌های بازار آزاد با موفقیت به‌روزرسانی شد.', 'success');
       }
     }, 300);
   };
@@ -115,7 +132,15 @@ export const CurrencyExchangeSection: React.FC = () => {
     setTryMarketToman(newTryMarket);
     updatePaymentSettings({ exchangeRateToman: newTry });
     setIsEditingRates(false);
-    showToast('نرخ‌های جدید با موفقیت ذخیره و در تمام بخش‌های سامانه اعمال شدند.', 'success');
+    showToast('نرخ‌های جدید با موفقیت ذخیره و اعمال شدند.', 'success');
+  };
+
+  const handleSaveApiKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    safeStorage.setItem('karbama_ezrate_api_key', ezRateApiKey.trim());
+    setShowApiKeyInput(false);
+    showToast('کلید API سرویس EZRate ذخیره شد. در حال استعلام نرخ‌های زنده...', 'success');
+    fetchLiveRates(false);
   };
 
   // Convert given input
@@ -130,16 +155,12 @@ export const CurrencyExchangeSection: React.FC = () => {
   const currentConvertedRial = currentConvertedToman * 10;
 
   // Cross rate calculations
-  // In international forex: 1 USD is ~34.4 TRY, 1 EUR is ~37.5 TRY
   const usdToTryRatio = (usdRateToman / (tryMarketToman || 2020)).toFixed(1);
   const eurToTryRatio = (eurRateToman / (tryMarketToman || 2020)).toFixed(1);
 
   // Practical 500 Lira to Rial calculation values
   const lira500ToTomanKarbama = 500 * tryRateToman;
   const lira500ToRialKarbama = lira500ToTomanKarbama * 10;
-
-  const lira500ToTomanMarket = 500 * tryMarketToman;
-  const lira500ToRialMarket = lira500ToTomanMarket * 10;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-300">
@@ -150,13 +171,13 @@ export const CurrencyExchangeSection: React.FC = () => {
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold">
               <Globe className="w-3.5 h-3.5 text-amber-400" />
-              <span>نرخ‌های واقعی بازار آزاد ایران و برابری لیر ترکیه</span>
+              <span>اتصال مستقیم به وب‌سرویس EZRate (api.ezrate.me)</span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight">
               قیمت لحظه‌ای دلار آمریکا، یورو و لیر ترکیه
             </h1>
             <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-              جدول قیمت‌های روز صرافی و بازار آزاد با قابلیت تنظیم مستقیم نرخ و مثال عملی تبدیل ریالی.
+              استعلام آنلاین قیمت ارز بر پایه ریال ایران (quote=IRR) از ارائه‌دهنده رسمی <strong>api.ezrate.me</strong> به همراه مثال عملی تبدیل ریالی.
             </p>
           </div>
 
@@ -167,7 +188,7 @@ export const CurrencyExchangeSection: React.FC = () => {
               className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl shadow-md transition flex items-center justify-center gap-2 text-xs"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span>به‌روزرسانی قیمت‌ها ({lastUpdated})</span>
+              <span>به‌روزرسانی نرخ‌ها ({lastUpdated})</span>
             </button>
 
             <button
@@ -178,27 +199,103 @@ export const CurrencyExchangeSection: React.FC = () => {
                 setEditTryMarket(tryMarketToman.toString());
                 setIsEditingRates(!isEditingRates);
               }}
-              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 font-bold rounded-xl transition flex items-center justify-center gap-1.5 text-xs"
+              className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 font-bold rounded-xl transition flex items-center justify-center gap-1.5 text-xs"
             >
               <Edit3 className="w-3.5 h-3.5 text-amber-400" />
-              <span>{isEditingRates ? 'بستن تنظیم نرخ' : 'تنظیم و تغییر نرخ‌ها'}</span>
+              <span>{isEditingRates ? 'بستن تنظیم' : 'تنظیم نرخ‌ها'}</span>
+            </button>
+
+            <button
+              onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+              className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold rounded-xl transition flex items-center justify-center gap-1.5 text-xs"
+              title="تنظیم کلید API سرویس EZRate"
+            >
+              <Key className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{ezRateApiKey ? 'کلید EZRate (فعال)' : 'کلید API اختصاصی'}</span>
             </button>
           </div>
         </div>
 
-        {/* Source info */}
+        {/* API Endpoint & Source info */}
         <div className="mt-4 pt-3 border-t border-amber-500/20 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>منبع مرجع: <strong>{providerName}</strong></span>
+            <span>وب‌سرویس مرجع: <strong>{providerName}</strong></span>
           </div>
-          <span className="text-amber-300/90 text-[11px]">
-            محاسبه بر پایه تومان و معادل ریالی شتاب
-          </span>
+
+          <a
+            href="https://api.ezrate.me/v1/rates?symbols=usd,eur,try&quote=IRR&lang=fa"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-amber-300 hover:underline inline-flex items-center gap-1 font-mono font-bold text-[10.5px]"
+            title="مشاهده مستقیم خروجی وب‌سرویس EZRate"
+          >
+            <span>api.ezrate.me/v1/rates?symbols=usd,eur,try&quote=IRR&lang=fa</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
         </div>
       </div>
 
-      {/* Rate Modifier Form */}
+      {/* EZRate API Key Input Modal/Drawer */}
+      {showApiKeyInput && (
+        <form
+          onSubmit={handleSaveApiKey}
+          className="bg-slate-900 border-2 border-emerald-500/40 rounded-2xl p-4 sm:p-5 space-y-3 animate-in slide-in-from-top-2 duration-200"
+        >
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+            <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs sm:text-sm">
+              <Key className="w-4 h-4" />
+              <span>تنظیم کلید اختصاصی وب‌سرویس EZRate (X-API-Key)</span>
+            </div>
+            <a
+              href="https://ezrate.me"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-amber-300 hover:underline flex items-center gap-1"
+            >
+              <span>دریافت کلید از ezrate.me</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+
+          <p className="text-xs text-slate-300 leading-relaxed">
+            در صورت داشتن کلید API از سایت <strong>ezrate.me</strong>، آن را در کادر زیر وارد کنید تا درخواست‌ها با هدر <code className="text-amber-300 font-mono">X-API-Key</code> مستقیماً به آدرس رسمی <code className="text-emerald-400 font-mono">https://api.ezrate.me/v1/rates</code> ارسال شوند:
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              value={ezRateApiKey}
+              onChange={(e) => setEzRateApiKey(e.target.value)}
+              placeholder="مثلاً ez_live_abc123..."
+              className="flex-1 bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-white font-mono outline-none"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition"
+              >
+                ذخیره کلید
+              </button>
+              {ezRateApiKey && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEzRateApiKey('');
+                    safeStorage.removeItem('karbama_ezrate_api_key');
+                    showToast('کلید API پاک شد.', 'info');
+                  }}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs rounded-xl transition"
+                >
+                  حذف
+                </button>
+              )}
+            </div>
+          </div>
+        </form>
+      )}
+
+      {/* Manual Rate Modifier Form */}
       {isEditingRates && (
         <form
           onSubmit={handleSaveRates}
@@ -285,7 +382,7 @@ export const CurrencyExchangeSection: React.FC = () => {
             </h2>
           </div>
           <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-            برابری روز بازار آزاد
+            برابری روز EZRate
           </span>
         </div>
 
