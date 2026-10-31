@@ -1,9 +1,10 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { Briefcase, PlusCircle, Hotel, Info, UserCheck, ShieldCheck, Building2 } from 'lucide-react';
+import { t } from '../utils/translations';
 
 export const BottomNav: React.FC = () => {
-  const { activeTab, setActiveTab, isAdminLoggedIn, isPartnerLoggedIn, currentSeeker, paymentSettings } = useApp();
+  const { activeTab, setActiveTab, isAdminLoggedIn, isPartnerLoggedIn, currentSeeker, paymentSettings, appLanguage } = useApp();
 
   const isJobSeekerMode = Boolean(currentSeeker && !isAdminLoggedIn);
   const colsClass = isAdminLoggedIn ? 'grid-cols-7' : isJobSeekerMode ? 'grid-cols-5' : 'grid-cols-6';
@@ -29,10 +30,10 @@ export const BottomNav: React.FC = () => {
           }`}
         >
           <Briefcase className="w-5 h-5" />
-          <span className="text-[9px]">فرصت‌ها</span>
+          <span className="text-[9px]">{t('jobOpportunities', appLanguage)}</span>
         </button>
 
-        {/* 2. Post Job (500 TL) Tab - REMOVED IN JOBSEEKER MODE (ثبت آگهی در پنل کارجو حذف) */}
+        {/* 2. Post Job Tab */}
         {!isJobSeekerMode && (
           <button
             type="button"
@@ -50,11 +51,11 @@ export const BottomNav: React.FC = () => {
                 {paymentSettings?.feeTL || 500}
               </span>
             </div>
-            <span className="text-[9px]">ثبت آگهی</span>
+            <span className="text-[9px]">{t('postJob', appLanguage)}</span>
           </button>
         )}
 
-        {/* 3. Partner Section Tab (Requested Feature) */}
+        {/* 3. Partner Section Tab */}
         <button
           type="button"
           onClick={() => setActiveTab('partner')}
@@ -66,7 +67,7 @@ export const BottomNav: React.FC = () => {
           }`}
         >
           <Building2 className="w-5 h-5" />
-          <span className="text-[9px]">{isPartnerLoggedIn ? 'پنل همکار' : 'همکاران'}</span>
+          <span className="text-[9px]">{t('partnerSection', appLanguage)}</span>
         </button>
 
         {/* 4. Hotels & Addresses Tab */}
@@ -81,7 +82,7 @@ export const BottomNav: React.FC = () => {
           }`}
         >
           <Hotel className="w-5 h-5" />
-          <span className="text-[9px]">هتل و آدرس</span>
+          <span className="text-[9px]">{t('hotels', appLanguage)}</span>
         </button>
 
         {/* 5. Dedicated About Us Tab */}
@@ -96,7 +97,7 @@ export const BottomNav: React.FC = () => {
           }`}
         >
           <Info className="w-5 h-5" />
-          <span className="text-[9px]">درباره ما</span>
+          <span className="text-[9px]">{t('aboutUs', appLanguage)}</span>
         </button>
 
         {/* 6. Profile & CV Tab */}
@@ -111,10 +112,10 @@ export const BottomNav: React.FC = () => {
           }`}
         >
           <UserCheck className="w-5 h-5" />
-          <span className="text-[9px]">پروفایل/CV</span>
+          <span className="text-[9px]">{t('cvBuilder', appLanguage)}</span>
         </button>
 
-        {/* 7. Admin Panel Tab (Visible when Admin logged in) */}
+        {/* 7. Admin Panel Tab */}
         {isAdminLoggedIn && (
           <button
             type="button"
@@ -126,7 +127,7 @@ export const BottomNav: React.FC = () => {
             }`}
           >
             <ShieldCheck className="w-5 h-5" />
-            <span className="text-[9px]">پنل مدیر</span>
+            <span className="text-[9px]">{t('adminDashboard', appLanguage)}</span>
           </button>
         )}
       </div>

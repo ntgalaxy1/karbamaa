@@ -419,6 +419,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
+  useEffect(() => {
+    document.documentElement.lang = appLanguage;
+    if (appLanguage === 'fa' || appLanguage === 'ar') {
+      document.documentElement.dir = 'rtl';
+    } else {
+      document.documentElement.dir = 'ltr';
+    }
+  }, [appLanguage]);
+
   const handleSetAppLanguage = (lang: 'fa' | 'tr' | 'en' | 'ar') => {
     setAppLanguage(lang);
     try {

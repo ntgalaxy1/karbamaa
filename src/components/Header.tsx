@@ -8,6 +8,7 @@ import { ApkDownloadModal } from './ApkDownloadModal';
 import { ThemeCustomizerModal } from './ThemeCustomizerModal';
 import { AboutUsModal } from './AboutUsModal';
 import { AppLanguage } from '../types';
+import { t } from '../utils/translations';
 import {
   Briefcase,
   MapPin,
@@ -110,14 +111,14 @@ export const Header: React.FC = () => {
                 <div>
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <span className="font-black text-lg sm:text-xl tracking-tight text-white dark:text-white light:text-slate-900 group-hover:text-amber-400 transition">
-                      کارباما
+                      {t('appName', appLanguage)}
                     </span>
                     <span className="text-[11px] bg-amber-500/20 text-amber-300 dark:text-amber-300 light:text-amber-800 border border-amber-500/40 px-2 py-0.5 rounded-lg font-black tracking-wider">
                       KARBAMA
                     </span>
                   </div>
                   <p className="text-[11px] font-medium text-slate-400 dark:text-slate-400 light:text-slate-500 hidden sm:block">
-                    سامانه کاریابی و اقامت ایرانیان در ترکیه
+                    {t('appSubtitle', appLanguage)}
                   </p>
                 </div>
               </div>
@@ -126,7 +127,7 @@ export const Header: React.FC = () => {
               {isAdminLoggedIn && (
                 <div className="hidden lg:flex items-center gap-1.5 bg-amber-500/20 border border-amber-500/50 px-3 py-1 rounded-full text-xs shrink-0">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
-                  <span className="text-amber-300 font-black">مدیریت فعال</span>
+                  <span className="text-amber-300 font-black">{t('adminRole', appLanguage)}</span>
                 </div>
               )}
             </div>
@@ -143,10 +144,10 @@ export const Header: React.FC = () => {
                 }`}
               >
                 <Briefcase className="w-4 h-4" />
-                فرصت‌های شغلی
+                {t('jobOpportunities', appLanguage)}
               </button>
 
-              {/* Dedicated Post Job (500 TL) - Hidden in Jobseeker mode (ثبت آگهی در پنل کارجو حذف) */}
+              {/* Dedicated Post Job (500 TL) - Hidden in Jobseeker mode */}
               {(!currentSeeker || isAdminLoggedIn || Boolean(currentPartner)) && (
                 <button
                   onClick={() => setActiveTab('post-job')}
@@ -158,11 +159,11 @@ export const Header: React.FC = () => {
                   }`}
                 >
                   <PlusCircle className="w-4 h-4 text-emerald-400" />
-                  ثبت آگهی استخدام (۵۰۰ لیر)
+                  {t('postJob', appLanguage)}
                 </button>
               )}
 
-              {/* Dedicated Partner Section (بخش همکاران) */}
+              {/* Dedicated Partner Section */}
               <button
                 onClick={() => setActiveTab('partner')}
                 style={activeTab === 'partner' ? { backgroundColor: 'var(--primary-color)' } : undefined}
@@ -173,7 +174,7 @@ export const Header: React.FC = () => {
                 }`}
               >
                 <Building2 className="w-4 h-4 text-indigo-400" />
-                بخش همکاران
+                {t('partnerSection', appLanguage)}
               </button>
 
               {/* Dedicated Map Tab */}
@@ -187,7 +188,7 @@ export const Header: React.FC = () => {
                 }`}
               >
                 <Compass className="w-4 h-4 text-emerald-400" />
-                نقشه تعاملی
+                {t('interactiveMap', appLanguage)}
               </button>
 
               {/* Dedicated Hotels */}
@@ -201,7 +202,7 @@ export const Header: React.FC = () => {
                 }`}
               >
                 <Hotel className="w-4 h-4" />
-                هتل‌ها
+                {t('hotels', appLanguage)}
               </button>
 
               {/* Applications Tracking */}
@@ -215,7 +216,7 @@ export const Header: React.FC = () => {
                 }`}
               >
                 <FileCheck2 className="w-4 h-4" />
-                پیگیری درخواست‌ها
+                {t('myApplications', appLanguage)}
                 {myApplicationsCount > 0 && (
                   <span
                     style={{ backgroundColor: 'var(--primary-hover)' }}
@@ -237,7 +238,7 @@ export const Header: React.FC = () => {
                   }`}
                 >
                   <ShieldCheck className="w-4 h-4" />
-                  مدیریت
+                  {t('adminDashboard', appLanguage)}
                 </button>
               )}
             </nav>
@@ -255,7 +256,7 @@ export const Header: React.FC = () => {
                   title="منوی امکانات، دانلود و تنظیمات"
                 >
                   <Sliders className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline">امکانات و ابزارها</span>
+                  <span className="hidden sm:inline">{t('featuresAndTools', appLanguage)}</span>
                   <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${toolsDropdown ? 'rotate-180' : ''}`} />
                 </button>
 
@@ -272,7 +273,7 @@ export const Header: React.FC = () => {
                       <div className="px-3 py-1.5 text-[11px] font-bold text-slate-300 dark:text-slate-300 light:text-slate-800 flex items-center justify-between border-b border-slate-800 dark:border-slate-800 light:border-slate-200 mb-1.5">
                         <span className="flex items-center gap-1.5">
                           <Sliders className="w-3.5 h-3.5 text-amber-400" />
-                          <span>امکانات و ابزارها</span>
+                          <span>{t('featuresAndTools', appLanguage)}</span>
                         </span>
                         <button
                           onClick={() => setToolsDropdown(false)}
@@ -293,10 +294,10 @@ export const Header: React.FC = () => {
                       >
                         <div className="flex items-center gap-2">
                           <FileText className="w-4 h-4 text-amber-400" />
-                          <span className="font-bold">رزومه‌ساز آنلاین (CV)</span>
+                          <span className="font-bold">{t('cvBuilder', appLanguage)}</span>
                         </div>
                         <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-md font-mono">
-                          رایگان
+                          {t('free', appLanguage)}
                         </span>
                       </button>
 
@@ -310,10 +311,10 @@ export const Header: React.FC = () => {
                       >
                         <div className="flex items-center gap-2">
                           <Coins className="w-4 h-4 text-amber-400" />
-                          <span className="font-bold">قیمت روز ارز (لیر و دلار)</span>
+                          <span className="font-bold">{t('currencyRates', appLanguage)}</span>
                         </div>
                         <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-md font-mono font-bold">
-                          زنده 🟢
+                          {t('liveRates', appLanguage)}
                         </span>
                       </button>
 
@@ -328,11 +329,8 @@ export const Header: React.FC = () => {
                       >
                         <div className="flex items-center gap-2">
                           <Info className="w-4 h-4 text-sky-400" />
-                          <span className="font-bold">درباره ما و قوانین کارباما</span>
+                          <span className="font-bold">{t('aboutUs', appLanguage)}</span>
                         </div>
-                        <span className="text-[10px] bg-sky-500/20 text-sky-300 px-1.5 py-0.5 rounded-md font-mono font-bold">
-                          راهنما
-                        </span>
                       </button>
 
                       <div className="border-t border-slate-800 dark:border-slate-800 light:border-slate-200 my-1"></div>
@@ -347,7 +345,7 @@ export const Header: React.FC = () => {
                       >
                         <div className="flex items-center gap-2">
                           <Smartphone className="w-4 h-4 text-emerald-400" />
-                          <span className="font-bold">دانلود نسخه اندروید (APK)</span>
+                          <span className="font-bold">{t('downloadApk', appLanguage)}</span>
                         </div>
                         <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-md font-mono">
                           v10.0.0.12
@@ -369,12 +367,9 @@ export const Header: React.FC = () => {
                             <Moon className="w-4 h-4 text-indigo-600" />
                           )}
                           <span className="font-bold">
-                            {theme === 'dark' ? 'تغییر به تم روز (حالت روشن ☀️)' : 'تغییر به تم شب (حالت تاریک 🌙)'}
+                            {theme === 'dark' ? t('themeToggleLight', appLanguage) : t('themeToggleDark', appLanguage)}
                           </span>
                         </div>
-                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-md font-mono font-bold">
-                          {theme === 'dark' ? 'شب 🌙' : 'روز ☀️'}
-                        </span>
                       </button>
 
                       <button
