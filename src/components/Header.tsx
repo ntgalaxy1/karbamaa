@@ -351,7 +351,7 @@ export const Header: React.FC = () => {
                         <span className="font-bold">دانلود نسخه اندروید (APK)</span>
                       </div>
                       <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-md font-mono">
-                        v10.0.0.9
+                        v10.0.0.10
                       </span>
                     </button>
 
