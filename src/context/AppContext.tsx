@@ -58,7 +58,8 @@ export type ActiveTab =
   | 'settings'
   | 'admin'
   | 'cv-builder'
-  | 'about-us';
+  | 'about-us'
+  | 'currency';
 
 interface Toast {
   id: string;
@@ -271,7 +272,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const DEFAULT_PAYMENT_SETTINGS: PaymentGatewaySettings = {
   feeTL: 500,
-  exchangeRateToman: 5450, // نرخ روز: هر ۱ لیر ترکیه = ۵,۴۵۰ تومان => ۵۰۰ لیر = ۲,۷۲۵,۰۰۰ تومان (۲۷,۲۵۰,۰۰۰ ریال)
+  exchangeRateToman: 5470, // نرخ روز: هر ۱ لیر ترکیه = ۵,۴۷۰ تومان => ۵۰۰ لیر = ۲,۷۳۵,۰۰۰ تومان (۲۷,۳۵۰,۰۰۰ ریال)
   turkeyBankName: 'Ziraat Bankası (زراعت بانک ترکیه)',
   turkeyIban: 'TR56 0001 0090 1234 5678 9050 01',
   turkeyAccountHolder: 'Karbama Danışmanlık ve İnsan Kaynakları',

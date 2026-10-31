@@ -29,18 +29,34 @@ import { PostJobSection } from './components/PostJobSection';
 import { AboutUsSection } from './components/AboutUsSection';
 import { OnboardingFlow } from './components/OnboardingFlow';
 import { PartnerSection } from './components/PartnerSection';
+import { CurrencyExchangeSection } from './components/CurrencyExchangeSection';
 
-// 1-Second Centered App Startup Splash Screen
+// Centered App Startup Splash Screen with Smooth Fade-out
 const SplashScreen: React.FC<{ onFinish: () => void }> = ({ onFinish }) => {
+  const [isFadingOut, setIsFadingOut] = useState(false);
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onFinish();
+    // Keep visible for 1000ms then start 700ms smooth fade-out transition
+    const timer1 = setTimeout(() => {
+      setIsFadingOut(true);
     }, 1000);
-    return () => clearTimeout(timer);
+
+    const timer2 = setTimeout(() => {
+      onFinish();
+    }, 1700);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
   }, [onFinish]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
+    <div
+      className={`fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-4 transition-opacity duration-700 ease-in-out ${
+        isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      }`}
+    >
       <div className="relative flex flex-col items-center space-y-4 text-center">
         <div className="relative">
           <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-red-600 to-amber-500 opacity-60 blur-xl animate-pulse" />
@@ -80,56 +96,53 @@ const MainContent: React.FC = () => {
   // Strict check: No guest direct entry into the app without registration/login
   const isUserAuthenticated = Boolean(currentSeeker || isAdminLoggedIn || currentPartner);
 
-  if (showSplash) {
-    return <SplashScreen onFinish={() => setShowSplash(false)} />;
-  }
-
-  if (!isUserAuthenticated) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center">
-        <OnboardingFlow />
-
-        {/* Floating Toast Notification Container for Onboarding */}
-        <div className="fixed bottom-6 left-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
-          {toasts.map((toast) => (
-            <div
-              key={toast.id}
-              className={`pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-medium animate-in fade-in slide-in-from-bottom-3 duration-300 ${
-                toast.type === 'success'
-                  ? 'bg-slate-900 border-emerald-500/50 text-emerald-200'
-                  : toast.type === 'error'
-                  ? 'bg-slate-900 border-red-500/50 text-red-200'
-                  : 'bg-slate-900 border-slate-700 text-slate-200'
-              }`}
-            >
-              {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
-              {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />}
-              {toast.type === 'info' && <Info className="w-4 h-4 text-blue-400 shrink-0" />}
-              <span>{toast.message}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
-      {/* Dynamic Top Theme Color Bar (Changes with selected theme color) */}
-      <div style={{ background: 'var(--primary-topbar)' }} className="h-1 w-full shrink-0 shadow-xs transition-all duration-300" />
+    <>
+      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
 
-      {/* Floating Omnipresent Admin Quick Toolbar (When Admin Logged In) */}
-      <AdminQuickToolbar />
+      {!isUserAuthenticated ? (
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center">
+          <OnboardingFlow />
 
-      {/* Main App Navigation Header */}
-      <Header />
+          {/* Floating Toast Notification Container for Onboarding */}
+          <div className="fixed bottom-6 left-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
+            {toasts.map((toast) => (
+              <div
+                key={toast.id}
+                className={`pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-medium animate-in fade-in slide-in-from-bottom-3 duration-300 ${
+                  toast.type === 'success'
+                    ? 'bg-slate-900 border-emerald-500/50 text-emerald-200'
+                    : toast.type === 'error'
+                    ? 'bg-slate-900 border-red-500/50 text-red-200'
+                    : 'bg-slate-900 border-slate-700 text-slate-200'
+                }`}
+              >
+                {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />}
+                {toast.type === 'info' && <Info className="w-4 h-4 text-blue-400 shrink-0" />}
+                <span>{toast.message}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+          {/* Dynamic Top Theme Color Bar (Changes with selected theme color) */}
+          <div style={{ background: 'var(--primary-topbar)' }} className="h-1 w-full shrink-0 shadow-xs transition-all duration-300" />
 
-      {/* Main Page Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-12">
-        {activeTab === 'jobs' && <JobSearch />}
-        {activeTab === 'post-job' && <PostJobSection />}
-        {activeTab === 'partner' && <PartnerSection />}
-        {activeTab === 'about-us' && <AboutUsSection />}
+          {/* Floating Omnipresent Admin Quick Toolbar (When Admin Logged In) */}
+          <AdminQuickToolbar />
+
+          {/* Main App Navigation Header */}
+          <Header />
+
+          {/* Main Page Content */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-12">
+            {activeTab === 'jobs' && <JobSearch />}
+            {activeTab === 'post-job' && <PostJobSection />}
+            {activeTab === 'partner' && <PartnerSection />}
+            {activeTab === 'currency' && <CurrencyExchangeSection />}
+            {activeTab === 'about-us' && <AboutUsSection />}
         {activeTab === 'map' && <MapSection />}
         {activeTab === 'addresses' && <EssentialAddresses />}
         {activeTab === 'my-applications' && <ApplicationsSection />}
@@ -251,7 +264,9 @@ const MainContent: React.FC = () => {
         isOpen={aboutUsModalOpen}
         onClose={() => setAboutUsModalOpen(false)}
       />
-    </div>
+        </div>
+      )}
+    </>
   );
 };
 
