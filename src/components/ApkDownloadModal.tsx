@@ -202,21 +202,21 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold text-xs flex items-center gap-1.5">
                       <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
-                      نسخه رسمی کارباما (v10.0.0.11)
+                      نسخه رسمی کارباما (v10.0.0.12)
                     </span>
                     <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">
                       آخرین نسخه پایدار
                     </span>
                   </div>
-                  <span className="text-[11px] text-slate-400 font-mono">حجم: ۳۸۵ کیلوبایت</span>
+                  <span className="text-[11px] text-slate-400 font-mono">حجم: ۱۱.۸ مگابایت</span>
                 </div>
 
                 <div className="space-y-1">
                   <h4 className="font-extrabold text-white text-base">
-                    دانلود مستقیم فایل نصبی اندروید (karbama-v10.0.0.11.apk)
+                    دانلود مستقیم فایل نصبی اندروید (karbama-v10.0.0.12.apk)
                   </h4>
                   <p className="text-slate-300 leading-relaxed text-[11px]">
-                    فایل نصبی استاندارد اپلیکیشن کارباما با نام پکیج رسمی <code className="text-amber-300 font-mono">app.karbama.twa</code> و نسخه <strong className="text-emerald-400">10.0.0.11</strong> آماده دریافت مستقیم از سرور و هماهنگ‌شده با آخرین انتشار رسمی در گیت‌هاب (GitHub Releases).
+                    فایل نصبی استاندارد اپلیکیشن کارباما با نام پکیج رسمی <code className="text-amber-300 font-mono">app.karbama.twa</code> و نسخه <strong className="text-emerald-400">10.0.0.12</strong> آماده دریافت مستقیم از سرور و هماهنگ‌شده با آخرین انتشار رسمی در گیت‌هاب (GitHub Releases).
                   </p>
                 </div>
 
@@ -224,11 +224,11 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
                 <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
                   <a
                     href="/karbama-latest.apk"
-                    download="karbama-v10.0.0.11.apk"
+                    download="karbama-v10.0.0.12.apk"
                     className="flex-1 py-3 px-5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-lg shadow-emerald-700/30"
                   >
                     <Download className="w-4 h-4" />
-                    <span>دانلود مستقیم فایل APK نسخه ۱۰.۰.۰.۱۱</span>
+                    <span>دانلود مستقیم فایل APK نسخه ۱۰.۰.۰.۱۲</span>
                   </a>
 
                   <a
