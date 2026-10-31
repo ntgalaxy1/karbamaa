@@ -1,0 +1,6 @@
+{
+  "name": "کارباما | سامانه کاریابی و اقامت ترکیه",
+  "description": "کارباما - سامانه جامع و هوشمند کاریابی، ساخت رزومه آنلاین، هتل‌ها و آدرس‌های ضروری ترکیه برای فارسی‌زبانان با پشتیبانی از وب‌اپلیکیشن PWA",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
