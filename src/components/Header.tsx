@@ -94,29 +94,29 @@ export const Header: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-3">
             {/* Logo & App Brand - کارباما */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
               <div
                 onClick={() => setActiveTab('jobs')}
-                className="cursor-pointer flex items-center gap-3 group"
+                className="cursor-pointer flex items-center gap-2.5 group"
               >
-                <div className="relative">
+                <div className="relative shrink-0">
                   <img
                     src="/logo.png"
                     alt="لوگوی رسمی کارباما"
-                    className="w-11 h-11 rounded-full object-cover shadow-lg shadow-red-600/20 border-2 border-amber-400/60 group-hover:scale-105 group-hover:border-amber-300 transition-all duration-300 ring-2 ring-slate-800"
+                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-full object-cover shadow-lg shadow-red-600/30 border-2 border-amber-400/80 group-hover:scale-105 group-hover:border-amber-300 transition-all duration-300 ring-2 ring-slate-800"
                   />
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-slate-900" title="سامانه فعال است" />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-slate-900 shadow-sm" title="سامانه فعال است" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-lg tracking-tight text-white dark:text-white light:text-slate-900 group-hover:text-amber-400 transition">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <span className="font-black text-lg sm:text-xl tracking-tight text-white dark:text-white light:text-slate-900 group-hover:text-amber-400 transition">
                       کارباما
                     </span>
-                    <span className="text-[10px] bg-amber-500/15 text-amber-300 dark:text-amber-300 light:text-amber-700 border border-amber-500/30 px-1.5 py-0.5 rounded-md font-bold tracking-wider">
+                    <span className="text-[11px] bg-amber-500/20 text-amber-300 dark:text-amber-300 light:text-amber-800 border border-amber-500/40 px-2 py-0.5 rounded-lg font-black tracking-wider">
                       KARBAMA
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 dark:text-slate-400 light:text-slate-500 hidden sm:block">
+                  <p className="text-[11px] font-medium text-slate-400 dark:text-slate-400 light:text-slate-500 hidden sm:block">
                     سامانه کاریابی و اقامت ایرانیان در ترکیه
                   </p>
                 </div>
@@ -124,9 +124,9 @@ export const Header: React.FC = () => {
 
               {/* Status Indicator (Only if admin is logged in) */}
               {isAdminLoggedIn && (
-                <div className="hidden md:flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/40 px-2.5 py-1 rounded-full text-xs">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                  <span className="text-amber-300 font-bold">مدیریت فعال است</span>
+                <div className="hidden lg:flex items-center gap-1.5 bg-amber-500/20 border border-amber-500/50 px-3 py-1 rounded-full text-xs shrink-0">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-amber-300 font-black">مدیریت فعال</span>
                 </div>
               )}
             </div>
@@ -511,20 +511,20 @@ export const Header: React.FC = () => {
                 <div className="flex items-center gap-1.5 shrink-0 relative">
                   <button
                     onClick={() => setUserDropdown(!userDropdown)}
-                    className="flex items-center gap-1.5 bg-slate-800 dark:bg-slate-800 light:bg-slate-100 hover:bg-slate-700/80 border border-slate-700 dark:border-slate-700 light:border-slate-300 px-2.5 py-1.5 rounded-xl transition text-right max-w-[150px] sm:max-w-none"
+                    className="flex items-center gap-2 bg-slate-800 dark:bg-slate-800 light:bg-slate-100 hover:bg-slate-700/90 border border-red-500/30 px-3 py-1.5 rounded-xl transition text-right max-w-[170px] sm:max-w-none shadow-md shadow-red-950/30"
                   >
-                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-red-600/20 text-red-400 border border-red-500/40 flex items-center justify-center font-bold text-xs shrink-0">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-red-600 to-rose-500 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-md shadow-red-600/40 border border-red-400/40">
                       {currentSeeker.fullName.charAt(0)}
                     </div>
-                    <div className="flex items-center gap-1 truncate">
-                      <p className="text-xs font-bold text-white dark:text-white light:text-slate-900 truncate">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <p className="text-xs font-black text-white dark:text-white light:text-slate-900 truncate">
                         {currentSeeker.fullName}
                       </p>
-                      <span className="px-1.5 py-0.2 rounded bg-red-500/20 text-red-300 border border-red-500/30 text-[9px] font-extrabold shrink-0">
-                        کارجو
+                      <span className="px-2 py-0.5 rounded-lg bg-red-600/30 text-red-200 border border-red-500/50 text-[10px] font-black shrink-0 shadow-xs">
+                        کارجو 👤
                       </span>
                     </div>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <ChevronDown className="w-4 h-4 text-slate-300 shrink-0" />
                   </button>
 
                   {/* Dropdown Menu */}

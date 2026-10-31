@@ -632,9 +632,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [currentSeekerId, setCurrentSeekerId] = useState<string | null>(() => {
     try {
-      return safeStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID) || 'seeker-1';
+      const stored = safeStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
+      return stored && stored.trim() !== '' ? stored : null;
     } catch {
-      return 'seeker-1';
+      return null;
     }
   });
 
