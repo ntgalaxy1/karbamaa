@@ -320,6 +320,44 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
                 </div>
               </div>
 
+              {/* Web App Zip Bundle Card for cPanel / DirectAdmin Deployment */}
+              <div className="p-4 bg-slate-900 border-2 border-indigo-500/40 rounded-2xl space-y-3 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-indigo-300 font-bold text-xs sm:text-sm">
+                    <Download className="w-4 h-4 text-indigo-400" />
+                    <span>دانلود پکیج کامل بیلد سایت (karbama-dist.zip) برای آپلود روی هاست</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-mono text-[10px] font-bold">
+                    cPanel / DirectAdmin
+                  </span>
+                </div>
+
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  فایل زیر حاوی کل محتویات بیلد نهایی سایت (<code className="text-amber-300 font-mono">dist</code>) همراه با فایل کامل <code className="text-emerald-400 font-mono">.htaccess</code>، وب‌مانفیست‌ها و اسکریپت‌های PWA است. کافیست آن را دانلود کرده و مستقیماً در پوشه <code className="text-sky-300 font-mono">public_html</code> هاست خود استخراج (Extract) نمایید:
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                  <a
+                    href="/karbama-dist.zip"
+                    download="karbama-dist.zip"
+                    className="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-md shadow-indigo-700/30"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>دانلود مستقیم فایل زیپ سایت (karbama-dist.zip)</span>
+                  </a>
+
+                  <a
+                    href="/DEPLOYMENT_GUIDE_FA.md"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold rounded-xl transition flex items-center justify-center gap-1.5 text-xs"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
+                    <span>راهنمای آپلود هاست</span>
+                  </a>
+                </div>
+              </div>
+
               {/* Technical Specifications Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl space-y-1">

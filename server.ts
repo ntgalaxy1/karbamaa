@@ -156,6 +156,23 @@ app.get('/logo.png', (req, res) => sendStaticFile(res, 'logo.png', 'image/png'))
 app.get('/favicon.ico', (req, res) => sendStaticFile(res, 'favicon.ico', 'image/x-icon'));
 app.get('/icon.svg', (req, res) => sendStaticFile(res, 'icon.svg', 'image/svg+xml'));
 
+// Explicit Web App Zip Build Download Route for cPanel/DirectAdmin deployment
+app.get(['/karbama-dist.zip', '/dist.zip', '/karbama-latest-build.zip'], (req, res) => {
+  const candidates = [
+    path.resolve(__dirname, 'public', 'karbama-dist.zip'),
+    path.resolve(__dirname, 'dist', 'karbama-dist.zip'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', 'attachment; filename="karbama-dist.zip"');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.sendFile(c);
+    }
+  }
+  return res.status(404).setHeader('Content-Type', 'text/plain').send('Zip build file not found');
+});
+
 // Explicit APK Download Routes with correct MIME type and download disposition
 app.get(['/karbama-latest.apk', '/karbama-v:ver.apk', '/downloads/:file'], (req, res) => {
   const filename = req.params.file || path.basename(req.path) || 'karbama-latest.apk';

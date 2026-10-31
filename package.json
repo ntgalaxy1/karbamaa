@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/build-pwa-manifests.js && tsx server.ts",
-    "build": "node scripts/build-pwa-manifests.js && vite build && python3 scripts/generate-apk.py",
+    "build": "node scripts/build-pwa-manifests.js && vite build && python3 scripts/generate-apk.py && python3 scripts/zip-dist.py",
     "start": "tsx server.ts",
     "preview": "tsx server.ts",
     "bump": "node scripts/bump-version.js",
