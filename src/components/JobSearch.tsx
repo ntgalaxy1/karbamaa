@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { t } from '../utils/translations';
 import { JobVacancy, JobCategory, TurkishLevel, ContractType } from '../types';
 import { AuthModal } from './AuthModal';
 import { JobAlertModal } from './JobAlertModal';
@@ -143,6 +144,7 @@ export const JobSearch: React.FC = () => {
     setActiveTab,
     paymentSettings,
     addAdminNotification,
+    appLanguage,
   } = useApp();
 
   // Payment referral state for locked jobseeker
@@ -704,13 +706,7 @@ export const JobSearch: React.FC = () => {
               <Search className="w-5 h-5 text-slate-400 absolute right-4 top-3.5" />
               <input
                 type="text"
-                placeholder={
-                  searchScope === 'title'
-                    ? 'جستجو فقط در عنوان شغل (مثلاً: کمک‌آشپز، چرخکار، مترجم، باریستا)...'
-                    : searchScope === 'keywords'
-                    ? 'جستجو در کلمات کلیدی و تگ‌ها (مثلاً: جای خواب، تریکو، لارا، فاتیح، پورسانت)...'
-                    : 'جستجو در عنوان شغل، کارفرما، کلمات کلیدی، مهارت‌ها و منطقه...'
-                }
+                placeholder={t('searchJobsPlaceholder', appLanguage)}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-900/90 backdrop-blur-md border border-slate-700 hover:border-red-500/50 focus:border-red-500 text-white placeholder-slate-400 pr-12 pl-24 py-3.5 rounded-2xl text-sm focus:outline-hidden shadow-lg transition"

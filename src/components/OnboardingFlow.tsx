@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { AppLanguage, TargetCountry, Gender } from '../types';
+import { t } from '../utils/translations';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 import { IRAN_PROVINCES, IRAN_CITIES_BY_PROVINCE } from '../data/iranCities';
 import { CommitmentModal } from './CommitmentModal';
@@ -347,7 +348,7 @@ export const OnboardingFlow: React.FC = () => {
                 viewMode === 'language' ? 'bg-red-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
-              انتخاب زبان
+              {t('selectLanguage', appLanguage)}
             </button>
             <button
               type="button"
@@ -356,7 +357,7 @@ export const OnboardingFlow: React.FC = () => {
                 viewMode === 'register' ? 'bg-red-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
-              ثبت‌نام کارجو
+              {t('register', appLanguage)}
             </button>
             <button
               type="button"
@@ -365,7 +366,7 @@ export const OnboardingFlow: React.FC = () => {
                 viewMode === 'login' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
-              ورود به حساب
+              {t('login', appLanguage)}
             </button>
           </div>
         </div>
