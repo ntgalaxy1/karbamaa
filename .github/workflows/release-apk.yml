@@ -1,0 +1,78 @@
+name: Build and Release Karbama Android APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'APK Version (e.g. 10.0.0.1)'
+        required: true
+        default: '10.0.0.1'
+
+permissions:
+  contents: write
+
+jobs:
+  release-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies & Build Web Assets
+        run: |
+          npm ci || npm install
+          npm run build
+
+      - name: Generate Versioned APK (v10.0.0.1+)
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            # Extract from git tag (remove leading 'v')
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
+            VERSION="10.0.0.1"
+          fi
+          echo "Building APK for version $VERSION..."
+          python3 scripts/generate-apk.py
+
+      - name: Create GitHub Release with APK Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "کارباما نسخه اندروید ${{ github.ref_name || github.event.inputs.version || 'v10.0.0.1' }}"
+          tag_name: ${{ github.ref_name || format('v{0}', github.event.inputs.version || '10.0.0.1') }}
+          body: |
+            ## 📱 دانلود فایل نصبی مستقیم اپلیکیشن رسمی کارباما (نسخه اندروید)
+            
+            **مشخصات بسته نصبی:**
+            - **نسخه نرم‌افزار:** ${{ github.ref_name || format('v{0}', github.event.inputs.version || '10.0.0.1') }} (شروع از ورژن ۱۰.۰.۰.۱)
+            - **بسته نصبی (Package Name):** `app.karbama.twa`
+            - **توسعه‌دهنده:** ناصر توکلی (`@Ntgalaxy`)
+            - **حداقل اندروید مورد نیاز:** اندروید ۵.۰ به بالا (Android Lollipop+)
+            - **نوع خروجی:** فایل خام نصبی استاندارد (Standalone APK)
+            
+            ### نحوه نصب:
+            1. فایل `karbama-v10.0.0.1.apk` پیوست شده در زیر را دانلود نمایید.
+            2. در گوشی اندروید خود فایل را باز کرده و در صورت درخواست، گزینه **Install from unknown sources** (نصب از منابع ناشناس) را تایید کنید.
+            3. برنامه کارباما با دسترسی کامل به کاریابی، رزومه‌ساز، هتل‌ها و مترجم نصب و اجرا می‌شود.
+          files: |
+            public/karbama-v*.apk
+            public/dist.zip
+            public/karbama-source.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
