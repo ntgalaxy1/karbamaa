@@ -149,7 +149,7 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
             }`}
           >
             <Github className="w-3.5 h-3.5 text-emerald-400" />
-            <span>دانلود APK ورژن ۱۰.۰.۰.۱ (گیت‌هاب و سرور)</span>
+            <span>دانلود APK آخرین نسخه (گیت‌هاب و سرور)</span>
           </button>
 
           <button
@@ -193,7 +193,7 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
         </div>
 
         <div className="p-6 space-y-5 text-xs max-h-[72vh] overflow-y-auto">
-          {/* TAB 0: Official GitHub Release APK v10.0.0.8 */}
+          {/* TAB 0: Official GitHub Release APK v10.0.0.11 */}
           {activeTab === 'github-release' && (
             <div className="space-y-4">
               {/* Highlight Hero Card */}
@@ -202,10 +202,10 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold text-xs flex items-center gap-1.5">
                       <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
-                      نسخه رسمی ۱۰.۰.۰.۲ (v10.0.0.8)
+                      نسخه رسمی کارباما (v10.0.0.11)
                     </span>
                     <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">
-                      به‌روزرسانی رسمی
+                      آخرین نسخه پایدار
                     </span>
                   </div>
                   <span className="text-[11px] text-slate-400 font-mono">حجم: ۳۸۵ کیلوبایت</span>
@@ -213,32 +213,33 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
 
                 <div className="space-y-1">
                   <h4 className="font-extrabold text-white text-base">
-                    دانلود مستقیم فایل نصبی اندروید (karbama-v10.0.0.8.apk)
+                    دانلود مستقیم فایل نصبی اندروید (karbama-v10.0.0.11.apk)
                   </h4>
                   <p className="text-slate-300 leading-relaxed text-[11px]">
-                    فایل نصبی استاندارد اپلیکیشن کارباما با نام پکیج رسمی <code className="text-amber-300 font-mono">app.karbama.twa</code> و نسخه <strong className="text-emerald-400">10.0.0.8</strong> آماده دریافت مستقیم از سرور و هماهنگ‌شده با ریلیزهای گیت‌هاب (GitHub Releases) می‌باشد.
+                    فایل نصبی استاندارد اپلیکیشن کارباما با نام پکیج رسمی <code className="text-amber-300 font-mono">app.karbama.twa</code> و نسخه <strong className="text-emerald-400">10.0.0.11</strong> آماده دریافت مستقیم از سرور و هماهنگ‌شده با آخرین انتشار رسمی در گیت‌هاب (GitHub Releases).
                   </p>
                 </div>
 
                 {/* Primary Download Action Buttons */}
                 <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
                   <a
-                    href="/karbama-v10.0.0.8.apk"
-                    download="karbama-v10.0.0.8.apk"
+                    href="/karbama-latest.apk"
+                    download="karbama-v10.0.0.11.apk"
                     className="flex-1 py-3 px-5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-lg shadow-emerald-700/30"
                   >
                     <Download className="w-4 h-4" />
-                    <span>دانلود مستقیم فایل APK نسخه ۱۰.۰.۰.۲</span>
+                    <span>دانلود مستقیم فایل APK نسخه ۱۰.۰.۰.۱۱</span>
                   </a>
 
                   <a
-                    href="/downloads/karbama-v10.0.0.8.apk"
-                    download="karbama-v10.0.0.8.apk"
+                    href="https://github.com/ntgalaxy1/karbamaa/releases"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold rounded-xl transition flex items-center justify-center gap-1.5 text-xs"
-                    title="دانلود از لینک سرور پشتیبان"
+                    title="مشاهده و دانلود در صفحه ریلیزهای رسمی گیت‌هاب"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>لینک دانلود کمکی</span>
+                    <Github className="w-3.5 h-3.5 text-amber-400" />
+                    <span>دانلود از ریلیز گیت‌هاب</span>
                   </a>
                 </div>
               </div>

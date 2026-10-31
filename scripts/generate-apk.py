@@ -2,15 +2,44 @@
 import os
 import sys
 import shutil
-import subprocess
-import argparse
+import json
 import zipfile
+import argparse
 
-def build_standalone_apk(version="10.0.0.8", version_code=100008, package_name="app.karbama.twa", app_name="کارباما"):
+def get_package_version():
+    try:
+        with open("package.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data.get("version", "10.0.0.11")
+    except Exception:
+        return "10.0.0.11"
+
+def build_standalone_apk(version=None, version_code=None, package_name="app.karbama.twa", app_name="کارباما"):
+    if not version:
+        version = get_package_version()
+    
+    if not version_code:
+        # Convert 10.0.0.11 -> 100011
+        parts = version.split(".")
+        try:
+            version_code = int(parts[0]) * 10000 + int(parts[-1])
+        except Exception:
+            version_code = 100011
+
     print(f"Building standalone Karbama Android APK package: Version={version}, Code={version_code}, Package={package_name}")
 
     os.makedirs("public", exist_ok=True)
     os.makedirs("public/downloads", exist_ok=True)
+
+    # Clean old APKs from public/
+    for folder in ["public", "public/downloads"]:
+        if os.path.exists(folder):
+            for f in os.listdir(folder):
+                if f.endswith(".apk") and "v10.0.0.1" in f:
+                    try:
+                        os.remove(os.path.join(folder, f))
+                    except Exception:
+                        pass
 
     build_dir = "/tmp/karbama-apk-build"
     if os.path.exists(build_dir):
@@ -63,44 +92,34 @@ def build_standalone_apk(version="10.0.0.8", version_code=100008, package_name="
             apk_zip.write("public/logo.png", "res/mipmap-hdpi/ic_launcher.png")
             apk_zip.write("public/logo.png", "res/mipmap-xxhdpi/ic_launcher.png")
 
-        # Add Web App Assets
+        # Add Web App Assets (excluding large binaries or nested apks)
         if os.path.exists("dist"):
             for root, dirs, files in os.walk("dist"):
                 for file in files:
+                    if file.endswith(".apk") or file.endswith(".zip"):
+                        continue
                     full_p = os.path.join(root, file)
                     rel_p = os.path.relpath(full_p, "dist")
                     apk_zip.write(full_p, os.path.join("assets", rel_p))
 
-    # Copy to public locations
+    # Copy to target public locations for download
     targets = [
         os.path.join("public", f"karbama-v{version}.apk"),
         os.path.join("public/downloads", f"karbama-v{version}.apk"),
-        os.path.join("public", "karbama-v10.0.0.1.apk"),
-        os.path.join("public/downloads", "karbama-v10.0.0.1.apk"),
-        os.path.join("public", "karbama-v10.0.0.8.apk"),
-        os.path.join("public/downloads", "karbama-v10.0.0.8.apk"),
+        os.path.join("public", "karbama-latest.apk"),
+        os.path.join("public/downloads", "karbama-latest.apk"),
     ]
 
     for t in targets:
         shutil.copyfile(apk_path, t)
 
-    # Create dist.zip
-    dist_zip_path = os.path.join("public", "dist.zip")
-    with zipfile.ZipFile(dist_zip_path, 'w', zipfile.ZIP_DEFLATED) as dzip:
-        if os.path.exists("dist"):
-            for root, dirs, files in os.walk("dist"):
-                for file in files:
-                    full_p = os.path.join(root, file)
-                    rel_p = os.path.relpath(full_p, "dist")
-                    dzip.write(full_p, rel_p)
-
     size_mb = os.path.getsize(targets[0]) / (1024 * 1024)
-    print(f"✅ Standalone Karbama APK ({size_mb:.2f} MB) successfully built in public directory!")
+    print(f"✅ Standalone Karbama APK v{version} ({size_mb:.2f} MB) successfully built!")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--version", default="10.0.0.8")
-    parser.add_argument("--version-code", type=int, default=100008)
+    parser.add_argument("--version", default=None)
+    parser.add_argument("--version-code", type=int, default=None)
     parser.add_argument("--package-name", default="app.karbama.twa")
     args = parser.parse_args()
 
