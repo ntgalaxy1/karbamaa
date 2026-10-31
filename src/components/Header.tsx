@@ -226,58 +226,6 @@ export const Header: React.FC = () => {
                 )}
               </button>
 
-              <button
-                onClick={() => setActiveTab('cv-builder')}
-                style={activeTab === 'cv-builder' ? { backgroundColor: 'var(--primary-color)' } : undefined}
-                className={`px-3 py-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
-                  activeTab === 'cv-builder'
-                    ? 'text-white shadow-sm font-bold'
-                    : 'text-slate-300 dark:text-slate-300 light:text-slate-700 hover:text-white hover:bg-slate-800/80 light:hover:bg-slate-100'
-                }`}
-              >
-                <FileText className="w-4 h-4 text-amber-400" />
-                رزومه‌ساز (CV)
-              </button>
-
-              <button
-                onClick={() => setActiveTab('settings')}
-                style={activeTab === 'settings' ? { backgroundColor: 'var(--primary-color)' } : undefined}
-                className={`px-3 py-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
-                  activeTab === 'settings'
-                    ? 'text-white shadow-sm font-bold'
-                    : 'text-slate-300 dark:text-slate-300 light:text-slate-700 hover:text-white hover:bg-slate-800/80 light:hover:bg-slate-100'
-                }`}
-              >
-                <Settings className="w-4 h-4" />
-                پروفایل
-              </button>
-
-              <button
-                onClick={() => setActiveTab('currency')}
-                style={activeTab === 'currency' ? { backgroundColor: 'var(--primary-color)' } : undefined}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                  activeTab === 'currency'
-                    ? 'text-white shadow-sm'
-                    : 'text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20'
-                }`}
-              >
-                <Coins className="w-4 h-4 text-amber-400" />
-                قیمت ارز
-              </button>
-
-              <button
-                onClick={() => setActiveTab('about-us')}
-                style={activeTab === 'about-us' ? { backgroundColor: 'var(--primary-color)' } : undefined}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                  activeTab === 'about-us'
-                    ? 'text-white shadow-sm'
-                    : 'text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20'
-                }`}
-              >
-                <Info className="w-4 h-4 text-amber-400" />
-                درباره ما
-              </button>
-
               {/* Admin Panel Tab */}
               {isAdminLoggedIn && (
                 <button
@@ -296,7 +244,7 @@ export const Header: React.FC = () => {
 
             {/* Header Right Actions */}
             <div className="flex items-center gap-1.5 sm:gap-2">
-              {/* Sleek Compact Dropdown Menu for Android APK, Share, Palette, Theme & Language */}
+              {/* Sleek Compact Dropdown Menu for Android APK, Resume Builder, Currency, About Us, Share, Palette, Theme & Language */}
               <div className="relative">
                 <button
                   onClick={() => {
@@ -307,7 +255,7 @@ export const Header: React.FC = () => {
                   title="منوی امکانات، دانلود و تنظیمات"
                 >
                   <Sliders className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline">دانلود و امکانات</span>
+                  <span className="hidden sm:inline">امکانات و ابزارها</span>
                   <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${toolsDropdown ? 'rotate-180' : ''}`} />
                 </button>
 
@@ -324,7 +272,7 @@ export const Header: React.FC = () => {
                       <div className="px-3 py-1.5 text-[11px] font-bold text-slate-300 dark:text-slate-300 light:text-slate-800 flex items-center justify-between border-b border-slate-800 dark:border-slate-800 light:border-slate-200 mb-1.5">
                         <span className="flex items-center gap-1.5">
                           <Sliders className="w-3.5 h-3.5 text-amber-400" />
-                          <span>امکانات و تنظیمات</span>
+                          <span>امکانات و ابزارها</span>
                         </span>
                         <button
                           onClick={() => setToolsDropdown(false)}
@@ -335,7 +283,78 @@ export const Header: React.FC = () => {
                         </button>
                       </div>
 
-                      {/* Day / Night Theme Toggle Option (Transferred inside tools menu) */}
+                      {/* Resume Builder (رزومه‌ساز) */}
+                      <button
+                        onClick={() => {
+                          setActiveTab('cv-builder');
+                          setToolsDropdown(false);
+                        }}
+                        className="w-full text-right px-3 py-2 rounded-xl text-slate-200 dark:text-slate-200 light:text-slate-800 hover:bg-slate-800/80 dark:hover:bg-slate-800/80 light:hover:bg-slate-100 flex items-center justify-between transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-amber-400" />
+                          <span className="font-bold">رزومه‌ساز آنلاین (CV)</span>
+                        </div>
+                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-md font-mono">
+                          رایگان
+                        </span>
+                      </button>
+
+                      {/* Currency Rates (قیمت ارز) */}
+                      <button
+                        onClick={() => {
+                          setActiveTab('currency');
+                          setToolsDropdown(false);
+                        }}
+                        className="w-full text-right px-3 py-2 rounded-xl text-slate-200 dark:text-slate-200 light:text-slate-800 hover:bg-slate-800/80 dark:hover:bg-slate-800/80 light:hover:bg-slate-100 flex items-center justify-between transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Coins className="w-4 h-4 text-amber-400" />
+                          <span className="font-bold">قیمت روز ارز (لیر و دلار)</span>
+                        </div>
+                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-md font-mono font-bold">
+                          زنده 🟢
+                        </span>
+                      </button>
+
+                      {/* About Us (درباره ما) */}
+                      <button
+                        onClick={() => {
+                          setAboutUsModalOpen(true);
+                          setActiveTab('about-us');
+                          setToolsDropdown(false);
+                        }}
+                        className="w-full text-right px-3 py-2 rounded-xl text-slate-200 dark:text-slate-200 light:text-slate-800 hover:bg-slate-800/80 dark:hover:bg-slate-800/80 light:hover:bg-slate-100 flex items-center justify-between transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Info className="w-4 h-4 text-sky-400" />
+                          <span className="font-bold">درباره ما و قوانین کارباما</span>
+                        </div>
+                        <span className="text-[10px] bg-sky-500/20 text-sky-300 px-1.5 py-0.5 rounded-md font-mono font-bold">
+                          راهنما
+                        </span>
+                      </button>
+
+                      <div className="border-t border-slate-800 dark:border-slate-800 light:border-slate-200 my-1"></div>
+
+                      {/* Android App Download */}
+                      <button
+                        onClick={() => {
+                          setApkModalOpen(true);
+                          setToolsDropdown(false);
+                        }}
+                        className="w-full text-right px-3 py-2 rounded-xl text-slate-200 dark:text-slate-200 light:text-slate-800 hover:bg-slate-800/80 dark:hover:bg-slate-800/80 light:hover:bg-slate-100 flex items-center justify-between transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Smartphone className="w-4 h-4 text-emerald-400" />
+                          <span className="font-bold">دانلود نسخه اندروید (APK)</span>
+                        </div>
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-md font-mono">
+                          v10.0.0.12
+                        </span>
+                      </button>
+
+                      {/* Day / Night Theme Toggle Option */}
                       <button
                         onClick={() => {
                           toggleTheme();
@@ -360,22 +379,6 @@ export const Header: React.FC = () => {
 
                       <button
                         onClick={() => {
-                          setApkModalOpen(true);
-                          setToolsDropdown(false);
-                        }}
-                        className="w-full text-right px-3 py-2 rounded-xl text-slate-200 dark:text-slate-200 light:text-slate-800 hover:bg-slate-800/80 dark:hover:bg-slate-800/80 light:hover:bg-slate-100 flex items-center justify-between transition"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Smartphone className="w-4 h-4 text-emerald-400" />
-                          <span className="font-bold">دانلود نسخه اندروید (APK)</span>
-                        </div>
-                        <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-md font-mono">
-                          v10.0.0.12
-                        </span>
-                      </button>
-
-                      <button
-                        onClick={() => {
                           setShareModalOpen(true);
                           setToolsDropdown(false);
                         }}
@@ -383,22 +386,6 @@ export const Header: React.FC = () => {
                       >
                         <Share2 className="w-4 h-4 text-rose-400" />
                         <span className="font-bold">اشتراک‌گذاری برنامه</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setActiveTab('currency');
-                          setToolsDropdown(false);
-                        }}
-                        className="w-full text-right px-3 py-2 rounded-xl text-slate-200 dark:text-slate-200 light:text-slate-800 hover:bg-slate-800/80 dark:hover:bg-slate-800/80 light:hover:bg-slate-100 flex items-center justify-between transition"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Coins className="w-4 h-4 text-amber-400" />
-                          <span className="font-bold">قیمت ارز (لیر و دلار)</span>
-                        </div>
-                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-md font-mono font-bold">
-                          نرخ روز 🟢
-                        </span>
                       </button>
 
                       <button
