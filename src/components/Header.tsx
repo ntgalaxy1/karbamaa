@@ -57,6 +57,9 @@ export const Header: React.FC = () => {
     setThemeModalOpen,
     appLanguage,
     setAppLanguage,
+    setAdminJobModalOpen,
+    setAdminHotelModalOpen,
+    setAdminAddressModalOpen,
   } = useApp();
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -163,19 +166,22 @@ export const Header: React.FC = () => {
                 </button>
               )}
 
-              {/* Dedicated Partner Section */}
-              <button
-                onClick={() => setActiveTab('partner')}
-                style={activeTab === 'partner' ? { backgroundColor: 'var(--primary-color)' } : undefined}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                  activeTab === 'partner'
-                    ? 'text-white shadow-sm'
-                    : 'text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20'
-                }`}
-              >
-                <Building2 className="w-4 h-4 text-indigo-400" />
-                {t('partnerSection', appLanguage)}
-              </button>
+              {/* Dedicated Partner Section (Hidden in Jobseeker mode) */}
+              {(!currentSeeker || isAdminLoggedIn || Boolean(currentPartner)) && (
+                <button
+                  onClick={() => setActiveTab('partner')}
+                  style={activeTab === 'partner' ? { backgroundColor: 'var(--primary-color)' } : undefined}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    activeTab === 'partner'
+                      ? 'text-white shadow-sm'
+                      : 'text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20'
+                  }`}
+                >
+                  <Building2 className="w-4 h-4 text-indigo-400" />
+                  {t('partnerSection', appLanguage)}
+                </button>
+              )}
+
 
               {/* Dedicated Map Tab */}
               <button
@@ -284,6 +290,91 @@ export const Header: React.FC = () => {
                         </button>
                       </div>
 
+                      {/* Admin Access Section (قسمت دسترسی مدیر فعال است) */}
+                      {isAdminLoggedIn && (
+                        <div className="bg-amber-500/10 border-2 border-amber-500/50 rounded-2xl p-2.5 mb-2 space-y-2 text-right">
+                          <div className="flex items-center justify-between border-b border-amber-500/30 pb-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="flex h-2.5 w-2.5 relative">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                              </span>
+                              <span className="font-black text-amber-300 text-xs">
+                                دسترسی مدیر فعال است
+                              </span>
+                            </div>
+                            <span className="px-2 py-0.5 rounded bg-amber-500/30 text-amber-200 text-[10px] font-bold border border-amber-400/30">
+                              مدیر سیستم
+                            </span>
+                          </div>
+
+                          <p className="text-[10px] text-slate-300 font-medium leading-tight">
+                            دسترسی سریع افزودن آگهی، هتل، آدرس و پنل مدیریت:
+                          </p>
+
+                          <div className="grid grid-cols-2 gap-1.5 pt-1">
+                            <button
+                              onClick={() => {
+                                setAdminJobModalOpen(true);
+                                setToolsDropdown(false);
+                              }}
+                              className="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 shadow-sm transition"
+                              title="افزودن سریع آگهی جدید"
+                            >
+                              <PlusCircle className="w-3.5 h-3.5 text-white" />
+                              <span>+ کار جدید</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setAdminHotelModalOpen(true);
+                                setToolsDropdown(false);
+                              }}
+                              className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 shadow-sm transition"
+                              title="افزودن هتل رو نقشه"
+                            >
+                              <Hotel className="w-3.5 h-3.5 text-white" />
+                              <span>+ هتل</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setAdminAddressModalOpen(true);
+                                setToolsDropdown(false);
+                              }}
+                              className="px-2 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-sm text-[11px] flex items-center justify-center gap-1 transition"
+                              title="افزودن سفارت یا مرکز"
+                            >
+                              <Building2 className="w-3.5 h-3.5 text-white" />
+                              <span>+ آدرس</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setActiveTab('admin');
+                                setToolsDropdown(false);
+                              }}
+                              className="px-2 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 shadow-sm transition"
+                              title="ورود به پنل مدیریت جامع"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5 text-white" />
+                              <span>پنل مدیریت</span>
+                            </button>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              logoutAdmin();
+                              setToolsDropdown(false);
+                            }}
+                            className="w-full mt-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition border border-red-500/20"
+                          >
+                            <LogOut className="w-3.5 h-3.5 text-red-400" />
+                            <span>خروج از مدیریت سیستم</span>
+                          </button>
+                        </div>
+                      )}
+
                       {/* Resume Builder (رزومه‌ساز) */}
                       <button
                         onClick={() => {
@@ -296,8 +387,8 @@ export const Header: React.FC = () => {
                           <FileText className="w-4 h-4 text-amber-400" />
                           <span className="font-bold">{t('cvBuilder', appLanguage)}</span>
                         </div>
-                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-md font-mono">
-                          {t('free', appLanguage)}
+                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-md font-mono font-bold">
+                          به زودی در آپدیت‌های بعدی ⏳
                         </span>
                       </button>
 

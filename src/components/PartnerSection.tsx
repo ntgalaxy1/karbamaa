@@ -35,6 +35,7 @@ import {
   ArrowRight,
   Send,
   Zap,
+  Briefcase,
 } from 'lucide-react';
 
 const COMMON_PARTNER_JOBS = [
@@ -239,6 +240,36 @@ export const PartnerSection: React.FC = () => {
   });
 
   const selectedPlan = partnerPlans.find((p) => p.id === selectedPlanId) || partnerPlans[0];
+
+  // Disable Partner Section for Job Seekers
+  const { currentSeeker: activeSeeker } = useApp();
+  const isJobSeekerView = Boolean(activeSeeker && !isAdminLoggedIn && !currentPartner);
+
+  if (isJobSeekerView) {
+    return (
+      <div className="max-w-2xl mx-auto py-12 px-4 text-center space-y-6 animate-in fade-in duration-300">
+        <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center mx-auto shadow-xl">
+          <Lock className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold inline-block">
+            دسترسی محدود 🔒
+          </span>
+          <h2 className="text-xl sm:text-2xl font-black text-white">بخش همکاران ویژه موسسات و شرکت‌ها است</h2>
+          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
+            این بخش اختصاصی دفاتر اعزام نیروی کار، شرکت‌های کاریابی و کارفرمایان طرف قرارداد با کارباما می‌باشد و برای حساب‌های کاربری کارجو غیرفعال گردیده است.
+          </p>
+        </div>
+        <button
+          onClick={() => setActiveTab('jobs')}
+          className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-red-700/30 transition inline-flex items-center gap-2"
+        >
+          <Briefcase className="w-4 h-4" />
+          <span>بازگشت به فرصت‌های شغلی</span>
+        </button>
+      </div>
+    );
+  }
 
   // ==========================================
   // VIEW 1: NOT LOGGED IN AS PARTNER

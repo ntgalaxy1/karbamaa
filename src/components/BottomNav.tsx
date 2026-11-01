@@ -7,7 +7,8 @@ export const BottomNav: React.FC = () => {
   const { activeTab, setActiveTab, isAdminLoggedIn, isPartnerLoggedIn, currentSeeker, paymentSettings, appLanguage } = useApp();
 
   const isJobSeekerMode = Boolean(currentSeeker && !isAdminLoggedIn);
-  const colsClass = isAdminLoggedIn ? 'grid-cols-7' : isJobSeekerMode ? 'grid-cols-5' : 'grid-cols-6';
+  const colsClass = isAdminLoggedIn ? 'grid-cols-6' : isJobSeekerMode ? 'grid-cols-4' : 'grid-cols-5';
+
 
   return (
     <nav
@@ -55,20 +56,23 @@ export const BottomNav: React.FC = () => {
           </button>
         )}
 
-        {/* 3. Partner Section Tab */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('partner')}
-          style={activeTab === 'partner' ? { color: 'var(--primary-color)' } : undefined}
-          className={`flex flex-col items-center justify-center gap-1 py-1 transition relative ${
-            activeTab === 'partner'
-              ? 'font-bold scale-105'
-              : 'text-indigo-400 hover:text-indigo-300'
-          }`}
-        >
-          <Building2 className="w-5 h-5" />
-          <span className="text-[9px]">{t('partnerSection', appLanguage)}</span>
-        </button>
+        {/* 3. Partner Section Tab (Hidden for Job Seekers) */}
+        {!isJobSeekerMode && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('partner')}
+            style={activeTab === 'partner' ? { color: 'var(--primary-color)' } : undefined}
+            className={`flex flex-col items-center justify-center gap-1 py-1 transition relative ${
+              activeTab === 'partner'
+                ? 'font-bold scale-105'
+                : 'text-indigo-400 hover:text-indigo-300'
+            }`}
+          >
+            <Building2 className="w-5 h-5" />
+            <span className="text-[9px]">{t('partnerSection', appLanguage)}</span>
+          </button>
+        )}
+
 
         {/* 4. Hotels & Addresses Tab */}
         <button

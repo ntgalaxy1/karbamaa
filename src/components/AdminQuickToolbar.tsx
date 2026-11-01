@@ -36,14 +36,13 @@ export const AdminQuickToolbar: React.FC = () => {
     addHotel,
     addAddress,
     showToast,
+    adminJobModalOpen,
+    setAdminJobModalOpen,
+    adminHotelModalOpen,
+    setAdminHotelModalOpen,
+    adminAddressModalOpen,
+    setAdminAddressModalOpen,
   } = useApp();
-
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
-  // Modals state
-  const [showAddJobModal, setShowAddJobModal] = useState(false);
-  const [showAddHotelModal, setShowAddHotelModal] = useState(false);
-  const [showAddAddressModal, setShowAddAddressModal] = useState(false);
 
   // New Job State
   const [jobTitle, setJobTitle] = useState('');
@@ -134,7 +133,7 @@ export const AdminQuickToolbar: React.FC = () => {
       isActive: true,
     });
 
-    setShowAddJobModal(false);
+    setAdminJobModalOpen(false);
     setJobTitle('');
     setJobCompany('');
     setJobDescription('');
@@ -168,7 +167,7 @@ export const AdminQuickToolbar: React.FC = () => {
       coordinates: hotelCoordinates,
     });
 
-    setShowAddHotelModal(false);
+    setAdminHotelModalOpen(false);
     setHotelName('');
     setHotelNameTr('');
     setHotelAddress('');
@@ -195,7 +194,7 @@ export const AdminQuickToolbar: React.FC = () => {
       isEmergency24h: false,
     });
 
-    setShowAddAddressModal(false);
+    setAdminAddressModalOpen(false);
     setAddrTitle('');
     setAddrAddress('');
     showToast('مرکز جدید با موفقیت به راهنمای آدرس‌ها اضافه شد', 'success');
@@ -203,82 +202,8 @@ export const AdminQuickToolbar: React.FC = () => {
 
   return (
     <>
-      {/* Omnipresent Floating Admin Bar */}
-      <div className="fixed bottom-20 lg:bottom-4 left-4 right-4 sm:left-auto sm:right-6 z-40 max-w-xl animate-in slide-in-from-bottom duration-300">
-        <div className="bg-slate-900/95 backdrop-blur-md border-2 border-amber-500/70 rounded-2xl shadow-2xl p-2.5 flex items-center justify-between gap-2 text-xs">
-          {/* Status info */}
-          <div className="flex items-center gap-2 pr-1">
-            <span className="flex h-3 w-3 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
-            </span>
-            <div className="hidden sm:block">
-              <span className="font-extrabold text-amber-300 block text-xs">دسترسی مدیر فعال است</span>
-              <span className="text-[10px] text-slate-400">امکانات افزودن و ویرایش تمام بخش‌ها</span>
-            </div>
-            <span className="sm:hidden font-bold text-amber-300 text-xs">مدیر فعال</span>
-          </div>
-
-          {/* Quick Add Buttons */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <button
-              onClick={() => setShowAddJobModal(true)}
-              className="px-2.5 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-sm transition flex items-center gap-1 text-xs"
-              title="افزودن آگهی کار جدید با بیمه، غذا و خوابگاه"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ کار</span>
-            </button>
-
-            <button
-              onClick={() => setShowAddHotelModal(true)}
-              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-sm transition flex items-center gap-1 text-xs"
-              title="افزودن هتل جدید با انتخاب لوکیشن دقیق از روی نقشه"
-            >
-              <HotelIcon className="w-3.5 h-3.5" />
-              <span>+ هتل</span>
-            </button>
-
-            <button
-              onClick={() => setShowAddAddressModal(true)}
-              className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-sm transition flex items-center gap-1 text-xs hidden md:flex"
-              title="افزودن مرکز جدید یا سفارت"
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              <span>+ آدرس</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('partner')}
-              className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-sm transition flex items-center gap-1 text-xs"
-              title="ورود به بخش همکاران و دفاتر"
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">همکاران</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('admin')}
-              className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl shadow-sm transition flex items-center gap-1 text-xs"
-              title="ورود به پنل مدیریت جامع"
-            >
-              <Settings className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">پنل مدیریت</span>
-            </button>
-
-            <button
-              onClick={logoutAdmin}
-              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-xl transition"
-              title="خروج از حالت مدیریت"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* QUICK ADD JOB MODAL */}
-      {showAddJobModal && (
+      {adminJobModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
           <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden my-6">
             <div className="flex items-center justify-between px-6 py-4 bg-slate-800 border-b border-slate-700">
@@ -289,7 +214,7 @@ export const AdminQuickToolbar: React.FC = () => {
                 <h3 className="font-bold text-white text-base">افزودن فرصت شغلی جدید (ویژه مدیر)</h3>
               </div>
               <button
-                onClick={() => setShowAddJobModal(false)}
+                onClick={() => setAdminJobModalOpen(false)}
                 className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-700 transition"
               >
                 <X className="w-5 h-5" />
@@ -526,7 +451,7 @@ export const AdminQuickToolbar: React.FC = () => {
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowAddJobModal(false)}
+                  onClick={() => setAdminJobModalOpen(false)}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl"
                 >
                   انصراف
@@ -544,7 +469,7 @@ export const AdminQuickToolbar: React.FC = () => {
       )}
 
       {/* QUICK ADD HOTEL MODAL WITH MAP PICKER */}
-      {showAddHotelModal && (
+      {adminHotelModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
           <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden my-6">
             <div className="flex items-center justify-between px-6 py-4 bg-slate-800 border-b border-slate-700">
@@ -555,7 +480,7 @@ export const AdminQuickToolbar: React.FC = () => {
                 <h3 className="font-bold text-white text-base">افزودن هتل و اقامتگاه جدید (با نقشه)</h3>
               </div>
               <button
-                onClick={() => setShowAddHotelModal(false)}
+                onClick={() => setAdminHotelModalOpen(false)}
                 className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-700 transition"
               >
                 <X className="w-5 h-5" />
@@ -705,7 +630,7 @@ export const AdminQuickToolbar: React.FC = () => {
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowAddHotelModal(false)}
+                  onClick={() => setAdminHotelModalOpen(false)}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl"
                 >
                   انصراف
@@ -723,7 +648,7 @@ export const AdminQuickToolbar: React.FC = () => {
       )}
 
       {/* QUICK ADD ADDRESS MODAL */}
-      {showAddAddressModal && (
+      {adminAddressModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
           <div className="relative w-full max-w-xl bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden my-6">
             <div className="flex items-center justify-between px-6 py-4 bg-slate-800 border-b border-slate-700">
@@ -734,7 +659,7 @@ export const AdminQuickToolbar: React.FC = () => {
                 <h3 className="font-bold text-white text-base">افزودن مرکز جدید یا سفارت (ویژه مدیر)</h3>
               </div>
               <button
-                onClick={() => setShowAddAddressModal(false)}
+                onClick={() => setAdminAddressModalOpen(false)}
                 className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-700 transition"
               >
                 <X className="w-5 h-5" />
@@ -821,7 +746,7 @@ export const AdminQuickToolbar: React.FC = () => {
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setShowAddAddressModal(false)}
+                  onClick={() => setAdminAddressModalOpen(false)}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl"
                 >
                   انصراف

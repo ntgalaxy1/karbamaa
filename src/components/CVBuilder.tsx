@@ -573,15 +573,15 @@ Karbama (کارباما) İş ve İstihdam Sistemi ile Oluşturulmuştur.
               className="w-14 h-14 rounded-full object-cover border-2 border-amber-400/80 shadow-lg shrink-0 mt-1"
             />
             <div className="space-y-1.5">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/20 text-red-300 border border-red-500/30 text-xs font-semibold">
-                <FileCheck className="w-3.5 h-3.5" />
-                رزومه‌ساز رسمی کارباما (Standart Türk CV Formatı)
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-black shadow-sm animate-pulse">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>رزومه‌ساز آنلاین کارباما — به زودی در آپدیت‌های بعدی 🚀</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-white">
                 ساخت رزومه رسمی کارفرمایان ترکیه (Özgeçmiş)
               </h2>
               <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-                مشخصات حرفه‌ای، تجربیات کاری و مهارت‌های خود را وارد کنید تا به‌صورت خودکار یک رزومه اداری و استاندارد به زبان ترکی با قالب A4 آماده چاپ (Print-Ready) و ذخیره PDF جهت ارسال به شرکت‌ها و کارفرمایان ترکیه تولید شود.
+                ابزار هوشمند رزومه‌ساز اداری و استاندارد ترکیه‌ای کارباما در حال توسعه و ارتقاست و به زودی در آپدیت‌های بعدی برنامه همراه با سیستم هوشمند ترجمه، خروجی رسمی PDF و پرینت A4 فعال خواهد شد.
               </p>
             </div>
           </div>

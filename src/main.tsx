@@ -49,12 +49,21 @@ if (typeof window !== 'undefined') {
       navigator.serviceWorker
         .register('/sw.js', { scope: '/' })
         .then((reg) => {
+          // Check for SW updates on every page load
+          reg.update().catch(() => {});
           reg.onupdatefound = () => {
             const installingWorker = reg.installing;
             if (installingWorker) {
               installingWorker.onstatechange = () => {
                 if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  console.log('[PWA] New version ready.');
+                  console.log('[PWA] New update installed! Refreshing cache...');
+                  if ('caches' in window) {
+                    caches.keys().then((names) => {
+                      for (const name of names) {
+                        if (name !== 'karbama-cache-v3') caches.delete(name);
+                      }
+                    });
+                  }
                 }
               };
             }

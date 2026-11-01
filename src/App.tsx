@@ -30,6 +30,8 @@ import { AboutUsSection } from './components/AboutUsSection';
 import { OnboardingFlow } from './components/OnboardingFlow';
 import { PartnerSection } from './components/PartnerSection';
 import { CurrencyExchangeSection } from './components/CurrencyExchangeSection';
+import { OfflineIndicator } from './components/OfflineIndicator';
+
 
 // Centered App Startup Splash Screen with Smooth Fade-out
 const SplashScreen: React.FC<{ onFinish: () => void }> = ({ onFinish }) => {
@@ -130,8 +132,12 @@ const MainContent: React.FC = () => {
           {/* Dynamic Top Theme Color Bar (Changes with selected theme color) */}
           <div style={{ background: 'var(--primary-topbar)' }} className="h-1 w-full shrink-0 shadow-xs transition-all duration-300" />
 
+          {/* Offline Mode Indicator (IndexedDB Cache Active) */}
+          <OfflineIndicator />
+
           {/* Floating Omnipresent Admin Quick Toolbar (When Admin Logged In) */}
           <AdminQuickToolbar />
+
 
           {/* Main App Navigation Header */}
           <Header />

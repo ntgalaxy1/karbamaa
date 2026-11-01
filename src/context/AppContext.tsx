@@ -47,6 +47,10 @@ import {
   showSafeNotification,
   getSafeNotificationPermission,
 } from '../utils/safeNotification';
+import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../services/firebase';
+import { idbCache } from '../utils/idbCache';
+
 
 export type ActiveTab =
   | 'jobs'
@@ -266,6 +270,13 @@ interface AppContextType {
   registerSeekerByPartner: (input: RegisterSeekerByPartnerInput) => { success: boolean; error?: string; seekerId?: string };
   switchToDemoPartner: () => void;
   activatePartnerInstantly: (partnerId: string) => void;
+  // Quick Admin Modals State (Triggered from Header & Admin Tools)
+  adminJobModalOpen: boolean;
+  setAdminJobModalOpen: (open: boolean) => void;
+  adminHotelModalOpen: boolean;
+  setAdminHotelModalOpen: (open: boolean) => void;
+  adminAddressModalOpen: boolean;
+  setAdminAddressModalOpen: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -516,6 +527,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const unreadAdminNotifCount = adminNotifications.filter((n) => !n.read).length;
 
   const approveSeekerAccount = (seekerId: string, note?: string) => {
+    const seeker = jobSeekers.find((s) => s.id === seekerId);
     setJobSeekers((prev) => {
       const next = prev.map((s) =>
         s.id === seekerId
@@ -530,9 +542,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return next;
     });
     showToast('حساب کاربری و تسویه وجه کارجو با موفقیت تایید و فعال شد.', 'success');
+
+    if (seeker) {
+      showSafeNotification(`✅ حساب کاربری کارجو تایید شد!`, {
+        body: `کارجوی گرامی ${seeker.fullName}، حساب کاربری و دسترسی‌های شما توسط مدیریت کارباما فعال گردید.`,
+        icon: '/pwa-192x192.png',
+        tag: `seeker-status-${seekerId}`,
+      });
+    }
   };
 
   const rejectSeekerAccount = (seekerId: string, reason: string) => {
+    const seeker = jobSeekers.find((s) => s.id === seekerId);
     setJobSeekers((prev) => {
       const next = prev.map((s) =>
         s.id === seekerId
@@ -547,6 +568,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return next;
     });
     showToast('حساب کارجو رد شد.', 'info');
+
+    if (seeker) {
+      showSafeNotification(`⚠️ به‌روزرسانی در وضعیت حساب کارجو`, {
+        body: `کارجوی گرامی ${seeker.fullName}، پرونده شما به‌روزرسانی شد: ${reason || 'لطفاً مشخصات را بررسی کنید.'}`,
+        icon: '/pwa-192x192.png',
+        tag: `seeker-status-${seekerId}`,
+      });
+    }
   };
 
   // Safe load data with fallback to initial data
@@ -858,13 +887,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const currentPartner = partners.find((p) => p.id === currentPartnerId) || null;
   const isPartnerLoggedIn = Boolean(currentPartner);
 
-  // Persist state updates securely
+  // Persist state updates securely to safeStorage & IndexedDB (for offline SW access)
   useEffect(() => {
     safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(jobSeekers));
   }, [jobSeekers]);
 
   useEffect(() => {
     safeStorage.setItem(STORAGE_KEYS.JOBS, JSON.stringify(jobs));
+    if (jobs && jobs.length > 0) {
+      idbCache.saveJobs(jobs);
+    }
   }, [jobs]);
 
   useEffect(() => {
@@ -873,11 +905,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     safeStorage.setItem(STORAGE_KEYS.ADDRESSES, JSON.stringify(addresses));
+    if (addresses && addresses.length > 0) {
+      idbCache.saveAddresses(addresses);
+    }
   }, [addresses]);
 
   useEffect(() => {
     safeStorage.setItem(STORAGE_KEYS.HOTELS, JSON.stringify(hotels));
+    if (hotels && hotels.length > 0) {
+      idbCache.saveHotels(hotels);
+    }
   }, [hotels]);
+
+  // Initial IndexedDB hydration fallback when offline or on first load
+  useEffect(() => {
+    const hydrateFromIndexedDB = async () => {
+      try {
+        const cachedJobs = await idbCache.getJobs();
+        if (cachedJobs && cachedJobs.length > 0) {
+          setJobs((prev) => {
+            if (!prev || prev.length === 0) return cachedJobs;
+            return prev;
+          });
+        }
+
+        const cachedAddrs = await idbCache.getAddresses();
+        if (cachedAddrs && cachedAddrs.length > 0) {
+          setAddresses((prev) => {
+            if (!prev || prev.length === 0) return cachedAddrs;
+            return prev;
+          });
+        }
+
+        const cachedHotels = await idbCache.getHotels();
+        if (cachedHotels && cachedHotels.length > 0) {
+          setHotels((prev) => {
+            if (!prev || prev.length === 0) return cachedHotels;
+            return prev;
+          });
+        }
+      } catch (err) {
+        console.warn('[IDB Hydrate] Failed:', err);
+      }
+    };
+
+    hydrateFromIndexedDB();
+  }, []);
+
 
   useEffect(() => {
     safeStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(hotelBookings));
@@ -930,6 +1004,147 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     safeStorage.setItem(STORAGE_KEYS.IS_ADMIN, isAdminLoggedIn ? 'true' : 'false');
   }, [isAdminLoggedIn]);
+
+  // Real-time Firestore synchronization for 'users', 'notifications', and 'jobs'
+  useEffect(() => {
+    if (!db) return;
+
+    // Listen to users collection
+    const unsubUsers = onSnapshot(
+      collection(db, 'users'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const firestoreUsers: JobSeeker[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data() as JobSeeker;
+            if (data && data.id) {
+              firestoreUsers.push(data);
+            }
+          });
+          if (firestoreUsers.length > 0) {
+            setJobSeekers((prev) => {
+              const map = new Map<string, JobSeeker>();
+              prev.forEach((s) => map.set(s.id, s));
+              firestoreUsers.forEach((s) => map.set(s.id, s));
+              return Array.from(map.values());
+            });
+          }
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, 'users');
+      }
+    );
+
+    // Listen to notifications collection
+    const unsubNotifs = onSnapshot(
+      collection(db, 'notifications'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const firestoreNotifs: JobNotification[] = [];
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+              const notifData = change.doc.data() as any;
+              if (notifData && (notifData.title || notifData.jobTitle)) {
+                showSafeNotification(`🔔 ${notifData.title || notifData.jobTitle}`, {
+                  body: notifData.message || notifData.body || 'اعلان جدید در سامانه کارباما دریافت شد.',
+                  icon: '/pwa-192x192.png',
+                  tag: notifData.id,
+                });
+              }
+            }
+          });
+
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data() as JobNotification;
+            if (data && data.id) {
+              firestoreNotifs.push(data);
+            }
+          });
+
+          if (firestoreNotifs.length > 0) {
+            setJobNotifications((prev) => {
+              const map = new Map<string, JobNotification>();
+              prev.forEach((n) => map.set(n.id, n));
+              firestoreNotifs.forEach((n) => map.set(n.id, n));
+              return Array.from(map.values());
+            });
+          }
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, 'notifications');
+      }
+    );
+
+    // Listen to jobs collection
+    const unsubJobs = onSnapshot(
+      collection(db, 'jobs'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const firestoreJobs: JobVacancy[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data() as JobVacancy;
+            if (data && data.id) {
+              firestoreJobs.push(data);
+            }
+          });
+
+          if (firestoreJobs.length > 0) {
+            setJobs((prev) => {
+              const map = new Map<string, JobVacancy>();
+              prev.forEach((j) => map.set(j.id, j));
+              firestoreJobs.forEach((j) => map.set(j.id, j));
+              return Array.from(map.values());
+            });
+          }
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, 'jobs');
+      }
+    );
+
+    return () => {
+      unsubUsers();
+      unsubNotifs();
+      unsubJobs();
+    };
+  }, []);
+
+  const syncUserToFirestore = async (user: JobSeeker) => {
+    try {
+      await setDoc(doc(db, 'users', user.id), {
+        ...user,
+        pushNotificationEnabled: true,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `users/${user.id}`);
+    }
+  };
+
+  const syncNotificationToFirestore = async (notif: JobNotification | any) => {
+    try {
+      await setDoc(doc(db, 'notifications', notif.id), {
+        ...notif,
+        createdAt: notif.createdAt || new Date().toISOString(),
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `notifications/${notif.id}`);
+    }
+  };
+
+  const syncJobToFirestore = async (job: JobVacancy) => {
+    try {
+      await setDoc(doc(db, 'jobs', job.id), {
+        ...job,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `jobs/${job.id}`);
+    }
+  };
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now().toString() + Math.random().toString(36).substring(2, 6);
@@ -1038,6 +1253,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setJobSeekers((prev) => [newSeeker, ...prev]);
+    syncUserToFirestore(newSeeker);
     setCurrentSeekerId(newSeeker.id);
     setRole('jobseeker');
     setActiveTab('jobs');
@@ -1241,6 +1457,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
 
       setJobNotifications((prev) => [newNotif, ...prev]);
+      syncNotificationToFirestore(newNotif);
 
       if (alert.enableInAppToast) {
         showToast(
@@ -1272,9 +1489,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setJobs((prev) => [newJob, ...prev]);
+    syncJobToFirestore(newJob);
     showToast('آگهی کار با موفقیت ایجاد شد.', 'success');
     if (newJob.isActive && (newJob.paymentStatus === 'paid' || !newJob.paymentStatus)) {
       checkJobAlerts(newJob);
+      showSafeNotification(`💼 آگهی استخدام جدید در کارباما: ${newJob.title}`, {
+        body: `${newJob.company} (${newJob.city}) - حقوق: ${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
+        icon: newJob.imageUrl || '/pwa-192x192.png',
+        tag: `new-job-${newJob.id}`,
+      });
     }
   };
 
@@ -1300,6 +1523,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (isOnlinePaid) {
       showToast('پرداخت آنلاین ۵۰۰ لیر تایید شد و آگهی شما بلافاصله در سایت منتشر گردید.', 'success');
       checkJobAlerts(newJob);
+      showSafeNotification(`💼 آگهی استخدام جدید در کارباما: ${newJob.title}`, {
+        body: `${newJob.company} (${newJob.city}) - حقوق: ${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
+        icon: newJob.imageUrl || '/pwa-192x192.png',
+        tag: `new-job-${newJob.id}`,
+      });
     } else {
       showToast('آگهی و فیش واریز شما با موفقیت ثبت شد و پس از بررسی و تایید مدیر منتشر خواهد شد.', 'success');
     }
@@ -1833,6 +2061,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('اشتراک همکار به صورت تستی و فوری فعال شد!', 'success');
   };
 
+  // Quick Admin Modals State (Triggered from Header > امکانات)
+  const [adminJobModalOpen, setAdminJobModalOpen] = useState(false);
+  const [adminHotelModalOpen, setAdminHotelModalOpen] = useState(false);
+  const [adminAddressModalOpen, setAdminAddressModalOpen] = useState(false);
+
   return (
     <AppContext.Provider
       value={{
@@ -1938,6 +2171,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         registerSeekerByPartner,
         switchToDemoPartner,
         activatePartnerInstantly,
+        adminJobModalOpen,
+        setAdminJobModalOpen,
+        adminHotelModalOpen,
+        setAdminHotelModalOpen,
+        adminAddressModalOpen,
+        setAdminAddressModalOpen,
       }}
     >
       {children}

@@ -37,11 +37,11 @@ import {
   EyeOff,
 } from 'lucide-react';
 
-const DESTINATION_COUNTRIES: { id: TargetCountry; name: string; flag: string; desc: string }[] = [
-  { id: 'ترکیه', name: 'ترکیه (Türkiye)', flag: '🇹🇷', desc: 'فرصت‌های کاری رستورانی، تولیدی پوشاک، هتل‌ها و چالیشما' },
-  { id: 'ارمنستان', name: 'ارمنستان (Armenia)', flag: '🇦🇲', desc: 'بدون ویزا، هزینه‌های مناسب، مشاغل خدماتی و بازرگانی' },
-  { id: 'عراق', name: 'عراق (Iraq)', flag: '🇮🇶', desc: 'درآمد دلاری در اقلیم کردستان، حوزه‌های فنی و ساختمانی' },
-  { id: 'آلمان', name: 'آلمان (Germany)', flag: '🇩🇪', desc: 'ویزای فرصت کار (Chancenkarte)، کادر درمان و مهندسی' },
+const DESTINATION_COUNTRIES: { id: TargetCountry; nameKey: string; flag: string; descKey: string }[] = [
+  { id: 'ترکیه', nameKey: 'countryTurkeyName', flag: '🇹🇷', descKey: 'countryTurkeyDesc' },
+  { id: 'ارمنستان', nameKey: 'countryArmeniaName', flag: '🇦🇲', descKey: 'countryArmeniaDesc' },
+  { id: 'عراق', nameKey: 'countryIraqName', flag: '🇮🇶', descKey: 'countryIraqDesc' },
+  { id: 'آلمان', nameKey: 'countryGermanyName', flag: '🇩🇪', descKey: 'countryGermanyDesc' },
 ];
 
 export const OnboardingFlow: React.FC = () => {
@@ -336,7 +336,7 @@ export const OnboardingFlow: React.FC = () => {
             />
             <div>
               <span className="font-black text-sm text-white">کارباما | KARBAMA</span>
-              <p className="text-[10px] text-slate-400">سامانه رسمی کاریابی و اعزام نیروی کار</p>
+              <p className="text-[10px] text-slate-400">{t('appOfficialTag', appLanguage)}</p>
             </div>
           </div>
 
@@ -399,7 +399,7 @@ export const OnboardingFlow: React.FC = () => {
               <div className="space-y-2 pt-2 text-right">
                 <p className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
                   <Globe className="w-4 h-4 text-red-400" />
-                  لطفاً زبان مورد نظر خود را انتخاب کنید (Choose Language):
+                  {t('selectLanguagePrompt', appLanguage)}
                 </p>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -438,7 +438,7 @@ export const OnboardingFlow: React.FC = () => {
                   className="w-full py-3.5 px-6 bg-red-600 hover:bg-red-500 text-white font-black text-sm rounded-2xl shadow-xl shadow-red-700/30 transition flex items-center justify-center gap-2 group"
                 >
                   <UserCheck className="w-4 h-4" />
-                  <span>شروع مرحله ثبت‌نام کارجو</span>
+                  <span>{t('startSeekerRegBtn', appLanguage)}</span>
                   <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                 </button>
 
@@ -448,7 +448,7 @@ export const OnboardingFlow: React.FC = () => {
                   className="w-full sm:w-auto py-3.5 px-5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-2xl border border-slate-700 transition flex items-center justify-center gap-2 shrink-0"
                 >
                   <LogIn className="w-4 h-4 text-amber-400" />
-                  <span>ورود به حساب کاربری موجود</span>
+                  <span>{t('existingAccountLoginBtn', appLanguage)}</span>
                 </button>
               </div>
             </div>
@@ -462,28 +462,28 @@ export const OnboardingFlow: React.FC = () => {
                 <div className="flex items-center justify-between text-xs mb-2 font-bold">
                   <span className="text-white flex items-center gap-1.5">
                     <UserCheck className="w-4 h-4 text-emerald-400" />
-                    <span>مرحله {regStep} از ۴ ثبت‌نام کارجو</span>
+                    <span>{t('regStepOfFour', appLanguage)} {regStep} {t('regStepOfFourSuffix', appLanguage)}</span>
                   </span>
                   <span className="text-amber-400">
-                    {regStep === 1 && '۱. مشخصات فردی، اکانت و کشور مقصد'}
-                    {regStep === 2 && '۲. محل سکونت در ایران'}
-                    {regStep === 3 && '۳. بارگذاری مدارک و مهارت‌ها'}
-                    {regStep === 4 && '۴. تعهدنامه تسویه حساب کارگزار و امضا'}
+                    {regStep === 1 && t('regStep1Title', appLanguage)}
+                    {regStep === 2 && t('regStep2Title', appLanguage)}
+                    {regStep === 3 && t('regStep3Title', appLanguage)}
+                    {regStep === 4 && t('regStep4Title', appLanguage)}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-4 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-[10px] text-center font-bold">
                   <div className={`py-1.5 rounded-lg transition ${regStep === 1 ? 'bg-red-600 text-white' : regStep > 1 ? 'bg-emerald-600/30 text-emerald-300' : 'text-slate-500'}`}>
-                    ۱. مشخصات
+                    {t('step1Short', appLanguage)}
                   </div>
                   <div className={`py-1.5 rounded-lg transition ${regStep === 2 ? 'bg-red-600 text-white' : regStep > 2 ? 'bg-emerald-600/30 text-emerald-300' : 'text-slate-500'}`}>
-                    ۲. آدرس ایران
+                    {t('step2Short', appLanguage)}
                   </div>
                   <div className={`py-1.5 rounded-lg transition ${regStep === 3 ? 'bg-red-600 text-white' : regStep > 3 ? 'bg-emerald-600/30 text-emerald-300' : 'text-slate-500'}`}>
-                    ۳. مدارک و شغل
+                    {t('step3Short', appLanguage)}
                   </div>
                   <div className={`py-1.5 rounded-lg transition ${regStep === 4 ? 'bg-red-600 text-white' : 'text-slate-500'}`}>
-                    ۴. تعهدنامه و امضا
+                    {t('step4Short', appLanguage)}
                   </div>
                 </div>
               </div>
@@ -492,16 +492,16 @@ export const OnboardingFlow: React.FC = () => {
               {regStep === 1 && (
                 <div className="space-y-4 animate-in fade-in duration-200">
                   <p className="text-xs text-slate-300 font-semibold border-b border-slate-800 pb-2">
-                    بخش اول: دریافت مشخصات هویتی، اکانت، شماره کارت واریزکننده و کشور مقصد
+                    {t('step1SectionHeader', appLanguage)}
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div className="space-y-1">
-                      <label className="text-slate-300 font-medium">نام *</label>
+                      <label className="text-slate-300 font-medium">{t('firstNameInputLabel', appLanguage)}</label>
                       <input
                         type="text"
                         required
-                        placeholder="مثال: علی"
+                        placeholder={t('firstNamePlaceholderText', appLanguage)}
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500"
@@ -509,11 +509,11 @@ export const OnboardingFlow: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-slate-300 font-medium">نام خانوادگی *</label>
+                      <label className="text-slate-300 font-medium">{t('lastNameInputLabel', appLanguage)}</label>
                       <input
                         type="text"
                         required
-                        placeholder="مثال: رضایی"
+                        placeholder={t('lastNamePlaceholderText', appLanguage)}
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500"
@@ -521,11 +521,11 @@ export const OnboardingFlow: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-slate-300 font-medium">نام پدر *</label>
+                      <label className="text-slate-300 font-medium">{t('fatherNameInputLabel', appLanguage)}</label>
                       <input
                         type="text"
                         required
-                        placeholder="مثال: حسین"
+                        placeholder={t('fatherNamePlaceholderText', appLanguage)}
                         value={fatherName}
                         onChange={(e) => setFatherName(e.target.value)}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500"
@@ -533,12 +533,12 @@ export const OnboardingFlow: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-slate-300 font-medium">کد ملی ۱۰ رقمی *</label>
+                      <label className="text-slate-300 font-medium">{t('nationalIdInputLabel', appLanguage)}</label>
                       <input
                         type="text"
                         required
                         maxLength={10}
-                        placeholder="کد ۱۰ رقمی ملی"
+                        placeholder={t('nationalIdPlaceholderText', appLanguage)}
                         value={nationalId}
                         onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ''))}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono focus:outline-hidden focus:border-red-500"
@@ -546,7 +546,7 @@ export const OnboardingFlow: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-slate-300 font-medium">شماره موبایل / واتساپ *</label>
+                      <label className="text-slate-300 font-medium">{t('mobileWhatsAppInputLabel', appLanguage)}</label>
                       <div className="flex gap-1.5" dir="ltr">
                         <select
                           value={phoneCountryCode}
@@ -571,7 +571,7 @@ export const OnboardingFlow: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-slate-300 font-medium text-amber-300">شماره کارت ۱۶ رقمی واریزکننده (مشتری) *</label>
+                      <label className="text-slate-300 font-medium text-amber-300">{t('payerCardNumberInputLabel', appLanguage)}</label>
                       <input
                         type="text"
                         required
@@ -589,12 +589,12 @@ export const OnboardingFlow: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-slate-300 font-medium">نام کاربری جهت ورود *</label>
+                      <label className="text-slate-300 font-medium">{t('usernameInputLabel', appLanguage)}</label>
                       <input
                         type="text"
                         required
                         dir="ltr"
-                        placeholder="مثال: ali_karbama"
+                        placeholder={t('usernamePlaceholderText', appLanguage)}
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
@@ -602,13 +602,13 @@ export const OnboardingFlow: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-slate-300 font-medium">رمز عبور دلخواه *</label>
+                      <label className="text-slate-300 font-medium">{t('passwordInputLabel', appLanguage)}</label>
                       <div className="relative">
                         <input
                           type={showPassword ? 'text' : 'password'}
                           required
                           dir="ltr"
-                          placeholder="حداقل ۴ کاراکتر"
+                          placeholder={t('passwordPlaceholderText', appLanguage)}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
@@ -626,7 +626,7 @@ export const OnboardingFlow: React.FC = () => {
 
                   {/* Gender Selector */}
                   <div className="text-xs space-y-1 pt-1">
-                    <label className="text-slate-300 font-medium">تعیین جنسیت *</label>
+                    <label className="text-slate-300 font-medium">{t('genderSelectorLabel', appLanguage)}</label>
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         type="button"
@@ -635,7 +635,7 @@ export const OnboardingFlow: React.FC = () => {
                           gender === 'male' ? 'bg-blue-600/30 border-blue-500 text-blue-200' : 'bg-slate-800 border-slate-700 text-slate-400'
                         }`}
                       >
-                        <span>👨 آقا</span>
+                        <span>{t('genderMaleText', appLanguage)}</span>
                         {gender === 'male' && <Check className="w-3.5 h-3.5 text-blue-400" />}
                       </button>
                       <button
@@ -645,7 +645,7 @@ export const OnboardingFlow: React.FC = () => {
                           gender === 'female' ? 'bg-pink-600/30 border-pink-500 text-pink-200' : 'bg-slate-800 border-slate-700 text-slate-400'
                         }`}
                       >
-                        <span>👩 خانم</span>
+                        <span>{t('genderFemaleText', appLanguage)}</span>
                         {gender === 'female' && <Check className="w-3.5 h-3.5 text-pink-400" />}
                       </button>
                     </div>
@@ -655,7 +655,7 @@ export const OnboardingFlow: React.FC = () => {
                   <div className="space-y-2 pt-2">
                     <label className="text-xs font-bold text-white flex items-center gap-1.5">
                       <Globe className="w-4 h-4 text-emerald-400" />
-                      <span>انتخاب کشور مقصد کاریابی *</span>
+                      <span>{t('destinationCountryLabel', appLanguage)}</span>
                     </label>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
@@ -673,11 +673,11 @@ export const OnboardingFlow: React.FC = () => {
                             <div className="flex items-center justify-between mb-1">
                               <span className="flex items-center gap-2 text-sm font-extrabold">
                                 <span>{c.flag}</span>
-                                <span>{c.name}</span>
+                                <span>{t(c.nameKey, appLanguage)}</span>
                               </span>
                               {isSelected && <CheckCircle className="w-4 h-4 text-red-400 shrink-0" />}
                             </div>
-                            <p className="text-[10px] text-slate-400 leading-snug">{c.desc}</p>
+                            <p className="text-[10px] text-slate-400 leading-snug">{t(c.descKey, appLanguage)}</p>
                           </button>
                         );
                       })}
@@ -690,7 +690,7 @@ export const OnboardingFlow: React.FC = () => {
                       onClick={handleNextStep}
                       className="w-full sm:w-auto px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-700/30 transition flex items-center justify-center gap-2"
                     >
-                      <span>مرحله بعد: محل سکونت در ایران</span>
+                      <span>{t('nextStepAddressBtn', appLanguage)}</span>
                       <ArrowLeft className="w-4 h-4" />
                     </button>
                   </div>
@@ -701,12 +701,12 @@ export const OnboardingFlow: React.FC = () => {
               {regStep === 2 && (
                 <div className="space-y-4 animate-in fade-in duration-200">
                   <p className="text-xs text-slate-300 font-semibold border-b border-slate-800 pb-2">
-                    بخش دوم: دریافت آدرس دقیق محل سکونت مختص ایران
+                    {t('step2SectionHeader', appLanguage)}
                   </p>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div className="space-y-1">
-                      <label className="text-slate-300 font-medium">استان محل سکونت در ایران *</label>
+                      <label className="text-slate-300 font-medium">{t('provinceInputLabel', appLanguage)}</label>
                       <select
                         value={iranProvince}
                         onChange={(e) => {
@@ -728,7 +728,7 @@ export const OnboardingFlow: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-slate-300 font-medium">شهرستان / شهر محل سکونت *</label>
+                      <label className="text-slate-300 font-medium">{t('cityInputLabel', appLanguage)}</label>
                       <select
                         value={iranCity}
                         onChange={(e) => setIranCity(e.target.value)}
@@ -744,11 +744,11 @@ export const OnboardingFlow: React.FC = () => {
                   </div>
 
                   <div className="space-y-1 text-xs">
-                    <label className="text-slate-300 font-medium">آدرس دقیق پستی و محل سکونت در ایران *</label>
+                    <label className="text-slate-300 font-medium">{t('addressInputLabel', appLanguage)}</label>
                     <textarea
                       rows={3}
                       required
-                      placeholder="مثال: خیابان شریعتی، بالاتر از سیدخندان، پلاک ۱۲۴، واحد ۳"
+                      placeholder={t('addressPlaceholderText', appLanguage)}
                       value={iranAddress}
                       onChange={(e) => setIranAddress(e.target.value)}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 leading-relaxed"
@@ -762,7 +762,7 @@ export const OnboardingFlow: React.FC = () => {
                       className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
                     >
                       <ArrowRight className="w-4 h-4" />
-                      <span>مرحله قبل</span>
+                      <span>{t('prevStepBtnText', appLanguage)}</span>
                     </button>
 
                     <button
@@ -770,7 +770,7 @@ export const OnboardingFlow: React.FC = () => {
                       onClick={handleNextStep}
                       className="px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-700/30 transition flex items-center gap-2"
                     >
-                      <span>مرحله بعد: مدارک و مهارت‌ها</span>
+                      <span>{t('nextStepDocsBtn', appLanguage)}</span>
                       <ArrowLeft className="w-4 h-4" />
                     </button>
                   </div>
@@ -781,26 +781,26 @@ export const OnboardingFlow: React.FC = () => {
               {regStep === 3 && (
                 <div className="space-y-5 animate-in fade-in duration-200">
                   <p className="text-xs text-slate-300 font-semibold border-b border-slate-800 pb-2">
-                    بخش سوم: بارگذاری مدارک پرسنلی + مهارت‌ها و شغل درخواستی (دارای دو قسمت مجزا)
+                    {t('step3SectionHeader', appLanguage)}
                   </p>
 
                   {/* 1. DOCUMENT UPLOADS */}
                   <div className="space-y-3">
                     <h3 className="text-xs font-bold text-white flex items-center gap-2">
                       <Camera className="w-4 h-4 text-red-500" />
-                      <span>قسمت اول: بارگذاری مدارک هویتی</span>
+                      <span>{t('part1DocsTitle', appLanguage)}</span>
                     </h3>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       {/* Full body photo with strict notice */}
                       <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl space-y-2 flex flex-col justify-between">
                         <div>
-                          <span className="font-bold text-white block mb-0.5">عکس تمام قد ایستاده</span>
+                          <span className="font-bold text-white block mb-0.5">{t('fullBodyPhotoLabel', appLanguage)}</span>
                           <div className="p-2 bg-amber-950/40 border border-amber-500/40 rounded-xl text-[10px] text-amber-200 space-y-0.5">
-                            <strong className="block text-amber-300 font-bold">راهنمای عکس تمام قد:</strong>
-                            <div>• خانم‌ها بدون آرایش</div>
-                            <div>• آقایان بدون ریش بلند (حداکثر ته‌ریش)</div>
-                            <div>• تمام قد، واضح، بدون فیلتر با لباس مرتب</div>
+                            <strong className="block text-amber-300 font-bold">{t('fullBodyGuideTitle', appLanguage)}</strong>
+                            <div>{t('fullBodyRule1', appLanguage)}</div>
+                            <div>{t('fullBodyRule2', appLanguage)}</div>
+                            <div>{t('fullBodyRule3', appLanguage)}</div>
                           </div>
                         </div>
 
@@ -818,7 +818,7 @@ export const OnboardingFlow: React.FC = () => {
                         ) : (
                           <label className="border-2 border-dashed border-slate-700 hover:border-red-500 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/60">
                             <Upload className="w-5 h-5 text-slate-500 mb-1" />
-                            <span className="text-[11px] font-bold text-slate-300">انتخاب عکس تمام قد</span>
+                            <span className="text-[11px] font-bold text-slate-300">{t('selectFullBodyPhotoBtn', appLanguage)}</span>
                             <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, setFullBodyPhotoUrl)} className="hidden" />
                           </label>
                         )}
@@ -827,8 +827,8 @@ export const OnboardingFlow: React.FC = () => {
                       {/* Passport/ID photo */}
                       <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl space-y-2 flex flex-col justify-between">
                         <div>
-                          <span className="font-bold text-white block mb-0.5">عکس پاسپورت یا کارت ملی</span>
-                          <p className="text-[10px] text-slate-400">تصویر واضح از صفحه اول پاسپورت یا کارت ملی</p>
+                          <span className="font-bold text-white block mb-0.5">{t('passportPhotoLabel', appLanguage)}</span>
+                          <p className="text-[10px] text-slate-400">{t('passportPhotoDescText', appLanguage)}</p>
                         </div>
 
                         {passportPhotoUrl ? (
@@ -845,7 +845,7 @@ export const OnboardingFlow: React.FC = () => {
                         ) : (
                           <label className="border-2 border-dashed border-slate-700 hover:border-red-500 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/60">
                             <IdCard className="w-5 h-5 text-slate-500 mb-1" />
-                            <span className="text-[11px] font-bold text-slate-300">انتخاب عکس پاسپورت/کارت ملی</span>
+                            <span className="text-[11px] font-bold text-slate-300">{t('selectPassportPhotoBtn', appLanguage)}</span>
                             <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, setPassportPhotoUrl)} className="hidden" />
                           </label>
                         )}
@@ -858,10 +858,10 @@ export const OnboardingFlow: React.FC = () => {
                     <div className="border-b border-slate-800 pb-2">
                       <h3 className="text-xs font-bold text-amber-300 flex items-center gap-2">
                         <Briefcase className="w-4 h-4 text-amber-400" />
-                        قسمت دوم: مهارت‌ها و شغل درخواستی (دو بخش مجزا)
+                        {t('part2SkillsTitle', appLanguage)}
                       </h3>
                       <p className="text-[11px] text-slate-400 mt-0.5">
-                        بخش اول: انتخاب از منوی تمامی شغل‌های رایج با تیک‌گذاری | بخش دوم: نوشتن دستی توسط شما
+                        {t('part2SkillsSubtitle', appLanguage)}
                       </p>
                     </div>
 
@@ -872,7 +872,7 @@ export const OnboardingFlow: React.FC = () => {
                           <span className="w-5 h-5 rounded-full bg-red-600/20 text-red-400 border border-red-500/30 flex items-center justify-center text-[10px] font-mono">
                             ۱
                           </span>
-                          <span>بخش اول: منوی شغل‌های رایج (قابل تیک‌گذاری از جزء تا کل)</span>
+                          <span>{t('commonJobsSectionTitle', appLanguage)}</span>
                         </label>
 
                         <button
@@ -880,9 +880,9 @@ export const OnboardingFlow: React.FC = () => {
                           onClick={() => setIsJobsMenuOpen(!isJobsMenuOpen)}
                           className="px-3 py-1 rounded-xl bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-300 text-xs font-bold flex items-center gap-1.5 transition"
                         >
-                          <span>{isJobsMenuOpen ? 'بستن منو' : 'باز کردن منوی شغل‌ها'}</span>
+                          <span>{isJobsMenuOpen ? t('closeJobsMenuBtn', appLanguage) : t('openJobsMenuBtn', appLanguage)}</span>
                           <span className="px-1.5 py-0.2 rounded-full bg-red-600 text-white text-[10px] font-mono">
-                            {selectedCommonJobs.length} انتخاب شده
+                            {selectedCommonJobs.length} {t('selectedCountText', appLanguage)}
                           </span>
                           {isJobsMenuOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                         </button>
@@ -906,7 +906,7 @@ export const OnboardingFlow: React.FC = () => {
                             <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3" />
                             <input
                               type="text"
-                              placeholder="جستجوی سریع میان شغل‌ها (آشپز، چرخکار، برقکار، باریستا، آرایشگر)..."
+                              placeholder={t('jobSearchInputPlaceholder', appLanguage)}
                               value={jobSearchTerm}
                               onChange={(e) => setJobSearchTerm(e.target.value)}
                               className="w-full bg-slate-800 border border-slate-700 rounded-xl pr-8 pl-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden"
@@ -956,11 +956,11 @@ export const OnboardingFlow: React.FC = () => {
                         <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center text-[10px] font-mono">
                           ۲
                         </span>
-                        <span>بخش دوم: نوشتن توسط ثبت‌نام‌کننده (شغل درخواستی و سوابق)</span>
+                        <span>{t('manualSkillsSectionTitle', appLanguage)}</span>
                       </label>
                       <textarea
                         rows={2}
-                        placeholder="اگر سوابق یا شغل خاصی مد نظرتان است در اینجا بنویسید (مثلاً: ۵ سال سابقه کباب‌زنی، آشنایی با ترکی)..."
+                        placeholder={t('manualSkillsPlaceholderText', appLanguage)}
                         value={customWrittenSkills}
                         onChange={(e) => setCustomWrittenSkills(e.target.value)}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-500 leading-relaxed"
@@ -975,7 +975,7 @@ export const OnboardingFlow: React.FC = () => {
                       className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
                     >
                       <ArrowRight className="w-4 h-4" />
-                      <span>مرحله قبل</span>
+                      <span>{t('prevStepBtnText', appLanguage)}</span>
                     </button>
 
                     <button
@@ -983,7 +983,7 @@ export const OnboardingFlow: React.FC = () => {
                       onClick={handleNextStep}
                       className="px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-700/30 transition flex items-center gap-2"
                     >
-                      <span>مرحله بعد: تعهدنامه و امضا</span>
+                      <span>{t('nextStepCommitmentBtn', appLanguage)}</span>
                       <ArrowLeft className="w-4 h-4" />
                     </button>
                   </div>
@@ -994,22 +994,22 @@ export const OnboardingFlow: React.FC = () => {
               {regStep === 4 && (
                 <div className="space-y-4 animate-in fade-in duration-200">
                   <p className="text-xs text-slate-300 font-semibold border-b border-slate-800 pb-2">
-                    بخش چهارم: مطالعه، تایید و امضای تعهدنامه حقوقی تسویه حساب کارگزار
+                    {t('step4SectionHeader', appLanguage)}
                   </p>
 
                   <div className="p-4 bg-slate-950 border-2 border-red-500/40 rounded-2xl space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs sm:text-sm font-black text-white flex items-center gap-2">
                         <FileText className="w-4 h-4 text-red-500" />
-                        <span>تعهدنامه تسویه حساب هزینه کارگزار</span>
+                        <span>{t('commitmentCardTitle', appLanguage)}</span>
                       </h4>
                       <span className="text-[10px] bg-red-600/20 text-red-300 px-2 py-0.5 rounded-full font-bold">
-                        الزامی حقوقی
+                        {t('legalRequiredBadgeText', appLanguage)}
                       </span>
                     </div>
 
                     <p className="text-xs text-slate-300 leading-relaxed">
-                      این سند به منزله تسویه حساب کامل هزینه خدمات کارگزار، مشاوره و معرفی به کارفرما می‌باشد. جهت مشاهده متن کامل با فونت درشت، مشخصات متقاضی و رسم امضا کلیک نمایید.
+                      {t('commitmentCardDescText', appLanguage)}
                     </p>
 
                     <button
@@ -1018,13 +1018,13 @@ export const OnboardingFlow: React.FC = () => {
                       className="w-full py-3 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2"
                     >
                       <FileText className="w-4 h-4" />
-                      <span>مشاهده و امضای الکترونیکی تعهدنامه تسویه حساب کارگزار</span>
+                      <span>{t('openCommitmentModalBtn', appLanguage)}</span>
                     </button>
 
                     {signatureDataUrl && (
                       <div className="p-2 bg-emerald-950/40 border border-emerald-500/40 rounded-xl flex items-center gap-2 text-xs text-emerald-300">
                         <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span>امضای دیجیتال شما با موفقیت به تعهدنامه پیوست گردید ✓</span>
+                        <span>{t('signatureSuccessText', appLanguage)}</span>
                       </div>
                     )}
                   </div>
@@ -1037,7 +1037,7 @@ export const OnboardingFlow: React.FC = () => {
                         onChange={(e) => setAcceptTerms(e.target.checked)}
                         className="accent-red-600 rounded w-4 h-4"
                       />
-                      <span>قوانین، ضوابط کاریابی و مفاد تعهدنامه فوق را می‌پذیرم.</span>
+                      <span>{t('acceptTermsCheckboxLabel', appLanguage)}</span>
                     </label>
                   </div>
 
@@ -1048,7 +1048,7 @@ export const OnboardingFlow: React.FC = () => {
                       className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
                     >
                       <ArrowRight className="w-4 h-4" />
-                      <span>مرحله قبل</span>
+                      <span>{t('prevStepBtnText', appLanguage)}</span>
                     </button>
 
                     <button
@@ -1057,7 +1057,7 @@ export const OnboardingFlow: React.FC = () => {
                       className="px-8 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs sm:text-sm font-black shadow-lg shadow-red-700/30 transition flex items-center justify-center gap-2"
                     >
                       <CheckCircle className="w-4 h-4" />
-                      <span>تکمیل ثبت‌نام و ارجاع پرونده به مدیر</span>
+                      <span>{t('completeRegistrationBtn', appLanguage)}</span>
                     </button>
                   </div>
                 </div>
@@ -1072,9 +1072,9 @@ export const OnboardingFlow: React.FC = () => {
                 <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto mb-2">
                   <Lock className="w-6 h-6" />
                 </div>
-                <h2 className="text-lg font-bold text-white">ورود به سامانه کارباما</h2>
+                <h2 className="text-lg font-bold text-white">{t('loginModalHeadline', appLanguage)}</h2>
                 <p className="text-xs text-slate-400">
-                  لطفاً نام کاربری و رمز عبور خود را وارد نمایید
+                  {t('loginModalSubtitle', appLanguage)}
                 </p>
               </div>
 
@@ -1087,7 +1087,7 @@ export const OnboardingFlow: React.FC = () => {
                     loginRole === 'seeker' ? 'bg-red-600 text-white font-bold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  کارجو
+                  {t('jobseekerRole', appLanguage)}
                 </button>
                 <button
                   type="button"
@@ -1096,7 +1096,7 @@ export const OnboardingFlow: React.FC = () => {
                     loginRole === 'partner' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  همکار
+                  {t('partnerRole', appLanguage)}
                 </button>
                 <button
                   type="button"
@@ -1105,7 +1105,7 @@ export const OnboardingFlow: React.FC = () => {
                     loginRole === 'admin' ? 'bg-amber-600 text-white font-bold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  مدیریت
+                  {t('adminRole', appLanguage)}
                 </button>
               </div>
 
@@ -1117,14 +1117,14 @@ export const OnboardingFlow: React.FC = () => {
 
               <div className="space-y-3 text-xs">
                 <div className="space-y-1">
-                  <label className="text-slate-300 font-medium">نام کاربری (Username)</label>
+                  <label className="text-slate-300 font-medium">{t('loginUsernameInputLabel', appLanguage)}</label>
                   <div className="relative">
                     <User className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
                     <input
                       type="text"
                       required
                       dir="ltr"
-                      placeholder="نام کاربری..."
+                      placeholder={t('loginUsernamePlaceholderText', appLanguage)}
                       value={loginUsername}
                       onChange={(e) => setLoginUsername(e.target.value)}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
@@ -1133,14 +1133,14 @@ export const OnboardingFlow: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-slate-300 font-medium">رمز عبور (Password)</label>
+                  <label className="text-slate-300 font-medium">{t('loginPasswordInputLabel', appLanguage)}</label>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
                     <input
                       type={showLoginPassword ? 'text' : 'password'}
                       required
                       dir="ltr"
-                      placeholder="رمز عبور..."
+                      placeholder={t('loginPasswordPlaceholderText', appLanguage)}
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl pr-9 pl-9 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
@@ -1162,7 +1162,7 @@ export const OnboardingFlow: React.FC = () => {
                   className="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-700/30 transition flex items-center justify-center gap-2"
                 >
                   <LogIn className="w-4 h-4" />
-                  <span>ورود به حساب کاربری</span>
+                  <span>{t('loginSubmitBtnText', appLanguage)}</span>
                 </button>
 
                 <button
@@ -1170,7 +1170,7 @@ export const OnboardingFlow: React.FC = () => {
                   onClick={() => setViewMode('register')}
                   className="w-full sm:w-auto py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium border border-slate-700 transition"
                 >
-                  حساب ندارید؟ ثبت‌نام کارجو
+                  {t('noAccountRegBtnText', appLanguage)}
                 </button>
               </div>
             </form>

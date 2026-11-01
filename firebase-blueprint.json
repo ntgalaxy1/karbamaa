@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Registered job seekers, partners, and admin accounts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique user ID or username" },
+        "username": { "type": "string", "maxLength": 64 },
+        "fullName": { "type": "string", "maxLength": 128 },
+        "fatherName": { "type": "string", "maxLength": 64 },
+        "nationalId": { "type": "string", "maxLength": 20 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "role": { "type": "string", "enum": ["seeker", "partner", "admin"] },
+        "verificationStatus": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "targetCountry": { "type": "string", "maxLength": 64 },
+        "pushNotificationEnabled": { "type": "boolean" },
+        "fcmToken": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "username", "role"]
+    },
+    "Notification": {
+      "title": "Push Notification",
+      "description": "App and device notifications for new job alerts or status changes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "recipientId": { "type": "string", "description": "Specific user ID or 'all_seekers' or 'admin'" },
+        "recipientRole": { "type": "string", "enum": ["seeker", "partner", "admin", "all"] },
+        "title": { "type": "string", "maxLength": 128 },
+        "body": { "type": "string", "maxLength": 512 },
+        "type": { "type": "string", "enum": ["job_alert", "status_change", "general"] },
+        "jobId": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "recipientRole", "title", "body", "type", "createdAt"]
+    },
+    "Job": {
+      "title": "Job Vacancy",
+      "description": "Posted job vacancy in Turkey or destination countries",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string", "maxLength": 128 },
+        "company": { "type": "string", "maxLength": 128 },
+        "city": { "type": "string", "maxLength": 64 },
+        "category": { "type": "string", "maxLength": 64 },
+        "salaryMin": { "type": "number" },
+        "salaryMax": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "company", "city", "category"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User accounts and push notification preference state"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "System-wide and targeted push notifications"
+    },
+    "/jobs/{jobId}": {
+      "schema": "Job",
+      "description": "Live job listings for real-time synchronization"
+    }
+  }
+}
