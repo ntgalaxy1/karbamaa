@@ -65,7 +65,8 @@ export type ActiveTab =
   | 'admin'
   | 'cv-builder'
   | 'about-us'
-  | 'currency';
+  | 'currency'
+  | 'privacy-policy';
 
 interface Toast {
   id: string;
@@ -707,7 +708,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [role, setRole] = useState<UserRole>(() => (isAdminLoggedIn ? 'admin' : 'jobseeker'));
-  const [activeTab, setActiveTab] = useState<ActiveTab>('jobs');
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
+    if (typeof window !== 'undefined' && window.location.pathname === '/privacy-policy') {
+      return 'privacy-policy';
+    }
+    return 'jobs';
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (window.location.pathname === '/privacy-policy') {
+        setActiveTab('privacy-policy');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   // Partner System State

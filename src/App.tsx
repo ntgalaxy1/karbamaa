@@ -32,6 +32,7 @@ import { PartnerSection } from './components/PartnerSection';
 import { CurrencyExchangeSection } from './components/CurrencyExchangeSection';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { LiveChatWidget } from './components/LiveChatWidget';
+import { PrivacyPolicySection } from './components/PrivacyPolicySection';
 
 
 // Centered App Startup Splash Screen with Smooth Fade-out
@@ -96,14 +97,15 @@ const MainContent: React.FC = () => {
   const [aboutUsModalOpen, setAboutUsModalOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
 
-  // Strict check: No guest direct entry into the app without registration/login
+  // Strict check: No guest direct entry into the app without registration/login (except for /privacy-policy)
   const isUserAuthenticated = Boolean(currentSeeker || isAdminLoggedIn || currentPartner);
+  const isPrivacyPolicyPage = activeTab === 'privacy-policy';
 
   return (
     <>
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
 
-      {!isUserAuthenticated ? (
+      {!isUserAuthenticated && !isPrivacyPolicyPage ? (
         <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center">
           <OnboardingFlow />
 
@@ -150,6 +152,7 @@ const MainContent: React.FC = () => {
             {activeTab === 'partner' && (isAdminLoggedIn ? <PartnerSection /> : <JobSearch />)}
             {activeTab === 'currency' && <CurrencyExchangeSection />}
             {activeTab === 'about-us' && <AboutUsSection />}
+            {activeTab === 'privacy-policy' && <PrivacyPolicySection />}
         {activeTab === 'map' && <MapSection />}
         {activeTab === 'addresses' && <EssentialAddresses />}
         {activeTab === 'my-applications' && <ApplicationsSection />}
@@ -205,6 +208,18 @@ const MainContent: React.FC = () => {
               >
                 <Info className="w-3.5 h-3.5" />
                 درباره ما
+              </button>
+
+              {/* Privacy Policy Link */}
+              <button
+                onClick={() => {
+                  setActiveTab('privacy-policy');
+                  window.history.pushState({}, '', '/privacy-policy');
+                }}
+                className="text-slate-500 hover:text-amber-500 dark:text-slate-400 dark:hover:text-amber-400 font-bold hover:underline flex items-center gap-1 transition"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                حریم خصوصی
               </button>
 
               {/* Discreet Admin Login Trigger when not logged in */}
