@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 import { defineConfig } from 'vite';
-import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -43,58 +42,6 @@ export default defineConfig(() => {
           });
         },
       },
-      VitePWA({
-        registerType: 'autoUpdate',
-        injectRegister: null,
-        includeAssets: ['icon.svg', 'apple-touch-icon.png', 'favicon.ico', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-1024x1024.png'],
-        manifest: {
-          id: '/',
-          name: 'کارباما | کاریابی و اقامت ترکیه',
-          short_name: 'کارباما',
-          description: 'سامانه جامع و هوشمند کاریابی، ساخت رزومه اداری، هتل‌ها و اقامت ایرانیان در ترکیه',
-          theme_color: '#E30A17',
-          background_color: '#0F172A',
-          display: 'standalone',
-          orientation: 'portrait',
-          start_url: '/',
-          scope: '/',
-          lang: 'fa',
-          dir: 'rtl',
-          icons: [
-            {
-              src: 'pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'any',
-            },
-            {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any',
-            },
-            {
-              src: 'pwa-maskable-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'maskable',
-            },
-            {
-              src: 'pwa-1024x1024.png',
-              sizes: '1024x1024',
-              type: 'image/png',
-              purpose: 'any',
-            },
-          ],
-        },
-        workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-          maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
-        },
-        devOptions: {
-          enabled: false,
-        },
-      }),
     ],
     resolve: {
       alias: {

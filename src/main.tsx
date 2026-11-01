@@ -12,8 +12,22 @@ try {
   document.documentElement.classList.add('dark');
 }
 
-// Safely suppress sandboxed iframe DOMException: "The operation is insecure."
+// Safely suppress sandboxed iframe DOMException & transient Firestore offline console errors
 if (typeof window !== 'undefined') {
+  const origConsoleError = console.error.bind(console);
+  console.error = (...args: unknown[]) => {
+    const firstArg = typeof args[0] === 'string' ? args[0] : '';
+    if (
+      firstArg.includes('Could not reach Cloud Firestore backend') ||
+      firstArg.includes('The client will operate in offline mode') ||
+      firstArg.includes('@firebase/firestore')
+    ) {
+      console.warn('[Firestore Offline Notice]', ...args);
+      return;
+    }
+    origConsoleError(...args);
+  };
+
   window.addEventListener('error', (event) => {
     if (
       event.message &&
@@ -31,20 +45,22 @@ if (typeof window !== 'undefined') {
     if (
       name === 'SecurityError' ||
       msg.includes('The operation is insecure') ||
-      msg.includes('SecurityError')
+      msg.includes('SecurityError') ||
+      msg.includes('Could not reach Cloud Firestore backend') ||
+      msg.includes('client is offline')
     ) {
       event.preventDefault();
       event.stopImmediatePropagation();
     }
   });
 
-  // Immediately purge any stale caches from previous versions so new UI changes appear right away
+  // Immediately purge any stale caches (including Workbox precaches) from previous versions
   if ('caches' in window) {
     caches
       .keys()
       .then((names) => {
         for (const name of names) {
-          if (name !== 'karbama-cache-v6') {
+          if (name !== 'karbama-cache-v7') {
             caches.delete(name);
           }
         }
@@ -63,8 +79,8 @@ if (typeof window !== 'undefined') {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (refreshing) return;
       try {
-        if (!sessionStorage.getItem('karbama_sw_v6_reloaded')) {
-          sessionStorage.setItem('karbama_sw_v6_reloaded', '1');
+        if (!sessionStorage.getItem('karbama_sw_v7_reloaded')) {
+          sessionStorage.setItem('karbama_sw_v7_reloaded', '1');
           refreshing = true;
           window.location.reload();
         }

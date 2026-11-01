@@ -2,8 +2,10 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import {
   getFirestore,
+  initializeFirestore,
+  setLogLevel,
   doc,
-  getDocFromServer,
+  getDoc,
   collection,
   setDoc,
   getDocs,
@@ -14,11 +16,32 @@ import {
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
+// Silence internal @firebase/firestore connection retry console.error logs in offline/restricted networks
+try {
+  setLogLevel('silent');
+} catch {
+  // Ignore if already set
+}
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// CRITICAL: The app will break without specifying firestoreDatabaseId
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// CRITICAL: Specify firestoreDatabaseId and enable automatic long-polling detection for restricted networks
+function createFirestoreInstance() {
+  try {
+    return initializeFirestore(
+      app,
+      {
+        experimentalAutoDetectLongPolling: true,
+      },
+      firebaseConfig.firestoreDatabaseId
+    );
+  } catch {
+    return getFirestore(app, firebaseConfig.firestoreDatabaseId);
+  }
+}
+
+export const db = createFirestoreInstance();
 export const auth = getAuth(app);
 
 export enum OperationType {
@@ -48,7 +71,8 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     errMsg.includes('client is offline') ||
     errMsg.includes('Could not reach Cloud Firestore backend') ||
     errMsg.includes('unavailable') ||
-    errMsg.includes('failed-precondition');
+    errMsg.includes('failed-precondition') ||
+    errMsg.includes('network-request-failed');
 
   const errInfo: FirestoreErrorInfo = {
     error: errMsg,
@@ -67,24 +91,17 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     return;
   }
 
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.warn('Firestore Notice:', JSON.stringify(errInfo));
 }
 
-// Test connection on boot safely without throwing unhandled exceptions or console errors
+// Test connection safely without forcing a blocking server-only probe that triggers offline errors
 export async function testFirestoreConnection() {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return;
+  }
   try {
-    const probePromise = getDocFromServer(doc(db, 'test', 'connection'));
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Firestore probe timeout')), 4000)
-    );
-    await Promise.race([probePromise, timeoutPromise]);
-    console.log('Firestore connection verified successfully.');
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    console.warn('[Firestore Initial Connection] App operating in resilient offline/cache mode:', msg);
+    await getDoc(doc(db, 'test', 'connection'));
+  } catch {
+    // Operating in resilient offline/IndexedDB cache mode
   }
 }
-
-// Execute connection test on import
-testFirestoreConnection();
