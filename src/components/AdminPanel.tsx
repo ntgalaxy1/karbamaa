@@ -93,6 +93,11 @@ export const AdminPanel: React.FC = () => {
     rejectPartnerSubscription,
     updatePartnerPlanPricing,
     updatePartnerPlans,
+    // Live Chat system
+    chatSessions,
+    approveLiveChat,
+    rejectLiveChat,
+    sendLiveChatMessage,
   } = useApp();
 
   // Admin login credentials state (if not logged in)
@@ -103,6 +108,7 @@ export const AdminPanel: React.FC = () => {
   // Tab inside admin (categorized & organized)
   const [adminTab, setAdminTab] = useState<
     | 'admin-notifications'
+    | 'live-chats'
     | 'payment-approvals'
     | 'partners'
     | 'jobs'
@@ -115,6 +121,9 @@ export const AdminPanel: React.FC = () => {
     | 'addresses'
     | 'broker'
   >('admin-notifications');
+
+  const [selectedAdminChatId, setSelectedAdminChatId] = useState<string | null>(null);
+  const [adminReplyText, setAdminReplyText] = useState('');
 
   const [seekerSearch, setSeekerSearch] = useState('');
   const [jobSearch, setJobSearch] = useState('');
@@ -577,6 +586,23 @@ export const AdminPanel: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setAdminTab('live-chats')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
+            adminTab === 'live-chats'
+              ? 'bg-emerald-600 text-white shadow-md'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+          }`}
+        >
+          <MessageCircle className="w-4 h-4 text-emerald-400" />
+          <span>چت آنلاین با کارجویان ({chatSessions.length})</span>
+          {chatSessions.filter((c) => c.status === 'pending').length > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-400 text-slate-950 animate-pulse">
+              {chatSessions.filter((c) => c.status === 'pending').length} منتظر تایید
+            </span>
+          )}
+        </button>
+
+        <button
           onClick={() => setAdminTab('payment-approvals')}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
             adminTab === 'payment-approvals'
@@ -718,6 +744,174 @@ export const AdminPanel: React.FC = () => {
           تعهدنامه کارگزار
         </button>
       </div>
+
+      {/* LIVE CHATS TAB */}
+      {adminTab === 'live-chats' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-xl">
+          <div className="border-b border-slate-800 pb-3">
+            <h3 className="font-extrabold text-white text-base flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-emerald-400" />
+              <span>مدیریت چت آنلاین با کارجویان (تایید و گفتگو)</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              کارجویان پس از وارد کردن نام، نام خانوادگی، شماره تلفن و کد ملی منتظر تایید شما برای شروع چت هستند.
+            </p>
+          </div>
+
+          {chatSessions.length === 0 ? (
+            <div className="p-10 text-center text-xs text-slate-400 bg-slate-950/60 rounded-2xl border border-slate-800">
+              هنوز هیچ درخواست چت آنلاینی ثبت نشده است.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* List of chat requests */}
+              <div className="space-y-3">
+                {chatSessions.map((chat) => (
+                  <div
+                    key={chat.id}
+                    onClick={() => setSelectedAdminChatId(chat.id)}
+                    className={`p-4 rounded-2xl border transition cursor-pointer space-y-2.5 text-xs ${
+                      selectedAdminChatId === chat.id
+                        ? 'bg-slate-800 border-emerald-500/60'
+                        : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-white text-sm">{chat.fullName}</span>
+                      {chat.status === 'pending' ? (
+                        <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">
+                          در انتظار تایید مدیر ⏳
+                        </span>
+                      ) : chat.status === 'approved' ? (
+                        <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">
+                          تایید شده (چت فعال) ✓
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-full bg-red-500/20 text-red-300 text-[10px]">
+                          بسته شده
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300 font-mono bg-slate-900/80 p-2.5 rounded-xl">
+                      <div>شماره تلفن: {chat.phone}</div>
+                      <div>کد ملی: {chat.nationalId}</div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      {chat.status === 'pending' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            approveLiveChat(chat.id);
+                            setSelectedAdminChatId(chat.id);
+                          }}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          <span>تایید و شروع چت آنلاین</span>
+                        </button>
+                      )}
+                      {chat.status !== 'rejected' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            rejectLiveChat(chat.id);
+                          }}
+                          className="px-3 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 font-bold rounded-xl text-xs transition"
+                        >
+                          بستن چت
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Active Chat Window */}
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl flex flex-col h-96 overflow-hidden">
+                {(() => {
+                  const activeChat = chatSessions.find((c) => c.id === selectedAdminChatId) || chatSessions[0];
+                  if (!activeChat) return null;
+                  return (
+                    <>
+                      <div className="p-3.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-xs">
+                        <div>
+                          <span className="font-bold text-white">{activeChat.fullName}</span>
+                          <span className="text-[11px] text-slate-400 font-mono mr-2">
+                            (کد ملی: {activeChat.nationalId} | تلفن: {activeChat.phone})
+                          </span>
+                        </div>
+                        {activeChat.status === 'pending' && (
+                          <button
+                            type="button"
+                            onClick={() => approveLiveChat(activeChat.id)}
+                            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-[11px]"
+                          >
+                            تایید گفتگو
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex-1 p-4 overflow-y-auto space-y-2.5">
+                        {activeChat.messages.map((m) => {
+                          const isAdmin = m.sender === 'admin';
+                          return (
+                            <div
+                              key={m.id}
+                              className={`flex flex-col ${isAdmin ? 'items-start' : 'items-end'}`}
+                            >
+                              <div
+                                className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-xs ${
+                                  isAdmin
+                                    ? 'bg-amber-500 text-slate-950 font-medium'
+                                    : 'bg-slate-800 border border-slate-700 text-white'
+                                }`}
+                              >
+                                <p className="text-[10px] font-bold opacity-75 mb-0.5">
+                                  {isAdmin ? 'مدیریت کارباما' : activeChat.fullName}
+                                </p>
+                                <p>{m.text}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          if (!adminReplyText.trim()) return;
+                          sendLiveChatMessage(activeChat.id, 'admin', adminReplyText);
+                          setAdminReplyText('');
+                        }}
+                        className="p-3 bg-slate-900 border-t border-slate-800 flex items-center gap-2"
+                      >
+                        <input
+                          type="text"
+                          placeholder="پاسخ خود را برای کارجو بنویسید..."
+                          value={adminReplyText}
+                          onChange={(e) => setAdminReplyText(e.target.value)}
+                          className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-hidden focus:border-amber-500"
+                        />
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 transition"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>ارسال</span>
+                        </button>
+                      </form>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* -1. LIVE ADMIN NOTIFICATIONS TAB (Requested Feature) */}
       {adminTab === 'admin-notifications' && (

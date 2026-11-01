@@ -60,7 +60,7 @@ if (typeof window !== 'undefined') {
                   if ('caches' in window) {
                     caches.keys().then((names) => {
                       for (const name of names) {
-                        if (name !== 'karbama-cache-v3') caches.delete(name);
+                        if (name !== 'karbama-cache-v4') caches.delete(name);
                       }
                     });
                   }

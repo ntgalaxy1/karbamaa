@@ -31,6 +31,7 @@ import { OnboardingFlow } from './components/OnboardingFlow';
 import { PartnerSection } from './components/PartnerSection';
 import { CurrencyExchangeSection } from './components/CurrencyExchangeSection';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { LiveChatWidget } from './components/LiveChatWidget';
 
 
 // Centered App Startup Splash Screen with Smooth Fade-out
@@ -236,6 +237,9 @@ const MainContent: React.FC = () => {
 
       {/* Mobile Bottom Navigation Bar */}
       <BottomNav />
+
+      {/* Floating Round Live Chat with Admin Button */}
+      <LiveChatWidget />
 
       {/* Floating Toast Notification Container */}
       <div className="fixed bottom-20 lg:bottom-6 left-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">

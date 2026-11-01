@@ -38,7 +38,39 @@ import {
 } from 'lucide-react';
 
 export const ResumeBuilder: React.FC = () => {
-  const { currentSeeker, updateResume, showToast, isAdminLoggedIn } = useApp();
+  const { currentSeeker, updateResume, showToast, isAdminLoggedIn, setActiveTab } = useApp();
+
+  // Per user request: Display "به زودی اضافه خواهد شد" when Online Resume Builder is clicked
+  const showComingSoon = true;
+  if (showComingSoon) {
+    return (
+      <div className="max-w-2xl mx-auto py-8 px-4">
+        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-red-950/60 border-2 border-amber-500/40 rounded-3xl p-8 text-center shadow-2xl space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-400/50 text-amber-400 flex items-center justify-center mx-auto">
+            <FileText className="w-8 h-8" />
+          </div>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-black animate-pulse">
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span>به زودی اضافه خواهد شد</span>
+          </div>
+          <h3 className="text-xl font-black text-white">رزومه‌ساز آنلاین کارباما</h3>
+          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
+            این بخش در حال آماده‌سازی است و <strong className="text-amber-300">به زودی اضافه خواهد شد</strong>.
+          </p>
+          <div className="pt-2 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setActiveTab('jobs')}
+              className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs transition flex items-center gap-2"
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>مشاهده فرصت‌های شغلی</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // If no seeker is logged in
   if (!currentSeeker) {

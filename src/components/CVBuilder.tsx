@@ -158,11 +158,59 @@ const SAMPLE_TEMPLATES: Record<string, Partial<TurkishCVData>> = {
 };
 
 export const CVBuilder: React.FC = () => {
-  const { currentSeeker, showToast, isAdminLoggedIn } = useApp();
+  const { currentSeeker, showToast, isAdminLoggedIn, setActiveTab: setMainActiveTab } = useApp();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const isAccessUnlocked = Boolean(
     isAdminLoggedIn || (currentSeeker && currentSeeker.verificationStatus === 'approved')
   );
+
+  // Per user request: Display "به زودی اضافه خواهد شد" when Online Resume Builder is clicked
+  const showComingSoonScreen = true;
+  if (showComingSoonScreen) {
+    return (
+      <div className="max-w-2xl mx-auto py-10 px-4">
+        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-red-950/60 border-2 border-amber-500/40 rounded-3xl p-8 sm:p-10 text-center shadow-2xl space-y-6 relative overflow-hidden">
+          <div className="w-20 h-20 rounded-3xl bg-amber-500/15 border-2 border-amber-400/50 text-amber-400 flex items-center justify-center mx-auto shadow-xl shadow-amber-500/10">
+            <FileText className="w-10 h-10" />
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs sm:text-sm font-black animate-pulse">
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span>به زودی اضافه خواهد شد</span>
+          </div>
+
+          <div className="space-y-2.5">
+            <h2 className="text-2xl sm:text-3xl font-black text-white">
+              بخش رزومه‌ساز آنلاین کارباما
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-lg mx-auto">
+              سامانه هوشمند ساخت رزومه آنلاین دو زبانه (فارسی و ترکی استانبولی - Özgeçmiş) با قابلیت دانلود فایل PDF استاندارد در حال آماده‌سازی است و <strong className="text-amber-300">به زودی اضافه خواهد شد</strong>.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setMainActiveTab('jobs')}
+              className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-2xl text-xs shadow-lg shadow-red-600/30 transition flex items-center gap-2"
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>مشاهده فرصت‌های شغلی</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMainActiveTab('settings')}
+              className="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold rounded-2xl text-xs transition flex items-center gap-2"
+            >
+              <User className="w-4 h-4 text-amber-400" />
+              <span>مشخصات و پروفایل کارجو</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const [cv, setCv] = useState<TurkishCVData>(() => {
     return {

@@ -47,7 +47,7 @@ export const SettingsProfile: React.FC = () => {
 
   // Tab inside Profile
   const [profileTab, setProfileTab] = useState<'turkish-cv' | 'resume' | 'profile' | 'applications'>(
-    activeTab === 'my-applications' ? 'applications' : 'turkish-cv'
+    activeTab === 'my-applications' ? 'applications' : 'profile'
   );
 
   // Change password form state
@@ -314,9 +314,9 @@ export const SettingsProfile: React.FC = () => {
             }`}
           >
             <FileText className="w-4 h-4 text-amber-300" />
-            رزومه‌ساز استاندارد ترکیه‌ای (CV)
+            رزومه‌ساز آنلاین
             <span className="text-[10px] bg-amber-400 text-slate-900 px-1.5 py-0.2 rounded-full font-black">
-              Türk CV
+              به زودی اضافه خواهد شد
             </span>
           </button>
 
@@ -330,6 +330,9 @@ export const SettingsProfile: React.FC = () => {
           >
             <Award className="w-4 h-4" />
             رزومه فارسی کارباما
+            <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded-full font-bold">
+              به زودی
+            </span>
           </button>
 
           <button

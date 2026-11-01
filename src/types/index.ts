@@ -463,3 +463,30 @@ export interface TransitLine {
   description: string;
   connections: string;       // تقاطع با سایر خطوط
 }
+
+export type LiveChatStatus = 'pending' | 'approved' | 'rejected' | 'closed';
+
+export interface LiveChatMessage {
+  id: string;
+  sender: 'seeker' | 'admin';
+  senderName: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface LiveChatSession {
+  id: string;
+  seekerId?: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  phone: string;
+  nationalId: string;
+  status: LiveChatStatus;
+  messages: LiveChatMessage[];
+  unreadByAdmin: number;
+  unreadBySeeker: number;
+  createdAt: string;
+  updatedAt: string;
+}
+

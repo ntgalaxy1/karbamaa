@@ -1,14 +1,20 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Briefcase, PlusCircle, Hotel, Info, UserCheck, ShieldCheck, Building2 } from 'lucide-react';
+import { Briefcase, PlusCircle, Hotel, Info, UserCheck, ShieldCheck } from 'lucide-react';
 import { t } from '../utils/translations';
 
 export const BottomNav: React.FC = () => {
-  const { activeTab, setActiveTab, isAdminLoggedIn, isPartnerLoggedIn, currentSeeker, paymentSettings, appLanguage } = useApp();
+  const { activeTab, setActiveTab, isAdminLoggedIn, currentSeeker, paymentSettings, appLanguage } = useApp();
 
   const isJobSeekerMode = Boolean(currentSeeker && !isAdminLoggedIn);
-  const colsClass = isAdminLoggedIn ? 'grid-cols-6' : isJobSeekerMode ? 'grid-cols-4' : 'grid-cols-5';
-
+  const showPostJob = !isJobSeekerMode && !currentSeeker;
+  const totalTabs = 4 + (showPostJob ? 1 : 0) + (isAdminLoggedIn ? 1 : 0);
+  const colsClass =
+    totalTabs === 6
+      ? 'grid-cols-6'
+      : totalTabs === 5
+      ? 'grid-cols-5'
+      : 'grid-cols-4';
 
   return (
     <nav
@@ -34,8 +40,8 @@ export const BottomNav: React.FC = () => {
           <span className="text-[9px]">{t('jobOpportunities', appLanguage)}</span>
         </button>
 
-        {/* 2. Post Job Tab */}
-        {!isJobSeekerMode && (
+        {/* 2. Post Job Tab (Only when not logged in as seeker) */}
+        {showPostJob && (
           <button
             type="button"
             onClick={() => setActiveTab('post-job')}
@@ -56,25 +62,7 @@ export const BottomNav: React.FC = () => {
           </button>
         )}
 
-        {/* 3. Partner Section Tab (Hidden for Job Seekers) */}
-        {!isJobSeekerMode && (
-          <button
-            type="button"
-            onClick={() => setActiveTab('partner')}
-            style={activeTab === 'partner' ? { color: 'var(--primary-color)' } : undefined}
-            className={`flex flex-col items-center justify-center gap-1 py-1 transition relative ${
-              activeTab === 'partner'
-                ? 'font-bold scale-105'
-                : 'text-indigo-400 hover:text-indigo-300'
-            }`}
-          >
-            <Building2 className="w-5 h-5" />
-            <span className="text-[9px]">{t('partnerSection', appLanguage)}</span>
-          </button>
-        )}
-
-
-        {/* 4. Hotels & Addresses Tab */}
+        {/* 3. Hotels & Addresses Tab */}
         <button
           type="button"
           onClick={() => setActiveTab('addresses')}
@@ -89,7 +77,7 @@ export const BottomNav: React.FC = () => {
           <span className="text-[9px]">{t('hotels', appLanguage)}</span>
         </button>
 
-        {/* 5. Dedicated About Us Tab */}
+        {/* 4. Dedicated About Us Tab */}
         <button
           type="button"
           onClick={() => setActiveTab('about-us')}
@@ -104,13 +92,13 @@ export const BottomNav: React.FC = () => {
           <span className="text-[9px]">{t('aboutUs', appLanguage)}</span>
         </button>
 
-        {/* 6. Profile & CV Tab */}
+        {/* 5. Online Resume Builder Tab */}
         <button
           type="button"
-          onClick={() => setActiveTab('settings')}
-          style={activeTab === 'settings' || activeTab === 'cv-builder' ? { color: 'var(--primary-color)' } : undefined}
+          onClick={() => setActiveTab('cv-builder')}
+          style={activeTab === 'cv-builder' || activeTab === 'settings' ? { color: 'var(--primary-color)' } : undefined}
           className={`flex flex-col items-center justify-center gap-1 py-1 transition ${
-            activeTab === 'settings' || activeTab === 'cv-builder'
+            activeTab === 'cv-builder' || activeTab === 'settings'
               ? 'font-bold scale-105'
               : 'text-slate-400 hover:text-slate-200'
           }`}
@@ -119,7 +107,7 @@ export const BottomNav: React.FC = () => {
           <span className="text-[9px]">{t('cvBuilder', appLanguage)}</span>
         </button>
 
-        {/* 7. Admin Panel Tab */}
+        {/* 6. Admin Panel Tab */}
         {isAdminLoggedIn && (
           <button
             type="button"
@@ -138,3 +126,4 @@ export const BottomNav: React.FC = () => {
     </nav>
   );
 };
+

@@ -29,6 +29,8 @@ import {
   PartnerSubscriptionPlanId,
   PartnerSubscriptionStatus,
   RegisterSeekerByPartnerInput,
+  LiveChatSession,
+  LiveChatMessage,
 } from '../types';
 import {
   INITIAL_JOB_SEEKERS,
@@ -277,6 +279,21 @@ interface AppContextType {
   setAdminHotelModalOpen: (open: boolean) => void;
   adminAddressModalOpen: boolean;
   setAdminAddressModalOpen: (open: boolean) => void;
+
+  // Live Chat with Admin (چت آنلاین با مدیر)
+  chatSessions: LiveChatSession[];
+  activeSeekerChat: LiveChatSession | null;
+  requestLiveChat: (input: {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    nationalId: string;
+  }) => { success: boolean; error?: string; chat?: LiveChatSession };
+  approveLiveChat: (chatId: string) => void;
+  rejectLiveChat: (chatId: string) => void;
+  sendLiveChatMessage: (chatId: string, sender: 'seeker' | 'admin', text: string) => void;
+  markChatRead: (chatId: string, viewer: 'seeker' | 'admin') => void;
+  resetSeekerChat: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -331,6 +348,8 @@ const STORAGE_KEYS = {
   PARTNERS: 'karbama_partners_v3',
   CURRENT_PARTNER_ID: 'karbama_current_partner_id_v3',
   PARTNER_PLANS: 'karbama_partner_plans_v3',
+  CHAT_SESSIONS: 'karbama_chat_sessions_v3',
+  ACTIVE_CHAT_ID: 'karbama_active_chat_id_v3',
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -1105,10 +1124,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     );
 
+    // Listen to chats collection
+    const unsubChats = onSnapshot(
+      collection(db, 'chats'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const firestoreChats: LiveChatSession[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data() as LiveChatSession;
+            if (data && data.id) {
+              firestoreChats.push(data);
+            }
+          });
+          if (firestoreChats.length > 0) {
+            setChatSessions((prev) => {
+              const map = new Map<string, LiveChatSession>();
+              prev.forEach((c) => map.set(c.id, c));
+              firestoreChats.forEach((c) => map.set(c.id, c));
+              return Array.from(map.values()).sort(
+                (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+              );
+            });
+          }
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, 'chats');
+      }
+    );
+
     return () => {
       unsubUsers();
       unsubNotifs();
       unsubJobs();
+      unsubChats();
     };
   }, []);
 
@@ -2066,6 +2115,217 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [adminHotelModalOpen, setAdminHotelModalOpen] = useState(false);
   const [adminAddressModalOpen, setAdminAddressModalOpen] = useState(false);
 
+  // Live Chat with Admin State
+  const [chatSessions, setChatSessions] = useState<LiveChatSession[]>(() => {
+    try {
+      const stored = safeStorage.getItem(STORAGE_KEYS.CHAT_SESSIONS);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [activeChatId, setActiveChatId] = useState<string | null>(() => {
+    try {
+      return safeStorage.getItem(STORAGE_KEYS.ACTIVE_CHAT_ID) || null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    safeStorage.setItem(STORAGE_KEYS.CHAT_SESSIONS, JSON.stringify(chatSessions));
+  }, [chatSessions]);
+
+  useEffect(() => {
+    if (activeChatId) {
+      safeStorage.setItem(STORAGE_KEYS.ACTIVE_CHAT_ID, activeChatId);
+    } else {
+      safeStorage.removeItem(STORAGE_KEYS.ACTIVE_CHAT_ID);
+    }
+  }, [activeChatId]);
+
+  const syncChatToFirestore = async (chat: LiveChatSession) => {
+    try {
+      await setDoc(doc(db, 'chats', chat.id), chat);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `chats/${chat.id}`);
+    }
+  };
+
+  const activeSeekerChat =
+    chatSessions.find((c) => c.id === activeChatId) ||
+    (currentSeeker
+      ? chatSessions.find(
+          (c) =>
+            (c.seekerId === currentSeeker.id || c.nationalId === currentSeeker.nationalId) &&
+            c.status !== 'closed' &&
+            c.status !== 'rejected'
+        ) || null
+      : null);
+
+  const requestLiveChat = (input: {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    nationalId: string;
+  }): { success: boolean; error?: string; chat?: LiveChatSession } => {
+    const cleanFirst = input.firstName.trim();
+    const cleanLast = input.lastName.trim();
+    const cleanPhone = input.phone.trim();
+    const cleanNatId = input.nationalId.replace(/\D/g, '');
+
+    if (!cleanFirst || !cleanLast) {
+      return { success: false, error: 'لطفاً نام و نام خانوادگی خود را وارد نمایید.' };
+    }
+    if (!cleanPhone || cleanPhone.length < 7) {
+      return { success: false, error: 'لطفاً شماره تلفن معتبر وارد نمایید.' };
+    }
+    if (!cleanNatId || cleanNatId.length < 10) {
+      return { success: false, error: 'لطفاً شماره کد ملی ۱۰ رقمی خود را کامل وارد نمایید.' };
+    }
+
+    const fullName = `${cleanFirst} ${cleanLast}`;
+    const now = new Date().toISOString();
+
+    const newSession: LiveChatSession = {
+      id: 'chat-' + Date.now(),
+      seekerId: currentSeeker?.id,
+      firstName: cleanFirst,
+      lastName: cleanLast,
+      fullName,
+      phone: cleanPhone,
+      nationalId: cleanNatId,
+      status: 'pending',
+      messages: [
+        {
+          id: 'msg-' + Date.now(),
+          sender: 'seeker',
+          senderName: fullName,
+          text: `درخواست گفتگوی آنلاین توسط «${fullName}» (کد ملی: ${cleanNatId} | تلفن: ${cleanPhone}) ثبت گردید.`,
+          createdAt: now,
+        },
+      ],
+      unreadByAdmin: 1,
+      unreadBySeeker: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    setChatSessions((prev) => [newSession, ...prev]);
+    setActiveChatId(newSession.id);
+    syncChatToFirestore(newSession);
+
+    addAdminNotification({
+      type: 'seeker_registered',
+      title: '💬 درخواست جدید چت آنلاین با مدیر',
+      message: `کارجو «${fullName}» با کد ملی ${cleanNatId} و شماره تلفن ${cleanPhone} درخواست چت آنلاین با مدیر را ثبت کرده و منتظر تایید شماست.`,
+      data: { chatId: newSession.id },
+    });
+
+    showToast('درخواست چت آنلاین شما ثبت شد. لطفاً منتظر تایید مدیر بمانید.', 'success');
+    return { success: true, chat: newSession };
+  };
+
+  const approveLiveChat = (chatId: string) => {
+    const now = new Date().toISOString();
+    setChatSessions((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          const welcomeMsg: LiveChatMessage = {
+            id: 'msg-admin-' + Date.now(),
+            sender: 'admin',
+            senderName: 'مدیریت کارباما',
+            text: `سلام ${c.fullName} عزیز، درخواست گفتگوی آنلاین شما تایید شد. پیام یا سوال خود را بفرمایید.`,
+            createdAt: now,
+          };
+          const updated: LiveChatSession = {
+            ...c,
+            status: 'approved',
+            messages: [...c.messages, welcomeMsg],
+            unreadByAdmin: 0,
+            unreadBySeeker: c.unreadBySeeker + 1,
+            updatedAt: now,
+          };
+          syncChatToFirestore(updated);
+          return updated;
+        }
+        return c;
+      })
+    );
+    showToast('درخواست چت کارجو تایید شد و گفتگو فعال گردید.', 'success');
+  };
+
+  const rejectLiveChat = (chatId: string) => {
+    const now = new Date().toISOString();
+    setChatSessions((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          const updated: LiveChatSession = {
+            ...c,
+            status: 'rejected',
+            unreadByAdmin: 0,
+            updatedAt: now,
+          };
+          syncChatToFirestore(updated);
+          return updated;
+        }
+        return c;
+      })
+    );
+    showToast('درخواست چت بسته شد.', 'info');
+  };
+
+  const sendLiveChatMessage = (chatId: string, sender: 'seeker' | 'admin', text: string) => {
+    if (!text.trim()) return;
+    const now = new Date().toISOString();
+    setChatSessions((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          const newMsg: LiveChatMessage = {
+            id: 'msg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5),
+            sender,
+            senderName: sender === 'admin' ? 'مدیریت کارباما' : c.fullName,
+            text: text.trim(),
+            createdAt: now,
+          };
+          const updated: LiveChatSession = {
+            ...c,
+            messages: [...c.messages, newMsg],
+            unreadByAdmin: sender === 'seeker' ? c.unreadByAdmin + 1 : 0,
+            unreadBySeeker: sender === 'admin' ? c.unreadBySeeker + 1 : 0,
+            updatedAt: now,
+          };
+          syncChatToFirestore(updated);
+          return updated;
+        }
+        return c;
+      })
+    );
+  };
+
+  const markChatRead = (chatId: string, viewer: 'seeker' | 'admin') => {
+    setChatSessions((prev) =>
+      prev.map((c) => {
+        if (c.id === chatId) {
+          if (viewer === 'admin' && c.unreadByAdmin === 0) return c;
+          if (viewer === 'seeker' && c.unreadBySeeker === 0) return c;
+          const updated: LiveChatSession = {
+            ...c,
+            unreadByAdmin: viewer === 'admin' ? 0 : c.unreadByAdmin,
+            unreadBySeeker: viewer === 'seeker' ? 0 : c.unreadBySeeker,
+          };
+          return updated;
+        }
+        return c;
+      })
+    );
+  };
+
+  const resetSeekerChat = () => {
+    setActiveChatId(null);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -2177,6 +2437,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAdminHotelModalOpen,
         adminAddressModalOpen,
         setAdminAddressModalOpen,
+        chatSessions,
+        activeSeekerChat,
+        requestLiveChat,
+        approveLiveChat,
+        rejectLiveChat,
+        sendLiveChatMessage,
+        markChatRead,
+        resetSeekerChat,
       }}
     >
       {children}

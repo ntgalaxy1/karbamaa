@@ -166,8 +166,8 @@ export const Header: React.FC = () => {
                 </button>
               )}
 
-              {/* Dedicated Partner Section (Hidden in Jobseeker mode) */}
-              {(!currentSeeker || isAdminLoggedIn || Boolean(currentPartner)) && (
+              {/* Dedicated Partner Section (Only for Partner or Admin when not logged in as Seeker) */}
+              {(isAdminLoggedIn || Boolean(currentPartner)) && !currentSeeker && (
                 <button
                   onClick={() => setActiveTab('partner')}
                   style={activeTab === 'partner' ? { backgroundColor: 'var(--primary-color)' } : undefined}
@@ -387,8 +387,8 @@ export const Header: React.FC = () => {
                           <FileText className="w-4 h-4 text-amber-400" />
                           <span className="font-bold">{t('cvBuilder', appLanguage)}</span>
                         </div>
-                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-md font-mono font-bold">
-                          به زودی در آپدیت‌های بعدی ⏳
+                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-md font-bold">
+                          به زودی اضافه خواهد شد ⏳
                         </span>
                       </button>
 

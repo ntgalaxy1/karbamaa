@@ -54,6 +54,23 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "title", "company", "city", "category"]
+    },
+    "ChatSession": {
+      "title": "Live Chat Session",
+      "description": "Online support chat session between jobseeker and admin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "firstName": { "type": "string", "maxLength": 64 },
+        "lastName": { "type": "string", "maxLength": 64 },
+        "fullName": { "type": "string", "maxLength": 128 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "nationalId": { "type": "string", "maxLength": 20 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "closed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "fullName", "phone", "nationalId", "status"]
     }
   },
   "firestore": {
@@ -68,6 +85,10 @@
     "/jobs/{jobId}": {
       "schema": "Job",
       "description": "Live job listings for real-time synchronization"
+    },
+    "/chats/{chatId}": {
+      "schema": "ChatSession",
+      "description": "Live chat requests and messages with admin"
     }
   }
 }
