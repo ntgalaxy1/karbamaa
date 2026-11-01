@@ -38,6 +38,20 @@ if (typeof window !== 'undefined') {
     }
   });
 
+  // Immediately purge any stale caches from previous versions so new UI changes appear right away
+  if ('caches' in window) {
+    caches
+      .keys()
+      .then((names) => {
+        for (const name of names) {
+          if (name !== 'karbama-cache-v6') {
+            caches.delete(name);
+          }
+        }
+      })
+      .catch(() => {});
+  }
+
   // Register PWA Service Worker (Required for Chrome/Android "Install app" capability)
   if (
     'serviceWorker' in navigator &&
@@ -45,29 +59,25 @@ if (typeof window !== 'undefined') {
       window.location.hostname === 'localhost' ||
       window.location.hostname === '127.0.0.1')
   ) {
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      try {
+        if (!sessionStorage.getItem('karbama_sw_v6_reloaded')) {
+          sessionStorage.setItem('karbama_sw_v6_reloaded', '1');
+          refreshing = true;
+          window.location.reload();
+        }
+      } catch {
+        // ignore storage errors
+      }
+    });
+
     window.addEventListener('load', () => {
       navigator.serviceWorker
-        .register('/sw.js', { scope: '/' })
+        .register('/sw.js', { scope: '/', updateViaCache: 'none' })
         .then((reg) => {
-          // Check for SW updates on every page load
           reg.update().catch(() => {});
-          reg.onupdatefound = () => {
-            const installingWorker = reg.installing;
-            if (installingWorker) {
-              installingWorker.onstatechange = () => {
-                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  console.log('[PWA] New update installed! Refreshing cache...');
-                  if ('caches' in window) {
-                    caches.keys().then((names) => {
-                      for (const name of names) {
-                        if (name !== 'karbama-cache-v4') caches.delete(name);
-                      }
-                    });
-                  }
-                }
-              };
-            }
-          };
         })
         .catch((err) => {
           console.warn('[PWA] ServiceWorker registration handled:', err);

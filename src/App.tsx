@@ -144,10 +144,10 @@ const MainContent: React.FC = () => {
           <Header />
 
           {/* Main Page Content */}
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-12">
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24">
             {activeTab === 'jobs' && <JobSearch />}
             {activeTab === 'post-job' && <PostJobSection />}
-            {activeTab === 'partner' && <PartnerSection />}
+            {activeTab === 'partner' && (isAdminLoggedIn ? <PartnerSection /> : <JobSearch />)}
             {activeTab === 'currency' && <CurrencyExchangeSection />}
             {activeTab === 'about-us' && <AboutUsSection />}
         {activeTab === 'map' && <MapSection />}
@@ -179,7 +179,7 @@ const MainContent: React.FC = () => {
       </main>
 
       {/* Footer (Desktop & Universal) */}
-      <footer className="bg-white/80 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 py-4 transition-colors">
+      <footer className="bg-white/80 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 py-4 pb-20 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-right">
             <div className="flex items-center gap-3">
@@ -235,14 +235,11 @@ const MainContent: React.FC = () => {
         </div>
       </footer>
 
-      {/* Mobile Bottom Navigation Bar */}
+      {/* Bottom Navigation Bar */}
       <BottomNav />
 
-      {/* Floating Round Live Chat with Admin Button */}
-      <LiveChatWidget />
-
       {/* Floating Toast Notification Container */}
-      <div className="fixed bottom-20 lg:bottom-6 left-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
+      <div className="fixed bottom-20 left-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
         {toasts.map((toast) => (
           <div
             key={toast.id}
@@ -276,6 +273,9 @@ const MainContent: React.FC = () => {
       />
         </div>
       )}
+
+      {/* Omnipresent Floating Round Live Chat with Admin Button on ALL screens */}
+      <LiveChatWidget />
     </>
   );
 };

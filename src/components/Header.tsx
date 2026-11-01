@@ -150,37 +150,22 @@ export const Header: React.FC = () => {
                 {t('jobOpportunities', appLanguage)}
               </button>
 
-              {/* Dedicated Post Job (500 TL) - Hidden in Jobseeker mode */}
-              {(!currentSeeker || isAdminLoggedIn || Boolean(currentPartner)) && (
-                <button
-                  onClick={() => setActiveTab('post-job')}
-                  style={activeTab === 'post-job' ? { backgroundColor: 'var(--primary-color)' } : undefined}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                    activeTab === 'post-job'
-                      ? 'text-white shadow-sm'
-                      : 'text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20'
-                  }`}
-                >
-                  <PlusCircle className="w-4 h-4 text-emerald-400" />
-                  {t('postJob', appLanguage)}
-                </button>
-              )}
-
-              {/* Dedicated Partner Section (Only for Partner or Admin when not logged in as Seeker) */}
-              {(isAdminLoggedIn || Boolean(currentPartner)) && !currentSeeker && (
-                <button
-                  onClick={() => setActiveTab('partner')}
-                  style={activeTab === 'partner' ? { backgroundColor: 'var(--primary-color)' } : undefined}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                    activeTab === 'partner'
-                      ? 'text-white shadow-sm'
-                      : 'text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20'
-                  }`}
-                >
-                  <Building2 className="w-4 h-4 text-indigo-400" />
-                  {t('partnerSection', appLanguage)}
-                </button>
-              )}
+              {/* Online Resume Builder Tab in Top Nav */}
+              <button
+                onClick={() => setActiveTab('cv-builder')}
+                style={activeTab === 'cv-builder' ? { backgroundColor: 'var(--primary-color)' } : undefined}
+                className={`px-3 py-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
+                  activeTab === 'cv-builder'
+                    ? 'text-white shadow-sm font-bold'
+                    : 'text-slate-300 dark:text-slate-300 light:text-slate-700 hover:text-white hover:bg-slate-800/80 light:hover:bg-slate-100'
+                }`}
+              >
+                <FileText className="w-4 h-4 text-amber-400" />
+                <span>رزومه‌ساز آنلاین</span>
+                <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded-md font-bold">
+                  به زودی
+                </span>
+              </button>
 
 
               {/* Dedicated Map Tab */}
@@ -624,13 +609,29 @@ export const Header: React.FC = () => {
 
                         <button
                           onClick={() => {
+                            setActiveTab('cv-builder');
+                            setUserDropdown(false);
+                          }}
+                          className="w-full text-right px-4 py-2 text-slate-200 dark:text-slate-200 light:text-slate-700 hover:bg-slate-800/80 dark:hover:bg-slate-800/80 light:hover:bg-slate-100 flex items-center justify-between"
+                        >
+                          <span className="flex items-center gap-2">
+                            <FileText className="w-3.5 h-3.5 text-amber-400" />
+                            رزومه‌ساز آنلاین
+                          </span>
+                          <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-bold">
+                            به زودی اضافه خواهد شد
+                          </span>
+                        </button>
+
+                        <button
+                          onClick={() => {
                             setActiveTab('settings');
                             setUserDropdown(false);
                           }}
                           className="w-full text-right px-4 py-2 text-slate-200 dark:text-slate-200 light:text-slate-700 hover:bg-slate-800/80 dark:hover:bg-slate-800/80 light:hover:bg-slate-100 flex items-center gap-2"
                         >
                           <Settings className="w-3.5 h-3.5 text-slate-400" />
-                          مشخصات و رزومه‌ساز آنلاین
+                          مشخصات و تنظیمات حساب
                         </button>
 
                         <button

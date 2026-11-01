@@ -4,7 +4,7 @@
  * and IndexedDB data synchronization for Job Listings & Essential Addresses.
  */
 
-const CACHE_NAME = 'karbama-cache-v4';
+const CACHE_NAME = 'karbama-cache-v6';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -47,8 +47,9 @@ async function getStoreDataSW(storeName) {
   }
 }
 
-// Install Event - Pre-cache critical PWA assets
+// Install Event - Pre-cache critical PWA assets and activate immediately
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches
       .open(CACHE_NAME)
@@ -57,7 +58,6 @@ self.addEventListener('install', (event) => {
           console.warn('[SW] Cache addAll partial warning:', err);
         });
       })
-      .then(() => self.skipWaiting())
   );
 });
 
@@ -79,7 +79,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event - Crucial for Chrome PWA Installability & Offline Operation
+// Fetch Event - Network-First for code/pages so updates apply immediately; fallback to cache offline
 self.addEventListener('fetch', (event) => {
   // Only handle GET requests
   if (event.request.method !== 'GET') {
@@ -89,16 +89,37 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Skip non-HTTP(S) or untrusted origins
-  if (url.origin !== self.location.origin && !url.hostname.includes('fonts.googleapis.com') && !url.hostname.includes('fonts.gstatic.com')) {
+  if (
+    url.origin !== self.location.origin &&
+    !url.hostname.includes('fonts.googleapis.com') &&
+    !url.hostname.includes('fonts.gstatic.com')
+  ) {
     return;
   }
 
-  // Navigation requests (HTML pages): Network-first with cache fallback
-  if (event.request.mode === 'navigate') {
+  // Never cache Vite HMR / dev internal endpoints
+  if (url.pathname.startsWith('/@') || url.pathname.includes('node_modules')) {
+    return;
+  }
+
+  // Network-First for all HTML navigations, JS/TS/TSX/CSS bundles, and JSON configs
+  const isCodeOrPage =
+    event.request.mode === 'navigate' ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/assets/') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.mjs') ||
+    url.pathname.endsWith('.ts') ||
+    url.pathname.endsWith('.tsx') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.json');
+
+  if (isCodeOrPage) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          if (response.status === 200) {
+          if (response && response.status === 200) {
             const responseClone = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, responseClone);
@@ -106,51 +127,34 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => {
-          return caches.match('/index.html') || caches.match('/');
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+          if (event.request.mode === 'navigate') {
+            return (await caches.match('/index.html')) || (await caches.match('/'));
+          }
+          return new Response('Offline mode', { status: 503 });
         })
     );
     return;
   }
 
-  // Static Assets (Images, scripts, styles): Cache-first with network fallback
+  // Images & Fonts: Stale-While-Revalidate
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Return cached asset and update in background when online
-        fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, networkResponse);
-              });
-            }
-          })
-          .catch(() => {
-            // Offline background fetch failure - silently ignore
-          });
-        return cachedResponse;
-      }
-
-      // If not in cache, fetch from network
-      return fetch(event.request)
-        .then((response) => {
-          if (response.status === 200) {
-            const responseClone = response.clone();
+      const networkFetch = fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseClone);
+              cache.put(event.request, clone);
             });
           }
-          return response;
+          return networkResponse;
         })
-        .catch(() => {
-          // If offline and asset is missing
-          return new Response('Network unavailable. Karbama PWA operating in offline mode.', {
-            status: 503,
-            statusText: 'Offline Mode',
-            headers: new Headers({ 'Content-Type': 'text/plain; charset=utf-8' }),
-          });
-        });
+        .catch(() => cachedResponse);
+
+      return cachedResponse || networkFetch;
     })
   );
 });

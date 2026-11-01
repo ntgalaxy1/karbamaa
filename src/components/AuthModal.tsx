@@ -641,7 +641,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
         </div>
 
         {/* Tab switchers */}
-        <div className="grid grid-cols-4 p-1.5 mx-6 mt-4 bg-slate-950/70 border border-slate-800 rounded-2xl gap-1 text-xs font-semibold">
+        <div className="grid grid-cols-3 p-1.5 mx-6 mt-4 bg-slate-950/70 border border-slate-800 rounded-2xl gap-1 text-xs font-semibold">
           <button
             type="button"
             onClick={() => {
@@ -671,17 +671,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
           >
             <UserPlus className="w-3.5 h-3.5" />
             <span className="truncate">ثبت‌نام جدید</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('partner');
-              onClose();
-            }}
-            className="py-2 px-2 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 transition text-indigo-400 hover:text-indigo-200 hover:bg-indigo-950/50 border border-indigo-500/20"
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            <span className="truncate">بخش همکار</span>
           </button>
           <button
             type="button"

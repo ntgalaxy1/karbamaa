@@ -131,7 +131,7 @@ export const LiveChatWidget: React.FC = () => {
   const selectedAdminChat = chatSessions.find((c) => c.id === selectedAdminChatId) || null;
 
   return (
-    <div className="fixed bottom-20 lg:bottom-6 right-4 z-50 flex flex-col items-end">
+    <div className="fixed bottom-20 right-4 z-50 flex flex-col items-end">
       {/* Chat Popup Window */}
       {isOpen && (
         <div className="mb-3 w-[calc(100vw-2rem)] sm:w-96 max-h-[75vh] bg-slate-900 border-2 border-red-500/40 rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-200">
@@ -558,36 +558,42 @@ export const LiveChatWidget: React.FC = () => {
         </div>
       )}
 
-      {/* Floating Round Button at Bottom of Page */}
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="group relative flex items-center gap-2 bg-gradient-to-tr from-red-600 via-red-500 to-amber-500 hover:from-red-500 hover:to-amber-400 text-white rounded-full p-3.5 shadow-2xl shadow-red-600/40 border-2 border-amber-300/60 transition-all duration-300 hover:scale-105 active:scale-95"
-        title="چت آنلاین با مدیر"
-        aria-label="چت آنلاین با مدیر"
-      >
-        {/* Online pulsing dot */}
-        <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-slate-950" />
-        </span>
-
-        {badgeCount > 0 && (
-          <span className="absolute -top-2 -left-1 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black flex items-center justify-center border-2 border-slate-950 shadow-md">
-            {badgeCount}
-          </span>
-        )}
-
-        {isOpen ? (
-          <X className="w-6 h-6 text-white" />
-        ) : (
-          <MessageCircle className="w-6 h-6 text-white" />
-        )}
-
-        <span className="text-[11px] font-black pr-0.5 pl-1 whitespace-nowrap">
+      {/* Small Round Floating Button at Bottom of Page */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="px-3 py-1.5 rounded-full bg-slate-900/95 border border-amber-400/50 text-amber-300 text-[11px] font-black shadow-xl hover:bg-slate-800 transition cursor-pointer"
+        >
           چت آنلاین با مدیر
-        </span>
-      </button>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="group relative w-14 h-14 flex items-center justify-center bg-gradient-to-tr from-red-600 via-red-500 to-amber-500 hover:from-red-500 hover:to-amber-400 text-white rounded-full shadow-2xl shadow-red-600/50 border-2 border-amber-300 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer"
+          title="چت آنلاین با مدیر"
+          aria-label="چت آنلاین با مدیر"
+        >
+          {/* Online pulsing dot */}
+          <span className="absolute top-0 right-0 flex h-3.5 w-3.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-slate-950" />
+          </span>
+
+          {badgeCount > 0 && (
+            <span className="absolute -top-1.5 -left-1.5 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black flex items-center justify-center border-2 border-slate-950 shadow-md">
+              {badgeCount}
+            </span>
+          )}
+
+          {isOpen ? (
+            <X className="w-6 h-6 text-white" />
+          ) : (
+            <MessageCircle className="w-6 h-6 text-white" />
+          )}
+        </button>
+      </div>
     </div>
   );
 };
