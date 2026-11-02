@@ -675,7 +675,7 @@ export const JobSearch: React.FC = () => {
               <img
                 src="/logo.png"
                 alt="کارباما"
-                className="w-12 h-12 rounded-full object-cover border-2 border-amber-400/80 shadow-md md:hidden shrink-0"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-amber-400/90 shadow-xl shadow-red-950/60 md:hidden shrink-0 ring-2 ring-amber-500/30"
               />
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
                 {t('bannerHeadline', appLanguage)}
@@ -691,9 +691,9 @@ export const JobSearch: React.FC = () => {
               <img
                 src="/logo.png"
                 alt="لوگوی رسمی کارباما"
-                className="w-28 h-28 lg:w-32 lg:h-32 rounded-full object-cover border-3 border-amber-400/80 shadow-2xl shadow-red-950/80 ring-4 ring-amber-500/20 group-hover:scale-105 transition-transform duration-300"
+                className="w-32 h-32 lg:w-40 lg:h-40 rounded-full object-cover border-3 border-amber-400/90 shadow-2xl shadow-red-950/80 ring-4 ring-amber-500/30 group-hover:scale-105 transition-transform duration-300"
               />
-              <span className="absolute -bottom-2 right-1/2 translate-x-1/2 bg-gradient-to-r from-amber-600 to-amber-500 text-white font-black text-[10px] px-3 py-0.5 rounded-full shadow-md tracking-wider border border-amber-300/40 whitespace-nowrap">
+              <span className="absolute -bottom-2 right-1/2 translate-x-1/2 bg-gradient-to-r from-amber-600 to-amber-500 text-white font-black text-xs px-3.5 py-0.5 rounded-full shadow-lg tracking-wider border border-amber-300/40 whitespace-nowrap">
                 KARBAMA
               </span>
             </div>

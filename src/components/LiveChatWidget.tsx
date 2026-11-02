@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { ZarinPalGatewayModal } from './ZarinPalGatewayModal';
 import {
   MessageCircle,
   X,
@@ -13,6 +14,9 @@ import {
   XCircle,
   RotateCcw,
   ChevronRight,
+  CreditCard,
+  Sparkles,
+  ShieldAlert,
 } from 'lucide-react';
 
 export const LiveChatWidget: React.FC = () => {
@@ -30,6 +34,11 @@ export const LiveChatWidget: React.FC = () => {
   } = useApp();
 
   const [isOpen, setIsOpen] = useState(false);
+
+  // ZarinPal Payment Flow States
+  const [zarinpalModalOpen, setZarinpalModalOpen] = useState(false);
+  const [hasPaid, setHasPaid] = useState(false);
+  const [zarinpalRefId, setZarinpalRefId] = useState<string | null>(null);
 
   // Seeker form fields
   const [firstName, setFirstName] = useState(
@@ -198,91 +207,134 @@ export const LiveChatWidget: React.FC = () => {
               {!activeSeekerChat ||
               activeSeekerChat.status === 'rejected' ||
               activeSeekerChat.status === 'closed' ? (
-                /* STEP 1: Registration Form (First Name, Last Name, Phone, National ID) */
-                <form
-                  onSubmit={handleStartChatSubmit}
-                  className="p-4 space-y-3.5 overflow-y-auto text-xs"
-                >
-                  <div className="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-3 text-slate-300 leading-relaxed text-[11px]">
-                    جهت شروع گفتگوی آنلاین با مدیر سامانه، لطفاً <strong className="text-white">نام و نام خانوادگی</strong>، <strong className="text-white">شماره تلفن</strong> و <strong className="text-white">کد ملی</strong> خود را وارد نمایید و منتظر تایید مدیر بمانید:
-                  </div>
+                /* STEP 1: Terms Acceptance & ZarinPal Payment OR Registration Form */
+                <div className="p-4 space-y-3.5 overflow-y-auto text-xs">
+                  {!hasPaid ? (
+                    <div className="space-y-3">
+                      {/* Banner Notice */}
+                      <div className="bg-gradient-to-br from-red-950/90 via-slate-900 to-amber-950/80 border-2 border-amber-500/50 rounded-2xl p-3.5 space-y-2.5 text-center shadow-lg">
+                        <div className="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-400/50 text-amber-400 flex items-center justify-center mx-auto">
+                          <Sparkles className="w-5 h-5" />
+                        </div>
+                        <h4 className="text-xs sm:text-sm font-black text-amber-300 leading-snug">
+                          از مبدا تا مقصد و محل کار با شما هستیم
+                        </h4>
+                        <p className="text-[11px] text-slate-200 leading-relaxed font-bold">
+                          حق مشاوره تخصصی و رزرو آنلاین: <span className="text-amber-400 font-black text-xs font-mono">۷۵۰,۰۰۰ تومان</span>
+                        </p>
 
-                  {formError && (
-                    <div className="p-2.5 rounded-xl bg-red-950/90 border border-red-500/50 text-red-200 text-[11px]">
-                      {formError}
+                        <ul className="text-right text-[10px] text-slate-300 space-y-1.5 pt-1 border-t border-slate-800">
+                          <li className="flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span>مشاوره اختصاصی مستقیم با مدیریت کارباما در ترکیه</span>
+                          </li>
+                          <li className="flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span>معرفی به فرصت‌های شغلی رسمی همراه با جای خواب و بیمه</span>
+                          </li>
+                          <li className="flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span>پشتیبانی کامل و همراهی از لحظه حرکت تا استقرار کامل</span>
+                          </li>
+                        </ul>
+                      </div>
+
+                      {/* Payment Trigger Button */}
+                      <button
+                        type="button"
+                        onClick={() => setZarinpalModalOpen(true)}
+                        className="w-full py-3 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black rounded-2xl shadow-xl shadow-amber-600/30 transition flex items-center justify-center gap-2 text-xs"
+                      >
+                        <CreditCard className="w-4 h-4 text-slate-950" />
+                        <span>قبول شرایط و پرداخت حق مشاوره (۷۵۰,۰۰۰ تومان)</span>
+                      </button>
                     </div>
-                  )}
+                  ) : (
+                    /* Paid State: Form to submit details to Admin */
+                    <form onSubmit={handleStartChatSubmit} className="space-y-3">
+                      <div className="bg-emerald-950/80 border border-emerald-500/50 rounded-2xl p-3 text-emerald-200 text-[11px] space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold text-emerald-300">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <span>پرداخت حق مشاوره با موفقیت انجام شد!</span>
+                        </div>
+                        <p className="text-[10px] text-emerald-300/90 font-mono">
+                          کد پیگیری زرین‌پال: <strong className="text-white">{zarinpalRefId}</strong> (مبلغ: ۷۵۰,۰۰۰ تومان)
+                        </p>
+                      </div>
 
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-slate-300 font-bold mb-1">نام (اسم) *</label>
-                      <div className="relative">
-                        <User className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5" />
+                      {formError && (
+                        <div className="p-2.5 rounded-xl bg-red-950/90 border border-red-500/50 text-red-200 text-[11px]">
+                          {formError}
+                        </div>
+                      )}
+
+                      <div className="bg-slate-800/80 p-2.5 rounded-2xl border border-slate-700/80 text-[11px] text-slate-300">
+                        لطفاً مشخصات خود را تکمیل کنید تا پس از تایید مدیر، چت آنلاین فعال شود:
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-slate-300 font-bold mb-1">نام (اسم) *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="مثلاً: علی"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-slate-300 font-bold mb-1">نام خانوادگی *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="مثلاً: رضایی"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">شماره تلفن همراه *</label>
+                        <input
+                          type="tel"
+                          required
+                          dir="ltr"
+                          placeholder="0912XXXXXXX"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-amber-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-300 font-bold mb-1">شماره کد ملی (۱۰ رقمی) *</label>
                         <input
                           type="text"
                           required
-                          placeholder="مثلاً: علی"
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-700 rounded-xl pr-8 pl-2.5 py-2 text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500"
+                          maxLength={10}
+                          dir="ltr"
+                          placeholder="0012345678"
+                          value={nationalId}
+                          onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ''))}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-amber-500"
                         />
                       </div>
-                    </div>
 
-                    <div>
-                      <label className="block text-slate-300 font-bold mb-1">نام خانوادگی (فامیل) *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="مثلاً: رضایی"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 font-bold mb-1">شماره تلفن همراه *</label>
-                    <div className="relative">
-                      <Phone className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5" />
-                      <input
-                        type="tel"
-                        required
-                        dir="ltr"
-                        placeholder="0912XXXXXXX"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl pr-8 pl-3 py-2 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-300 font-bold mb-1">شماره کد ملی (۱۰ رقمی) *</label>
-                    <div className="relative">
-                      <IdCard className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5" />
-                      <input
-                        type="text"
-                        required
-                        maxLength={10}
-                        dir="ltr"
-                        placeholder="0012345678"
-                        value={nationalId}
-                        onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ''))}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl pr-8 pl-3 py-2 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black rounded-xl shadow-lg shadow-red-700/30 transition flex items-center justify-center gap-2"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>ثبت مشخصات و درخواست چت با مدیر</span>
-                  </button>
-                </form>
+                      <button
+                        type="submit"
+                        className="w-full py-2.5 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black rounded-xl shadow-lg shadow-red-700/30 transition flex items-center justify-center gap-2"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span>ثبت مشخصات و درخواست چت با مدیر</span>
+                      </button>
+                    </form>
+                  )}
+                </div>
               ) : activeSeekerChat.status === 'pending' ? (
                 /* STEP 2: Waiting for Admin Approval */
                 <div className="p-5 text-center space-y-4 overflow-y-auto">
@@ -292,13 +344,13 @@ export const LiveChatWidget: React.FC = () => {
 
                   <div className="space-y-1">
                     <span className="inline-block px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-black">
-                      منتظر تایید و شروع چت با مدیر ⏳
+                      منتظر تایید مدیر بمانید تا با کارجو چت آنلاین کند ⏳
                     </span>
                     <h4 className="text-sm font-black text-white pt-1">
-                      درخواست شما برای مدیر ارسال شد
+                      اطلاعات و رسید پرداخت شما ثبت شد
                     </h4>
                     <p className="text-[11px] text-slate-300 leading-relaxed">
-                      لطفاً چند لحظه منتظر بمانید تا مدیر سامانه درخواست شما را تایید کند. به محض تایید مدیر، صفحه چت آنلاین باز خواهد شد.
+                      از مبدا تا مقصد و محل کار با شما هستیم. لطفاً چند لحظه منتظر بمانید تا مدیر درخواست شما را تایید کند تا صفحه چت دوطرفه فعال گردد.
                     </p>
                   </div>
 
@@ -319,6 +371,14 @@ export const LiveChatWidget: React.FC = () => {
                         {activeSeekerChat.nationalId}
                       </span>
                     </div>
+                    {zarinpalRefId && (
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-700">
+                        <span className="text-slate-400">رسید زرین‌پال:</span>
+                        <span className="font-mono font-black text-emerald-400" dir="ltr">
+                          {zarinpalRefId}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <button
@@ -581,12 +641,6 @@ export const LiveChatWidget: React.FC = () => {
             <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-slate-950" />
           </span>
 
-          {badgeCount > 0 && (
-            <span className="absolute -top-1.5 -left-1.5 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black flex items-center justify-center border-2 border-slate-950 shadow-md">
-              {badgeCount}
-            </span>
-          )}
-
           {isOpen ? (
             <X className="w-6 h-6 text-white" />
           ) : (
@@ -594,6 +648,19 @@ export const LiveChatWidget: React.FC = () => {
           )}
         </button>
       </div>
+
+      {/* ZarinPal Gateway Modal */}
+      <ZarinPalGatewayModal
+        isOpen={zarinpalModalOpen}
+        onClose={() => setZarinpalModalOpen(false)}
+        amountToman={750000}
+        description="حق مشاوره تخصصی کاریابی، اسکان و اقامت کارباما"
+        onSuccess={(refId) => {
+          setHasPaid(true);
+          setZarinpalRefId(refId);
+          setZarinpalModalOpen(false);
+        }}
+      />
     </div>
   );
 };
