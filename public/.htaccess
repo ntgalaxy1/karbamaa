@@ -76,3 +76,13 @@ Options -Indexes
   ExpiresByType image/png "access plus 1 year"
   ExpiresByType image/svg+xml "access plus 1 year"
 </IfModule>
+
+# جلوگیری کامل از کش شدن index.html و سرویس‌ورکر (sw.js) برای اعمال فوری تغییرات در موبایل
+<IfModule mod_headers.c>
+  <FilesMatch "^(index\.html|sw\.js|manifest\.json|manifest\.webmanifest)$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+</IfModule>
+

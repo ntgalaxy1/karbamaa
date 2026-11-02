@@ -1,0 +1,54 @@
+name: Auto Build & Deploy to Custom Host (cPanel / DirectAdmin)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: Build & Upload to Host
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: 🏗️ Build Production Bundle (dist)
+        run: npm run build
+
+      - name: 🗜️ Create Ready-to-Upload ZIP for cPanel/DirectAdmin
+        run: |
+          cd dist
+          zip -r ../karbama-host-ready.zip . -x "*.DS_Store"
+
+      - name: 📤 Save Ready ZIP in GitHub Artifacts (For Manual Download if Needed)
+        uses: actions/upload-artifact@v4
+        with:
+          name: karbama-cpanel-ready-zip
+          path: karbama-host-ready.zip
+          retention-days: 30
+
+      - name: 🚀 Auto-Deploy via FTP to Personal Host (Runs when FTP Secrets are configured)
+        if: ${{ secrets.FTP_SERVER != '' && secrets.FTP_USERNAME != '' && secrets.FTP_PASSWORD != '' }}
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: ${{ secrets.FTP_SERVER_DIR || './public_html/' }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
