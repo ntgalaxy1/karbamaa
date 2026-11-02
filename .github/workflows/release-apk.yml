@@ -1,78 +1,70 @@
-name: Build and Release Karbama Android APK
+name: Build & Publish Karbama Android APK to GitHub
 
 on:
   push:
+    branches:
+      - main
+      - master
     tags:
       - 'v*'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'APK Version (e.g. 10.0.0.1)'
-        required: true
-        default: '10.0.0.1'
 
 permissions:
   contents: write
 
 jobs:
   release-apk:
+    name: Build APK & Publish to GitHub Releases
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: ⚙️ Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 🐍 Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Dependencies & Build Web Assets
+      - name: 📦 Install Dependencies & Build Web App + APK
         run: |
-          npm ci || npm install
+          npm install --legacy-peer-deps
           npm run build
-
-      - name: Generate Versioned APK (v10.0.0.1+)
-        run: |
-          VERSION="${{ github.event.inputs.version }}"
-          if [ -z "$VERSION" ]; then
-            # Extract from git tag (remove leading 'v')
-            VERSION="${GITHUB_REF_NAME#v}"
-          fi
-          if [ -z "$VERSION" ] || [ "$VERSION" = "main" ]; then
-            VERSION="10.0.0.1"
-          fi
-          echo "Building APK for version $VERSION..."
           python3 scripts/generate-apk.py
+          python3 scripts/zip-dist.py
 
-      - name: Create GitHub Release with APK Asset
+      - name: 📤 Upload APK to GitHub Actions Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: karbama-android-apk
+          path: |
+            karbama-latest.apk
+            public/karbama-v*.apk
+          retention-days: 90
+
+      - name: 🚀 Publish APK & Build ZIP to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          name: "کارباما نسخه اندروید ${{ github.ref_name || github.event.inputs.version || 'v10.0.0.1' }}"
-          tag_name: ${{ github.ref_name || format('v{0}', github.event.inputs.version || '10.0.0.1') }}
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v10.0.0.12' }}
+          name: "کارباما نسخه رسمی اندروید (APK) و وب‌اپلیکیشن"
           body: |
-            ## 📱 دانلود فایل نصبی مستقیم اپلیکیشن رسمی کارباما (نسخه اندروید)
-            
-            **مشخصات بسته نصبی:**
-            - **نسخه نرم‌افزار:** ${{ github.ref_name || format('v{0}', github.event.inputs.version || '10.0.0.1') }} (شروع از ورژن ۱۰.۰.۰.۱)
-            - **بسته نصبی (Package Name):** `app.karbama.twa`
-            - **توسعه‌دهنده:** ناصر توکلی (`@Ntgalaxy`)
-            - **حداقل اندروید مورد نیاز:** اندروید ۵.۰ به بالا (Android Lollipop+)
-            - **نوع خروجی:** فایل خام نصبی استاندارد (Standalone APK)
-            
-            ### نحوه نصب:
-            1. فایل `karbama-v10.0.0.1.apk` پیوست شده در زیر را دانلود نمایید.
-            2. در گوشی اندروید خود فایل را باز کرده و در صورت درخواست، گزینه **Install from unknown sources** (نصب از منابع ناشناس) را تایید کنید.
-            3. برنامه کارباما با دسترسی کامل به کاریابی، رزومه‌ساز، هتل‌ها و مترجم نصب و اجرا می‌شود.
+            ## 📱 نسخه رسمی اندروید کارباما (`app.karbama.twa`)
+
+            فایل نصبی مستقیم اندروید (**APK**) و بسته کامل هاست (**dist.zip**) آماده دانلود است:
+
+            ### 📥 فایل‌های پیوست‌شده در پایین صفحه (Assets):
+            1. **`karbama-latest.apk`** / **`karbama-v10.0.0.12.apk`**: فایل نصبی مستقیم اندروید کارباما
+            2. **`karbama-dist.zip`**: فایل زیپ آماده آپلود در `public_html` هاست شخصی (cPanel / DirectAdmin)
           files: |
+            karbama-latest.apk
             public/karbama-v*.apk
-            public/dist.zip
-            public/karbama-source.zip
+            public/karbama-dist.zip
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

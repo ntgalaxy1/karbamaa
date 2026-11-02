@@ -115,14 +115,17 @@ app.get('/api/fx-rates', async (req, res) => {
 });
 
 // Helper to reliably serve static PWA assets with explicit MIME types and CORS
-function sendStaticFile(res: express.Response, relativeFilePath: string, contentType: string) {
+function sendStaticFile(res: express.Response, relativeFilePath: string, contentType: string, noCache = false) {
   const distPath = path.resolve(__dirname, 'dist', relativeFilePath);
   const publicPath = path.resolve(__dirname, 'public', relativeFilePath);
   const targetPath = fs.existsSync(distPath) ? distPath : (fs.existsSync(publicPath) ? publicPath : null);
 
   res.setHeader('Content-Type', contentType);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.setHeader(
+    'Cache-Control',
+    noCache ? 'no-store, no-cache, must-revalidate, max-age=0' : 'public, max-age=86400'
+  );
 
   if (targetPath) {
     return res.sendFile(targetPath);
@@ -130,15 +133,15 @@ function sendStaticFile(res: express.Response, relativeFilePath: string, content
   return res.status(404).setHeader('Content-Type', 'text/plain').send(`Asset ${relativeFilePath} not found`);
 }
 
-// Explicit PWA Manifest routes
+// Explicit PWA Manifest routes (no-cache so icon/name updates reflect immediately)
 app.get(['/manifest.json', '/manifest.webmanifest'], (req, res) => {
-  sendStaticFile(res, 'manifest.json', 'application/manifest+json; charset=utf-8');
+  sendStaticFile(res, 'manifest.json', 'application/manifest+json; charset=utf-8', true);
 });
 
-// Explicit Service Worker route
+// Explicit Service Worker route (never cache sw.js)
 app.get('/sw.js', (req, res) => {
   res.setHeader('Service-Worker-Allowed', '/');
-  sendStaticFile(res, 'sw.js', 'text/javascript; charset=utf-8');
+  sendStaticFile(res, 'sw.js', 'text/javascript; charset=utf-8', true);
 });
 
 // Digital Asset Links route for PWABuilder & TWA
@@ -174,13 +177,15 @@ app.get(['/karbama-dist.zip', '/dist.zip', '/karbama-latest-build.zip'], (req, r
 });
 
 // Explicit APK Download Routes with correct MIME type and download disposition
-app.get(['/karbama-latest.apk', '/karbama-v:ver.apk', '/downloads/:file'], (req, res) => {
+app.get(['/karbama.apk', '/karbama-latest.apk', '/karbama-v:ver.apk', '/downloads/:file'], (req, res) => {
   const filename = req.params.file || path.basename(req.path) || 'karbama-latest.apk';
   const candidates = [
+    path.resolve(__dirname, filename),
     path.resolve(__dirname, 'public', filename),
     path.resolve(__dirname, 'public', 'downloads', filename),
     path.resolve(__dirname, 'dist', filename),
     path.resolve(__dirname, 'dist', 'downloads', filename),
+    path.resolve(__dirname, 'karbama-latest.apk'),
     path.resolve(__dirname, 'public', 'karbama-latest.apk'),
   ];
   for (const c of candidates) {

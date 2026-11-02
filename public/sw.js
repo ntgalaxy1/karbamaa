@@ -4,7 +4,7 @@
  * and IndexedDB data synchronization for Job Listings & Essential Addresses.
  */
 
-const CACHE_NAME = 'karbama-cache-v8';
+const CACHE_NAME = 'karbama-cache-v9';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -13,8 +13,11 @@ const STATIC_ASSETS = [
   '/pwa-192x192.png',
   '/pwa-512x512.png',
   '/pwa-maskable-512x512.png',
+  '/pwa-1024x1024.png',
   '/apple-touch-icon.png',
+  '/logo.png',
   '/favicon.ico',
+  '/icon.svg',
 ];
 
 const DB_NAME = 'KarbamaOfflineDB';
@@ -79,7 +82,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event - Network-First for code/pages so updates apply immediately; fallback to cache offline
+// Fetch Event - Network-First for code/pages & installation routes so updates apply immediately; fallback to cache offline
 self.addEventListener('fetch', (event) => {
   // Only handle GET requests
   if (event.request.method !== 'GET') {
@@ -97,14 +100,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Never cache Vite HMR / dev internal endpoints
-  if (url.pathname.startsWith('/@') || url.pathname.includes('node_modules')) {
+  // Never cache Vite HMR / dev internal endpoints or APK/ZIP binary downloads
+  if (
+    url.pathname.startsWith('/@') ||
+    url.pathname.includes('node_modules') ||
+    url.pathname.endsWith('.apk') ||
+    url.pathname.endsWith('.zip')
+  ) {
     return;
   }
 
-  // Network-First for all HTML navigations, JS/TS/TSX/CSS bundles, and JSON configs
-  const isCodeOrPage =
+  const isInstallOrAppRoute =
     event.request.mode === 'navigate' ||
+    url.pathname === '/' ||
+    url.pathname === '/install' ||
+    url.pathname === '/index.html';
+
+  // Network-First for all HTML navigations, installation routes, JS/TS/TSX/CSS bundles, and JSON configs
+  const isCodeOrPage =
+    isInstallOrAppRoute ||
     url.pathname.startsWith('/src/') ||
     url.pathname.startsWith('/assets/') ||
     url.pathname.endsWith('.js') ||
@@ -118,19 +132,27 @@ self.addEventListener('fetch', (event) => {
   if (isCodeOrPage) {
     event.respondWith(
       fetch(event.request)
-        .then((response) => {
+        .then(async (response) => {
           if (response && response.status === 200) {
             const responseClone = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, responseClone);
             });
+            return response;
+          }
+          // If navigating to /install on a static server that returns 404, serve cached or live /index.html
+          if (isInstallOrAppRoute && (!response || response.status === 404)) {
+            const rootRes = await fetch('/index.html').catch(() => null);
+            if (rootRes && rootRes.status === 200) return rootRes;
+            const cachedApp = (await caches.match('/index.html')) || (await caches.match('/'));
+            if (cachedApp) return cachedApp;
           }
           return response;
         })
         .catch(async () => {
           const cached = await caches.match(event.request);
           if (cached) return cached;
-          if (event.request.mode === 'navigate') {
+          if (isInstallOrAppRoute) {
             return (await caches.match('/index.html')) || (await caches.match('/'));
           }
           return new Response('Offline mode', { status: 503 });

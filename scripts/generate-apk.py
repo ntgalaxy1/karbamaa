@@ -102,8 +102,10 @@ def build_standalone_apk(version=None, version_code=None, package_name="app.karb
                     rel_p = os.path.relpath(full_p, "dist")
                     apk_zip.write(full_p, os.path.join("assets", rel_p))
 
-    # Copy to target public and dist locations for download
+    # Copy to target root, public, and dist locations for GitHub and direct download
     targets = [
+        "karbama-latest.apk",
+        f"karbama-v{version}.apk",
         os.path.join("public", f"karbama-v{version}.apk"),
         os.path.join("public/downloads", f"karbama-v{version}.apk"),
         os.path.join("public", "karbama-latest.apk"),
@@ -123,7 +125,7 @@ def build_standalone_apk(version=None, version_code=None, package_name="app.karb
         shutil.copyfile(apk_path, t)
 
     size_mb = os.path.getsize(targets[0]) / (1024 * 1024)
-    print(f"✅ Standalone Karbama APK v{version} ({size_mb:.2f} MB) successfully built and copied to public/ and dist/!")
+    print(f"✅ Standalone Karbama APK v{version} ({size_mb:.2f} MB) successfully built and copied to repo root, public/, and dist/!")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

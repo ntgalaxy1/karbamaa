@@ -7,7 +7,14 @@ export const PWAInstallBanner: React.FC = () => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const isOnline = useOnlineStatus();
   const [showIOSModal, setShowIOSModal] = useState(false);
-  const [showApkModal, setShowApkModal] = useState(false);
+  const [showApkModal, setShowApkModal] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      const params = new URLSearchParams(window.location.search);
+      return path === '/install' || params.has('install') || params.has('apk');
+    }
+    return false;
+  });
   const [isDismissed, setIsDismissed] = useState(false);
 
   if (isDismissed || isInstalled) {

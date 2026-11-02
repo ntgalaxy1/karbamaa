@@ -31,6 +31,7 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
   const [copiedLink, setCopiedLink] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [copiedGhCmd, setCopiedGhCmd] = useState(false);
+  const [installGuideMsg, setInstallGuideMsg] = useState(false);
 
   if (!isOpen) return null;
 
@@ -62,9 +63,7 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
     if (isInstallable) {
       install();
     } else {
-      alert(
-        'برای نصب مستقیم وب‌اپلیکیشن در گوشی:\nدر مرورگر کروم گوشی خود، علامت سه نقطه بالا را بزنید و گزینه «نصب برنامه» (Install app) یا «افزودن به صفحه اصلی» را انتخاب کنید.'
-      );
+      setInstallGuideMsg(true);
     }
   };
 
@@ -116,7 +115,7 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
             </div>
 
             <p className="text-slate-300 text-[11.5px] leading-relaxed">
-              فایل نصبی مستقیم اندروید با نام پکیج رسمی <code className="text-amber-300 font-mono">app.karbama.twa</code> امضا و آماده نصب می‌باشد.
+              فایل نصبی مستقیم اندروید با نام پکیج رسمی <code className="text-amber-300 font-mono">app.karbama.twa</code> امضا و در سرور و گیت‌هاب آماده نصب می‌باشد.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
@@ -129,15 +128,31 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
                 <span>دانلود مستقیم APK</span>
               </a>
 
-              <button
-                type="button"
-                onClick={handleInstallClick}
-                className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 font-bold rounded-xl transition flex items-center justify-center gap-1.5 text-xs"
+              <a
+                href="https://github.com/ntgalaxy1/karbamaa/raw/main/karbama-latest.apk"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 font-bold rounded-xl transition flex items-center justify-center gap-1.5 text-xs"
               >
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span>نصب آنلاین PWA</span>
-              </button>
+                <Github className="w-4 h-4 text-emerald-400" />
+                <span>دانلود APK از گیت‌هاب</span>
+              </a>
             </div>
+
+            <button
+              type="button"
+              onClick={handleInstallClick}
+              className="w-full py-2.5 px-3 bg-slate-800/90 hover:bg-slate-700 text-amber-300 border border-amber-500/30 font-bold rounded-xl transition flex items-center justify-center gap-1.5 text-xs"
+            >
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>نصب آنلاین وب‌اپلیکیشن (Add to Home Screen)</span>
+            </button>
+
+            {installGuideMsg && (
+              <div className="p-2.5 bg-amber-950/40 border border-amber-500/40 rounded-xl text-amber-200 text-[11px] leading-relaxed">
+                در مرورگر گوشی خود (Chrome یا Safari)، منوی سه نقطه یا دکمه Share را بزنید و گزینه <strong>«Install app»</strong> یا <strong>«Add to Home Screen»</strong> را انتخاب کنید.
+              </div>
+            )}
           </div>
 
           {/* Quick Share Link & QR Code */}

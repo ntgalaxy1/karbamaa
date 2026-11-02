@@ -39,6 +39,12 @@ const manifestObj = {
       sizes: "1024x1024",
       type: "image/png",
       purpose: "any"
+    },
+    {
+      src: "/apple-touch-icon.png",
+      sizes: "180x180",
+      type: "image/png",
+      purpose: "any"
     }
   ]
 };
