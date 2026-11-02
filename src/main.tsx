@@ -60,7 +60,7 @@ if (typeof window !== 'undefined') {
       .keys()
       .then((names) => {
         for (const name of names) {
-          if (name !== 'karbama-cache-v9') {
+          if (name !== 'karbama-cache-v10') {
             caches.delete(name);
           }
         }
