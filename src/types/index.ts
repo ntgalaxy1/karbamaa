@@ -108,6 +108,7 @@ export interface JobSeeker {
   brokerCardNumber?: string;    // شماره کارت کارگزار
   signatureDataUrl?: string;    // امضای الکترونیکی دیجیتال متقاضی
   contractAccepted?: boolean;   // تایید رضایت‌نامه و تعهدنامه فوق
+  paymentReceiptPhotoUrl?: string; // تصویر فیش واریزی ۵۰۰ لیر جهت فعال‌سازی حساب
   createdAt: string;
 }
 

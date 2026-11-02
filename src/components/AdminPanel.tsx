@@ -2075,6 +2075,17 @@ export const AdminPanel: React.FC = () => {
                       {seeker.signatureDataUrl ? 'تعهدنامه تسویه: امضا شده ✓' : 'تعهدنامه: بدون امضا'}
                     </span>
 
+                    {seeker.paymentReceiptPhotoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setViewReceiptModalUrl(seeker.paymentReceiptPhotoUrl || null)}
+                        className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-950/60 text-amber-300 border border-amber-500/40 flex items-center gap-1 hover:underline cursor-pointer"
+                      >
+                        <Camera className="w-3 h-3 text-amber-400" />
+                        فیش واریز: بارگذاری شد (مشاهده فیش)
+                      </button>
+                    )}
+
                     {seeker.payerCardNumber && (
                       <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono text-amber-300 bg-amber-950/50 border border-amber-500/30" dir="ltr">
                         کارت: {seeker.payerCardNumber}
@@ -3862,7 +3873,7 @@ export const AdminPanel: React.FC = () => {
                   <span>مدارک پرسنلی و هویتی بارگذاری شده</span>
                 </h4>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {/* Passport Photo */}
                   <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2 text-center">
                     <span className="font-bold text-white text-xs block">عکس پاسپورت</span>
@@ -3916,6 +3927,34 @@ export const AdminPanel: React.FC = () => {
                     ) : (
                       <div className="aspect-4/3 flex items-center justify-center bg-slate-800/40 rounded-xl text-slate-500 text-[10px]">
                         فاقد تصویر
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Payment Receipt Photo */}
+                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2 text-center">
+                    <span className="font-bold text-amber-300 text-xs block">عکس فیش واریزی ۵۰۰ لیر</span>
+                    <span className="text-[10px] text-slate-400 block">رسید پرداختی کارجو</span>
+                    {selectedSeekerDossier.paymentReceiptPhotoUrl ? (
+                      <div
+                        onClick={() => setViewReceiptModalUrl(selectedSeekerDossier.paymentReceiptPhotoUrl || null)}
+                        className="rounded-xl overflow-hidden aspect-4/3 bg-slate-950 border border-amber-500/50 cursor-pointer group relative"
+                      >
+                        <img
+                          src={selectedSeekerDossier.paymentReceiptPhotoUrl}
+                          alt="عکس فیش واریزی کارجو"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                        <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 flex items-center justify-center transition">
+                          <span className="px-2 py-1 bg-black/70 text-white rounded-lg text-[9px] font-bold flex items-center gap-1">
+                            <Eye className="w-3 h-3" />
+                            بزرگنمایی
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="aspect-4/3 flex items-center justify-center bg-slate-800/40 rounded-xl text-slate-500 text-[10px]">
+                        فاقد تصویر فیش
                       </div>
                     )}
                   </div>

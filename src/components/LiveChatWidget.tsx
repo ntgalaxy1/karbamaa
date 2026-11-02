@@ -659,6 +659,18 @@ export const LiveChatWidget: React.FC = () => {
           setHasPaid(true);
           setZarinpalRefId(refId);
           setZarinpalModalOpen(false);
+
+          // If seeker is logged in, auto-submit the chat request immediately
+          if (currentSeeker) {
+            const fName = currentSeeker.firstName || currentSeeker.fullName?.split(' ')[0] || 'کارجو';
+            const lName = currentSeeker.lastName || currentSeeker.fullName?.split(' ').slice(1).join(' ') || '';
+            requestLiveChat({
+              firstName: fName,
+              lastName: lName,
+              phone: currentSeeker.phone || '09120000000',
+              nationalId: currentSeeker.nationalId || '0012345678',
+            });
+          }
         }}
       />
     </div>

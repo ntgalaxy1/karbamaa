@@ -52,6 +52,8 @@ import {
   Car,
   Calendar,
   CheckSquare,
+  Camera,
+  Upload,
 } from 'lucide-react';
 import { JobImagePicker } from './JobImagePicker';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
@@ -147,9 +149,27 @@ export const JobSearch: React.FC = () => {
     appLanguage,
   } = useApp();
 
-  // Payment referral state for locked jobseeker
-  const [paymentReceiptRef, setPaymentReceiptRef] = useState('');
+  // Payment referral state for locked jobseeker with Receipt Photo Upload
+  const [paymentReceiptPhoto, setPaymentReceiptPhoto] = useState<string | null>(null);
+  const [paymentRefNote, setPaymentRefNote] = useState('');
   const [isReferredToAdmin, setIsReferredToAdmin] = useState(false);
+
+  const handlePaymentReceiptPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('حجم تصویر فیش نباید بیشتر از ۱۰ مگابایت باشد.', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setPaymentReceiptPhoto(event.target.result as string);
+        showToast('تصویر فیش واریزی با موفقیت بارگذاری گردید.', 'success');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Top View Mode: All Jobs vs Saved Jobs
   const [activeViewTab, setActiveViewTab] = useState<'all' | 'saved'>('all');
@@ -597,17 +617,22 @@ export const JobSearch: React.FC = () => {
 
   const handleReferPaymentToAdmin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!paymentReceiptRef.trim()) {
-      showToast('لطفاً شماره فیش واریزی یا شماره پیگیری تراکنش را وارد فرمایید.', 'error');
+    if (!paymentReceiptPhoto) {
+      showToast('لطفاً ابتدا تصویر فیش واریزی ۵۰۰ لیر را بارگذاری نمایید.', 'error');
       return;
     }
     addAdminNotification({
       type: 'seeker_payment_referred',
-      title: 'ارجاع فیش پرداخت کارجو جهت فعال‌سازی آگهی‌ها',
-      message: `کارجو «${currentSeeker?.fullName}» با کد ملی ${currentSeeker?.nationalId} فیش پرداخت به شماره «${paymentReceiptRef.trim()}» (۵۰۰ لیر) را جهت بررسی و فعال‌سازی نمایش آگهی‌ها به مدیر ارجاع داد.`,
+      title: 'ارجاع تصویر فیش واریزی کارجو جهت فعال‌سازی امکانات',
+      message: `کارجو «${currentSeeker?.fullName}» با کد ملی ${currentSeeker?.nationalId} تصویر فیش واریزی (۵۰۰ لیر) را جهت بررسی و فعال‌سازی حساب ارسال کرد.`,
+      data: {
+        receiptPhotoUrl: paymentReceiptPhoto,
+        paymentNote: paymentRefNote,
+        seekerId: currentSeeker?.id,
+      },
     });
     setIsReferredToAdmin(true);
-    showToast('رسید پرداخت با موفقیت به مدیر ارجاع شد. به محض تایید مدیریت، آگهی‌ها فعال خواهند شد.', 'success');
+    showToast('تصویر فیش واریزی با موفقیت به مدیریت ارجاع شد. به محض تایید، حساب شما فعال می‌گردد.', 'success');
   };
 
   const hasActiveFilters =
@@ -1564,43 +1589,101 @@ export const JobSearch: React.FC = () => {
                 </div>
               </div>
 
-              {/* Interactive Referral Form */}
+              {/* Interactive Photo Upload Referral Form */}
               <div className="p-5 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-3">
                 <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                  <FileCheck className="w-4 h-4 text-red-500" />
-                  ارجاع فیش پرداخت به مدیر جهت بررسی و فعال‌سازی فوری
+                  <Camera className="w-4 h-4 text-amber-400" />
+                  بارگذاری عکس فیش واریزی ۵۰۰ لیر و ارجاع به مدیر جهت فعال‌سازی
                 </h4>
 
                 {isReferredToAdmin ? (
                   <div className="p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-xl text-emerald-200 text-xs space-y-2">
                     <div className="flex items-center gap-2 font-bold text-emerald-300">
                       <CheckCircle className="w-5 h-5 text-emerald-400" />
-                      رسید پرداخت با موفقیت به مدیر ارجاع داده شد!
+                      تصویر فیش واریزی با موفقیت به مدیریت ارسال گردید!
                     </div>
+                    {paymentReceiptPhoto && (
+                      <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-emerald-500/50 shadow-md">
+                        <img
+                          src={paymentReceiptPhoto}
+                          alt="عکس فیش واریزی ارسالی"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
                     <p className="text-[11px] text-slate-300 leading-relaxed">
-                      شماره پیگیری «{paymentReceiptRef}» جهت بررسی و تطبیق به پنل مدیر کارباما ارسال شد. به محض تایید نهایی توسط مدیر سامانه، تمامی آگهی‌های کارفرما برای شما نمایش داده خواهند شد.
+                      تصویر فیش جهت تطبیق حسابداری به مدیریت ارجاع شد. به محض تایید مدیریت، تمامی امکانات و آگهی‌های کارفرما برای شما فعال و آزاد خواهند شد.
                     </p>
                   </div>
                 ) : (
-                  <form onSubmit={handleReferPaymentToAdmin} className="space-y-3">
-                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <form onSubmit={handleReferPaymentToAdmin} className="space-y-3.5">
+                    {/* Photo Upload Area */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-slate-300">
+                        تصویر فیش واریزی ۵۰۰ لیر (عکس با دوربین یا گالری) *
+                      </label>
+
+                      {paymentReceiptPhoto ? (
+                        <div className="relative w-full max-w-xs h-40 rounded-2xl overflow-hidden border-2 border-emerald-500/60 shadow-xl bg-slate-900 group">
+                          <img
+                            src={paymentReceiptPhoto}
+                            alt="پیش‌نمایش فیش واریزی"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setPaymentReceiptPhoto(null)}
+                              className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs shadow-md transition"
+                            >
+                              حذف و بارگذاری عکس جدید
+                            </button>
+                          </div>
+                          <span className="absolute bottom-2 right-2 bg-emerald-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-md shadow-sm flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            عکس آماده ارسال
+                          </span>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-700 hover:border-amber-400 rounded-2xl cursor-pointer bg-slate-900/80 hover:bg-slate-900 transition p-4 text-center group">
+                          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mb-1 group-hover:scale-110 transition">
+                            <Camera className="w-5 h-5" />
+                          </div>
+                          <p className="text-xs font-bold text-slate-200">
+                            کلیک کنید یا عکس فیش واریزی را انتخاب/گرفتن عکس فرمایید
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            فرمت‌های مجاز: JPG, PNG, WEBP (حداکثر ۱۰ مگابایت)
+                          </p>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePaymentReceiptPhotoUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+
+                    {/* Optional Payment Note */}
+                    <div>
                       <input
                         type="text"
-                        required
-                        placeholder="شماره پیگیری فیش بانکی، شماره ارجاع یا ۴ رقم آخر کارت واریزکننده..."
-                        value={paymentReceiptRef}
-                        onChange={(e) => setPaymentReceiptRef(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 font-mono"
+                        placeholder="توضیحات اختیاری (مثلاً ۴ رقم آخر کارت، نام صاحب حساب یا بانک واریزی)..."
+                        value={paymentRefNote}
+                        onChange={(e) => setPaymentRefNote(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-500"
                       />
-
-                      <button
-                        type="submit"
-                        className="w-full sm:w-auto px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-700/30 transition flex items-center justify-center gap-2 shrink-0"
-                      >
-                        <Send className="w-4 h-4" />
-                        <span>ثبت فیش و ارجاع به مدیر جهت فعال‌سازی</span>
-                      </button>
                     </div>
+
+                    <button
+                      type="submit"
+                      disabled={!paymentReceiptPhoto}
+                      className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-700/30 transition flex items-center justify-center gap-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>ثبت تصویر فیش و ارجاع به مدیر جهت فعال‌سازی</span>
+                    </button>
                   </form>
                 )}
               </div>
