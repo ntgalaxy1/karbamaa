@@ -484,6 +484,7 @@ export interface LiveChatSession {
   phone: string;
   nationalId: string;
   status: LiveChatStatus;
+  isConsultationPaid?: boolean;
   messages: LiveChatMessage[];
   unreadByAdmin: number;
   unreadBySeeker: number;

@@ -48,6 +48,8 @@ import {
   requestSafeNotificationPermission,
   showSafeNotification,
   getSafeNotificationPermission,
+  playNotificationDingSound,
+  playNewJobHotelDingSound,
 } from '../utils/safeNotification';
 import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../services/firebase';
@@ -1557,13 +1559,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setJobs((prev) => [newJob, ...prev]);
     syncJobToFirestore(newJob);
     showToast('آگهی کار با موفقیت ایجاد شد.', 'success');
+
     if (newJob.isActive && (newJob.paymentStatus === 'paid' || !newJob.paymentStatus)) {
       checkJobAlerts(newJob);
-      showSafeNotification(`💼 آگهی استخدام جدید در کارباما: ${newJob.title}`, {
-        body: `${newJob.company} (${newJob.city}) - حقوق: ${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
-        icon: newJob.imageUrl || '/pwa-192x192.png',
-        tag: `new-job-${newJob.id}`,
-      });
+
+      // Create notification entry so numeric badge counter increments
+      const notifItem: JobNotification = {
+        id: 'notif-job-' + Date.now(),
+        alertId: 'system-new-job',
+        jobId: newJob.id,
+        jobTitle: newJob.title,
+        company: newJob.company,
+        city: newJob.city,
+        salaryText: `${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
+        imageUrl: newJob.imageUrl,
+        message: `آگهی جدید استخدام: ${newJob.title} در ${newJob.city} (${newJob.company})`,
+        read: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      setJobNotifications((prev) => [notifItem, ...prev]);
+      syncNotificationToFirestore(notifItem);
+
+      // Play distinct 4-tone ascending ding sound and present safe system notification
+      showSafeNotification(
+        `💼 آگهی استخدام جدید در کارباما: ${newJob.title}`,
+        {
+          body: `${newJob.company} (${newJob.city}) - حقوق: ${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
+          icon: newJob.imageUrl || '/pwa-192x192.png',
+          tag: `new-job-${newJob.id}`,
+        },
+        'job_hotel'
+      );
     }
   };
 
@@ -1589,11 +1616,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (isOnlinePaid) {
       showToast('پرداخت آنلاین ۵۰۰ لیر تایید شد و آگهی شما بلافاصله در سایت منتشر گردید.', 'success');
       checkJobAlerts(newJob);
-      showSafeNotification(`💼 آگهی استخدام جدید در کارباما: ${newJob.title}`, {
-        body: `${newJob.company} (${newJob.city}) - حقوق: ${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
-        icon: newJob.imageUrl || '/pwa-192x192.png',
-        tag: `new-job-${newJob.id}`,
-      });
+
+      // Create notification entry so numeric badge counter increments
+      const notifItem: JobNotification = {
+        id: 'notif-job-' + Date.now(),
+        alertId: 'system-new-job',
+        jobId: newJob.id,
+        jobTitle: newJob.title,
+        company: newJob.company,
+        city: newJob.city,
+        salaryText: `${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
+        imageUrl: newJob.imageUrl,
+        message: `آگهی جدید استخدام: ${newJob.title} در ${newJob.city} (${newJob.company})`,
+        read: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      setJobNotifications((prev) => [notifItem, ...prev]);
+      syncNotificationToFirestore(notifItem);
+
+      showSafeNotification(
+        `💼 آگهی استخدام جدید در کارباما: ${newJob.title}`,
+        {
+          body: `${newJob.company} (${newJob.city}) - حقوق: ${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
+          icon: newJob.imageUrl || '/pwa-192x192.png',
+          tag: `new-job-${newJob.id}`,
+        },
+        'job_hotel'
+      );
     } else {
       showToast('آگهی و فیش واریز شما با موفقیت ثبت شد و پس از بررسی و تایید مدیر منتشر خواهد شد.', 'success');
     }
@@ -1612,6 +1662,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             paymentAdminNote: adminNote || 'پرداخت ۵۰۰ لیر تایید شد و آگهی فعال گردید.',
           };
           checkJobAlerts(updated);
+
+          const notifItem: JobNotification = {
+            id: 'notif-job-app-' + Date.now(),
+            alertId: 'system-new-job',
+            jobId: updated.id,
+            jobTitle: updated.title,
+            company: updated.company,
+            city: updated.city,
+            salaryText: `${updated.salaryMin.toLocaleString('fa-IR')} تا ${updated.salaryMax.toLocaleString('fa-IR')} لیر`,
+            imageUrl: updated.imageUrl,
+            message: `آگهی جدید استخدام تایید گردید: ${updated.title} در ${updated.city}`,
+            read: false,
+            createdAt: new Date().toISOString(),
+          };
+
+          setJobNotifications((notifs) => [notifItem, ...notifs]);
+          syncNotificationToFirestore(notifItem);
+
+          showSafeNotification(
+            `💼 آگهی استخدام جدید در کارباما: ${updated.title}`,
+            {
+              body: `${updated.company} (${updated.city})`,
+              icon: updated.imageUrl || '/pwa-192x192.png',
+              tag: `new-job-${updated.id}`,
+            },
+            'job_hotel'
+          );
+
           return updated;
         }
         return j;
@@ -1661,6 +1739,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: 'hotel-' + Date.now(),
     };
     setHotels((prev) => [newHotel, ...prev]);
+
+    // Push notification entry for new Hotel to increment numeric badge counter
+    const hotelNotifItem: JobNotification = {
+      id: 'notif-hotel-' + Date.now(),
+      alertId: 'system-new-hotel',
+      jobId: newHotel.id,
+      jobTitle: `🏨 هتل جدید: ${newHotel.name}`,
+      company: newHotel.name,
+      city: newHotel.city,
+      salaryText: `${newHotel.pricePerNight.toLocaleString('fa-IR')} لیر (هر شب)`,
+      imageUrl: newHotel.imageUrl,
+      message: `اقامتگاه و هتل جدید در کارباما: ${newHotel.name} در ${newHotel.city}`,
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    setJobNotifications((prev) => [hotelNotifItem, ...prev]);
+    syncNotificationToFirestore(hotelNotifItem);
+
+    // Play distinct 4-tone ascending ding sound for new hotel addition
+    showSafeNotification(
+      `🏨 هتل جدید در کارباما: ${newHotel.name}`,
+      {
+        body: `اقامتگاه ${newHotel.name} در ${newHotel.city} با امکانات کامل رزرو اضافه گردید.`,
+        icon: newHotel.imageUrl || '/pwa-192x192.png',
+        tag: `new-hotel-${newHotel.id}`,
+      },
+      'job_hotel'
+    );
+
     showToast('هتل جدید با موفقیت به کارباما اضافه شد.', 'success');
   };
 
@@ -2187,22 +2295,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     phone: string;
     nationalId: string;
   }): { success: boolean; error?: string; chat?: LiveChatSession } => {
-    const cleanFirst = input.firstName.trim();
-    const cleanLast = input.lastName.trim();
-    const cleanPhone = input.phone.trim();
-    const cleanNatId = input.nationalId.replace(/\D/g, '');
+    const cleanFirst = input.firstName.trim() || currentSeeker?.fullName?.split(' ')[0] || 'کارجو';
+    const cleanLast = input.lastName.trim() || currentSeeker?.fullName?.split(' ').slice(1).join(' ') || 'عزیز';
+    const cleanPhone = input.phone.trim() || currentSeeker?.phone || '۰۹۱۲۰۰۰۰۰۰۰';
+    const cleanNatId = input.nationalId.replace(/\D/g, '') || currentSeeker?.nationalId || '۰۰۰۰۰۰۰۰۰۰';
 
-    if (!cleanFirst || !cleanLast) {
-      return { success: false, error: 'لطفاً نام و نام خانوادگی خود را وارد نمایید.' };
-    }
-    if (!cleanPhone || cleanPhone.length < 7) {
-      return { success: false, error: 'لطفاً شماره تلفن معتبر وارد نمایید.' };
-    }
-    if (!cleanNatId || cleanNatId.length < 10) {
-      return { success: false, error: 'لطفاً شماره کد ملی ۱۰ رقمی خود را کامل وارد نمایید.' };
-    }
-
-    const fullName = `${cleanFirst} ${cleanLast}`;
+    const fullName = currentSeeker?.fullName || `${cleanFirst} ${cleanLast}`.trim();
     const now = new Date().toISOString();
 
     const newSession: LiveChatSession = {
@@ -2214,12 +2312,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       phone: cleanPhone,
       nationalId: cleanNatId,
       status: 'pending',
+      isConsultationPaid: true,
       messages: [
         {
           id: 'msg-' + Date.now(),
           sender: 'seeker',
           senderName: fullName,
-          text: `درخواست گفتگوی آنلاین توسط «${fullName}» (کد ملی: ${cleanNatId} | تلفن: ${cleanPhone}) ثبت گردید.`,
+          text: `حق مشاوره (۷۵۰,۰۰۰ تومان) واریز شد. درخواست گفتگوی آنلاین توسط «${fullName}» ثبت گردید.`,
           createdAt: now,
         },
       ],
@@ -2232,6 +2331,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setChatSessions((prev) => [newSession, ...prev]);
     setActiveChatId(newSession.id);
     syncChatToFirestore(newSession);
+
+    // Play ding sound & trigger system notification
+    playNotificationDingSound();
+    showSafeNotification(`💬 درخواست چت آنلاین جدید: ${fullName}`, {
+      body: `کارجو «${fullName}» (تلفن: ${cleanPhone}) درخواست گفتگو ثبت کرد.`,
+      tag: `new-chat-${newSession.id}`,
+    });
 
     addAdminNotification({
       type: 'seeker_registered',
@@ -2246,6 +2352,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const approveLiveChat = (chatId: string) => {
     const now = new Date().toISOString();
+    playNotificationDingSound();
     setChatSessions((prev) =>
       prev.map((c) => {
         if (c.id === chatId) {
@@ -2296,6 +2403,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const sendLiveChatMessage = (chatId: string, sender: 'seeker' | 'admin', text: string) => {
     if (!text.trim()) return;
     const now = new Date().toISOString();
+
+    // Play chime sound effect for incoming message or outgoing message
+    playNotificationDingSound();
+
     setChatSessions((prev) =>
       prev.map((c) => {
         if (c.id === chatId) {
@@ -2313,6 +2424,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             unreadBySeeker: sender === 'admin' ? c.unreadBySeeker + 1 : 0,
             updatedAt: now,
           };
+
+          // Trigger browser notification for admin if sent by seeker
+          if (sender === 'seeker') {
+            showSafeNotification(`💬 پیام جدید از ${c.fullName}`, {
+              body: text.trim(),
+              tag: `chat-msg-${c.id}`,
+            });
+          }
+
           syncChatToFirestore(updated);
           return updated;
         }
