@@ -1080,19 +1080,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       (snapshot) => {
         if (!snapshot.empty) {
           const firestoreNotifs: JobNotification[] = [];
-          snapshot.docChanges().forEach((change) => {
-            if (change.type === 'added') {
-              const notifData = change.doc.data() as any;
-              if (notifData && (notifData.title || notifData.jobTitle)) {
-                showSafeNotification(`🔔 ${notifData.title || notifData.jobTitle}`, {
-                  body: notifData.message || notifData.body || 'اعلان جدید در سامانه کارباما دریافت شد.',
-                  icon: '/pwa-192x192.png',
-                  tag: notifData.id,
-                });
-              }
-            }
-          });
-
           snapshot.forEach((docSnap) => {
             const data = docSnap.data() as JobNotification;
             if (data && data.id) {
@@ -1325,6 +1312,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentSeekerId(newSeeker.id);
     setRole('jobseeker');
     setActiveTab('jobs');
+
+    addAdminNotification({
+      type: 'seeker_registered',
+      title: '👤 ثبت‌نام کارجو جدید',
+      message: `کارجو جدید «${newSeeker.fullName}» با کد ملی ${newSeeker.nationalId} در سامانه کارباما ثبت‌نام نمود.`,
+      data: { seekerId: newSeeker.id },
+    });
+
     showToast(`ثبت‌نام با موفقیت انجام شد. خوش آمدید ${newSeeker.fullName}!`, 'success');
     return { success: true };
   };
@@ -1535,12 +1530,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (alert.enableBrowserPush) {
-        showSafeNotification(`🔔 فرصت شغلی جدید در کارباما: ${newJob.title}`, {
-          body: `${newJob.company} (${newJob.city}) - حقوق: ${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
-          icon: newJob.imageUrl || '/pwa-192x192.png',
-          dir: 'rtl',
-          lang: 'fa',
-        });
+        showSafeNotification(
+          `🔔 فرصت شغلی جدید در کارباما: ${newJob.title}`,
+          {
+            body: `${newJob.company} (${newJob.city}) - حقوق: ${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
+            icon: newJob.imageUrl || '/pwa-192x192.png',
+            dir: 'rtl',
+            lang: 'fa',
+          },
+          'none' // Avoid duplicate audio chime if already handled
+        );
       }
     });
   };
@@ -1563,7 +1562,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (newJob.isActive && (newJob.paymentStatus === 'paid' || !newJob.paymentStatus)) {
       checkJobAlerts(newJob);
 
-      // Create notification entry so numeric badge counter increments
+      // Create SINGLE notification entry for general users
       const notifItem: JobNotification = {
         id: 'notif-job-' + Date.now(),
         alertId: 'system-new-job',
@@ -1581,16 +1580,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setJobNotifications((prev) => [notifItem, ...prev]);
       syncNotificationToFirestore(notifItem);
 
-      // Play distinct 4-tone ascending ding sound and present safe system notification
-      showSafeNotification(
-        `💼 آگهی استخدام جدید در کارباما: ${newJob.title}`,
-        {
-          body: `${newJob.company} (${newJob.city}) - حقوق: ${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
-          icon: newJob.imageUrl || '/pwa-192x192.png',
-          tag: `new-job-${newJob.id}`,
-        },
-        'job_hotel'
-      );
+      // Play single distinct 4-tone ascending ding sound
+      playNewJobHotelDingSound();
     }
   };
 
@@ -1617,7 +1608,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showToast('پرداخت آنلاین ۵۰۰ لیر تایید شد و آگهی شما بلافاصله در سایت منتشر گردید.', 'success');
       checkJobAlerts(newJob);
 
-      // Create notification entry so numeric badge counter increments
       const notifItem: JobNotification = {
         id: 'notif-job-' + Date.now(),
         alertId: 'system-new-job',
@@ -1635,16 +1625,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setJobNotifications((prev) => [notifItem, ...prev]);
       syncNotificationToFirestore(notifItem);
 
-      showSafeNotification(
-        `💼 آگهی استخدام جدید در کارباما: ${newJob.title}`,
-        {
-          body: `${newJob.company} (${newJob.city}) - حقوق: ${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
-          icon: newJob.imageUrl || '/pwa-192x192.png',
-          tag: `new-job-${newJob.id}`,
-        },
-        'job_hotel'
-      );
+      // Play single distinct 4-tone ascending ding sound
+      playNewJobHotelDingSound();
     } else {
+      // Notify Admin panel specifically about employer payment submission
+      addAdminNotification({
+        type: 'employer_payment',
+        title: '💳 فیش واریزی آگهی استخدام کارفرما',
+        message: `کارفرما فیش واریزی ۵۰۰ لیر را برای آگهی «${newJob.title}» جهت تایید ثبت نمود.`,
+        data: { jobId: newJob.id },
+      });
       showToast('آگهی و فیش واریز شما با موفقیت ثبت شد و پس از بررسی و تایید مدیر منتشر خواهد شد.', 'success');
     }
 
@@ -1679,16 +1669,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
           setJobNotifications((notifs) => [notifItem, ...notifs]);
           syncNotificationToFirestore(notifItem);
-
-          showSafeNotification(
-            `💼 آگهی استخدام جدید در کارباما: ${updated.title}`,
-            {
-              body: `${updated.company} (${updated.city})`,
-              icon: updated.imageUrl || '/pwa-192x192.png',
-              tag: `new-job-${updated.id}`,
-            },
-            'job_hotel'
-          );
+          playNewJobHotelDingSound();
 
           return updated;
         }
