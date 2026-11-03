@@ -47,6 +47,7 @@ import {
   Landmark,
   Building2,
   X,
+  Download,
 } from 'lucide-react';
 
 export const AdminPanel: React.FC = () => {
@@ -520,6 +521,56 @@ export const AdminPanel: React.FC = () => {
           >
             <LogOut className="w-4 h-4" />
           </button>
+        </div>
+      </div>
+
+      {/* Cafe Bazaar APK & App Bundle (.aab) Quick Download Card */}
+      <div className="bg-gradient-to-r from-emerald-950/60 via-slate-900 to-slate-900 border border-emerald-500/40 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-emerald-300 font-extrabold text-sm">
+            <Download className="w-4 h-4 text-emerald-400" />
+            <span>فایل‌های رسمی ویژه آپلود در پیشخوان کافه‌بازار (APK و App Bundle)</span>
+            <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono text-[11px]">
+              v10.0.0.18 | Code: 100018
+            </span>
+          </div>
+          <p className="text-xs text-slate-300">
+            نام بسته: <code className="text-amber-300 font-mono">app.karbama.twa</code> — امضای دیجیتال <code className="text-emerald-300 font-mono">V1 + V2</code> استاندارد اندروید (قابل بارگذاری در بخش APK یا AAB کافه‌بازار)
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <a
+            href="/downloads/karbama-v10.0.0.18.apk"
+            download="karbama-v10.0.0.18.apk"
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5"
+          >
+            <Download className="w-4 h-4" />
+            <span>دانلود فایل APK (v10.0.0.18)</span>
+          </a>
+          <a
+            href="/downloads/karbama-v10.0.0.18.aab"
+            download="karbama-v10.0.0.18.aab"
+            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5"
+          >
+            <Download className="w-4 h-4" />
+            <span>دانلود App Bundle (فایل .aab)</span>
+          </a>
+          <a
+            href="/downloads/karbama-cafebazaar-v10.0.0.18.zip"
+            download="karbama-cafebazaar-v10.0.0.18.zip"
+            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5"
+          >
+            <Download className="w-4 h-4" />
+            <span>دانلود زیپ کافه‌بازار (.zip)</span>
+          </a>
+          <a
+            href="/downloads/karbama-dist.zip"
+            download="karbama-dist-v10.0.0.18.zip"
+            className="px-3.5 py-2 bg-sky-700 hover:bg-sky-600 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5"
+          >
+            <Download className="w-4 h-4" />
+            <span>دانلود زیپ هاست (dist.zip)</span>
+          </a>
         </div>
       </div>
 

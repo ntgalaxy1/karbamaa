@@ -15,9 +15,8 @@ import {
   Sparkles,
   Github,
   Terminal,
-  FileCode2,
-  Globe,
-  Lock,
+  Package,
+  Store,
 } from 'lucide-react';
 
 interface ApkDownloadModalProps {
@@ -25,10 +24,15 @@ interface ApkDownloadModalProps {
   onClose: () => void;
 }
 
+const APP_VERSION = '10.0.0.18';
+const APP_VERSION_CODE = '100018';
+const APP_PACKAGE_NAME = 'app.karbama.twa';
+
 export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onClose }) => {
   const { isInstallable, install } = usePWAInstall();
   const { isAdminLoggedIn } = useApp();
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedPkg, setCopiedPkg] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [copiedGhCmd, setCopiedGhCmd] = useState(false);
   const [installGuideMsg, setInstallGuideMsg] = useState(false);
@@ -40,20 +44,20 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
       ? window.location.origin + window.location.pathname
       : 'https://karbama.app';
 
-  const handleCopyLink = async () => {
+  const copyText = async (text: string, setter: (v: boolean) => void) => {
     try {
       if (navigator.clipboard) {
-        await navigator.clipboard.writeText(appUrl);
+        await navigator.clipboard.writeText(text);
       } else {
         const input = document.createElement('input');
-        input.value = appUrl;
+        input.value = text;
         document.body.appendChild(input);
         input.select();
         document.execCommand('copy');
         document.body.removeChild(input);
       }
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
+      setter(true);
+      setTimeout(() => setter(false), 2500);
     } catch {
       // Fallback
     }
@@ -85,9 +89,11 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
             </div>
             <div>
               <h3 className="font-extrabold text-white text-sm sm:text-base">
-                دانلود اپلیکیشن و نسخه‌های کارباما
+                دانلود اپلیکیشن و پکیج کافه‌بازار (APK / AAB)
               </h3>
-              <p className="text-[11px] text-slate-400">دانلود نسخه رسمی اندروید (APK) و وب‌اپلیکیشن (PWA)</p>
+              <p className="text-[11px] text-slate-400">
+                نسخه رسمی اندروید v{APP_VERSION} (کد نسخه: {APP_VERSION_CODE})
+              </p>
             </div>
           </div>
           <button
@@ -102,51 +108,128 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
         {/* Scrollable Content Container */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs overscroll-contain">
           
-          {/* Main Download Card - Direct APK */}
-          <div className="p-4 bg-gradient-to-br from-emerald-950/50 via-slate-900 to-slate-900 border border-emerald-500/40 rounded-2xl space-y-3 shadow-lg">
+          {/* Cafe Bazaar & Store Release Card (APK + AAB) */}
+          <div className="p-4 bg-gradient-to-br from-emerald-950/60 via-slate-900 to-slate-900 border-2 border-emerald-500/40 rounded-2xl space-y-3 shadow-lg">
             <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2.5">
-              <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs sm:text-sm">
-                <Download className="w-4 h-4 text-emerald-400" />
-                <span>دانلود مستقیم فایل نصبی اندروید (APK)</span>
+              <div className="flex items-center gap-2 text-emerald-300 font-extrabold text-xs sm:text-sm">
+                <Store className="w-4 h-4 text-emerald-400" />
+                <span>فایل‌های آماده آپلود در پیشخوان کافه‌بازار (APK و AAB)</span>
               </div>
               <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold">
-                v10.0.0.12
+                v{APP_VERSION}
               </span>
             </div>
 
             <p className="text-slate-300 text-[11.5px] leading-relaxed">
-              فایل نصبی مستقیم اندروید با نام پکیج رسمی <code className="text-amber-300 font-mono">app.karbama.twa</code> امضا و در سرور و گیت‌هاب آماده نصب می‌باشد.
+              هر دو فرمت مورد پذیرش <strong>پیشخوان توسعه‌دهندگان کافه‌بازار</strong> (فایل نصبی <code className="text-emerald-300 font-mono">.apk</code> و باندل <code className="text-amber-300 font-mono">.aab</code>) با امضای دیجیتال <code className="text-emerald-300 font-mono">V1 + V2</code> و مانیفست باینری آماده دانلود و بارگذاری هستند:
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            {/* Primary Download Buttons: APK & AAB */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
               <a
-                href="/karbama-latest.apk"
-                download="karbama-v10.0.0.12.apk"
-                className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition flex items-center justify-center gap-2 text-xs shadow-md shadow-emerald-700/30"
+                href={`/downloads/karbama-v${APP_VERSION}.apk`}
+                download={`karbama-v${APP_VERSION}.apk`}
+                className="py-3 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl transition flex flex-col items-center justify-center gap-1 text-xs shadow-md shadow-emerald-700/30"
               >
-                <Download className="w-4 h-4" />
-                <span>دانلود مستقیم APK</span>
+                <div className="flex items-center gap-1.5">
+                  <Download className="w-4 h-4" />
+                  <span>دانلود فایل APK کافه‌بازار</span>
+                </div>
+                <span className="text-[10px] text-emerald-100 font-mono">
+                  karbama-v{APP_VERSION}.apk
+                </span>
               </a>
 
               <a
-                href="https://github.com/ntgalaxy1/karbamaa/raw/main/karbama-latest.apk"
+                href={`/downloads/karbama-v${APP_VERSION}.aab`}
+                download={`karbama-v${APP_VERSION}.aab`}
+                className="py-3 px-3 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black rounded-xl transition flex flex-col items-center justify-center gap-1 text-xs shadow-md shadow-amber-700/20"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Package className="w-4 h-4" />
+                  <span>دانلود App Bundle (فایل AAB)</span>
+                </div>
+                <span className="text-[10px] text-slate-900 font-mono font-bold">
+                  karbama-v{APP_VERSION}.aab
+                </span>
+              </a>
+
+              <a
+                href={`/downloads/karbama-cafebazaar-v${APP_VERSION}.zip`}
+                download={`karbama-cafebazaar-v${APP_VERSION}.zip`}
+                className="py-3 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl transition flex flex-col items-center justify-center gap-1 text-xs shadow-md shadow-indigo-700/30"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Download className="w-4 h-4" />
+                  <span>دانلود فایل زیپ کافه‌بازار (APK+AAB)</span>
+                </div>
+                <span className="text-[10px] text-indigo-100 font-mono">
+                  karbama-cafebazaar-v{APP_VERSION}.zip
+                </span>
+              </a>
+
+              <a
+                href="/downloads/karbama-dist.zip"
+                download={`karbama-dist-v${APP_VERSION}.zip`}
+                className="py-3 px-3 bg-sky-700 hover:bg-sky-600 text-white font-black rounded-xl transition flex flex-col items-center justify-center gap-1 text-xs shadow-md shadow-sky-800/30"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Download className="w-4 h-4" />
+                  <span>دانلود فایل زیپ هاست (dist.zip)</span>
+                </div>
+                <span className="text-[10px] text-sky-100 font-mono">
+                  karbama-dist-v{APP_VERSION}.zip
+                </span>
+              </a>
+            </div>
+
+            {/* Cafe Bazaar Technical Specs Box */}
+            <div className="p-3 bg-slate-950/90 border border-slate-800 rounded-xl space-y-2 text-[11px]">
+              <div className="flex items-center justify-between text-slate-400">
+                <span>نام بسته (Package Name):</span>
+                <button
+                  type="button"
+                  onClick={() => copyText(APP_PACKAGE_NAME, setCopiedPkg)}
+                  className="font-mono text-amber-300 hover:text-amber-200 flex items-center gap-1 font-bold"
+                >
+                  <span>{APP_PACKAGE_NAME}</span>
+                  {copiedPkg ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                </button>
+              </div>
+              <div className="flex items-center justify-between text-slate-400">
+                <span>کد نسخه (Version Code):</span>
+                <span className="font-mono text-emerald-400 font-bold">{APP_VERSION_CODE}</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-400">
+                <span>نام نسخه (Version Name):</span>
+                <span className="font-mono text-white font-bold">{APP_VERSION}</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-400">
+                <span>نسخه SDK و امضا:</span>
+                <span className="font-mono text-sky-400">MinSDK 21 / TargetSDK 34 (V1+V2 Signed)</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <a
+                href="https://github.com/ntgalaxy1/karbamaa/releases"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 font-bold rounded-xl transition flex items-center justify-center gap-1.5 text-xs"
               >
                 <Github className="w-4 h-4 text-emerald-400" />
-                <span>دانلود APK از گیت‌هاب</span>
+                <span>دریافت از GitHub Releases</span>
               </a>
-            </div>
 
-            <button
-              type="button"
-              onClick={handleInstallClick}
-              className="w-full py-2.5 px-3 bg-slate-800/90 hover:bg-slate-700 text-amber-300 border border-amber-500/30 font-bold rounded-xl transition flex items-center justify-center gap-1.5 text-xs"
-            >
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>نصب آنلاین وب‌اپلیکیشن (Add to Home Screen)</span>
-            </button>
+              <button
+                type="button"
+                onClick={handleInstallClick}
+                className="py-2.5 px-3 bg-slate-800/90 hover:bg-slate-700 text-amber-300 border border-amber-500/30 font-bold rounded-xl transition flex items-center justify-center gap-1.5 text-xs"
+              >
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>نصب وب‌اپلیکیشن (PWA)</span>
+              </button>
+            </div>
 
             {installGuideMsg && (
               <div className="p-2.5 bg-amber-950/40 border border-amber-500/40 rounded-xl text-amber-200 text-[11px] leading-relaxed">
@@ -188,7 +271,7 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
               />
               <button
                 type="button"
-                onClick={handleCopyLink}
+                onClick={() => copyText(appUrl, setCopiedLink)}
                 className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold rounded-xl transition flex items-center gap-1 text-[11px] shrink-0"
               >
                 {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
@@ -203,7 +286,7 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
               <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
                 <div className="flex items-center gap-2 text-amber-300 font-extrabold text-xs">
                   <ShieldCheck className="w-4 h-4 text-amber-400" />
-                  <span>ابزارهای اختصاصی انتشار (ویژه مدیریت)</span>
+                  <span>ابزارهای اختصاصی انتشار کافه‌بازار و هاست (ویژه مدیریت)</span>
                 </div>
                 <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
                   دسترسی مدیر
@@ -238,17 +321,11 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
                 <div className="flex items-center justify-between text-[10.5px] text-slate-400">
                   <span className="flex items-center gap-1">
                     <Terminal className="w-3 h-3 text-emerald-400" />
-                    دستور ساخت و پوش خودکار انتشار در گیت‌هاب:
+                    دستور ساخت و پوش خودکار APK و AAB در گیت‌هاب:
                   </span>
                   <button
                     type="button"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText('bash scripts/publish-to-github.sh');
-                        setCopiedGhCmd(true);
-                        setTimeout(() => setCopiedGhCmd(false), 2000);
-                      } catch {}
-                    }}
+                    onClick={() => copyText('bash scripts/publish-to-github.sh', setCopiedGhCmd)}
                     className="text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-bold"
                   >
                     {copiedGhCmd ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
@@ -268,7 +345,7 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
                   className="text-amber-300 hover:underline flex items-center gap-1"
                 >
                   <ExternalLink className="w-3 h-3" />
-                  <span>راهنمای کامل نام بسته و کلید امضا (TWA Guide)</span>
+                  <span>راهنمای کامل کافه‌بازار و کلید امضا</span>
                 </a>
                 <a
                   href="/DEPLOYMENT_GUIDE_FA.md"
@@ -286,10 +363,10 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
             <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center justify-between text-[11px] text-slate-400">
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>نسخه تاییدشده و امن کارباما v10.0.0.12</span>
+                <span>نسخه تاییدشده و امن کارباما v{APP_VERSION}</span>
               </span>
               <span className="font-mono text-[10px] text-slate-500">
-                Package: app.karbama.twa
+                Package: {APP_PACKAGE_NAME}
               </span>
             </div>
           )}

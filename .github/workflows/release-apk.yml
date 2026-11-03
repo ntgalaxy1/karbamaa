@@ -1,4 +1,4 @@
-name: Build & Publish Karbama Android APK to GitHub
+name: Build & Publish Karbama Android APK & AAB (Cafe Bazaar Ready)
 
 on:
   push:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   release-apk:
-    name: Build APK & Publish to GitHub Releases
+    name: Build Signed APK + AAB & Publish to GitHub Releases
     runs-on: ubuntu-latest
 
     steps:
@@ -31,38 +31,49 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 📦 Install Dependencies & Build Web App + APK
+      - name: 📦 Install Dependencies & Build Web App + Signed APK & AAB
         run: |
           npm install --legacy-peer-deps
           npm run build
           python3 scripts/generate-apk.py
           python3 scripts/zip-dist.py
 
-      - name: 📤 Upload APK to GitHub Actions Artifacts
+      - name: 📤 Upload APK & AAB to GitHub Actions Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: karbama-android-apk
+          name: karbama-cafebazaar-bundle
           path: |
             karbama-latest.apk
+            karbama-latest.aab
             public/karbama-v*.apk
+            public/karbama-v*.aab
           retention-days: 90
 
-      - name: 🚀 Publish APK & Build ZIP to GitHub Releases
+      - name: 🚀 Publish APK, AAB & Build ZIP to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v10.0.0.12' }}
-          name: "کارباما نسخه رسمی اندروید (APK) و وب‌اپلیکیشن"
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v10.0.0.18' }}
+          name: "کارباما نسخه رسمی اندروید ویژه کافه‌بازار (APK + AAB v10.0.0.18)"
           body: |
-            ## 📱 نسخه رسمی اندروید کارباما (`app.karbama.twa`)
+            ## 📱 نسخه رسمی اندروید کارباما ویژه کافه‌بازار و نصب مستقیم (`app.karbama.twa`)
 
-            فایل نصبی مستقیم اندروید (**APK**) و بسته کامل هاست (**dist.zip**) آماده دانلود است:
+            فایل نصبی مستقیم اندروید (**APK**)، باندل استاندارد پیشخوان کافه‌بازار (**AAB**) و بسته کامل هاست (**dist.zip**) آماده دانلود است:
+
+            ### 📋 مشخصات فنی نسخه:
+            - **Package Name:** `app.karbama.twa`
+            - **Version Name:** `10.0.0.18`
+            - **Version Code:** `100018`
+            - **Signature:** `V1 (JAR) + V2 (APK Signature Scheme v2)`
 
             ### 📥 فایل‌های پیوست‌شده در پایین صفحه (Assets):
-            1. **`karbama-latest.apk`** / **`karbama-v10.0.0.12.apk`**: فایل نصبی مستقیم اندروید کارباما
-            2. **`karbama-dist.zip`**: فایل زیپ آماده آپلود در `public_html` هاست شخصی (cPanel / DirectAdmin)
+            1. **`karbama-v10.0.0.18.apk`** / **`karbama-latest.apk`**: فایل نصبی اندروید مناسب آپلود در کافه‌بازار (بخش APK) و نصب مستقیم
+            2. **`karbama-v10.0.0.18.aab`** / **`karbama-latest.aab`**: فایل App Bundle مناسب آپلود در پیشخوان کافه‌بازار (بخش AAB)
+            3. **`karbama-dist.zip`**: فایل زیپ آماده آپلود در `public_html` هاست شخصی (cPanel / DirectAdmin)
           files: |
             karbama-latest.apk
+            karbama-latest.aab
             public/karbama-v*.apk
+            public/karbama-v*.aab
             public/karbama-dist.zip
           draft: false
           prerelease: false
