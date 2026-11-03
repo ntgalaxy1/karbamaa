@@ -44,6 +44,7 @@ const CATEGORY_TABS: { key: string; label: string; icon: any }[] = [
 ];
 
 import { CITIES_WITH_ALL } from '../data/turkeyCities';
+import { getDistrictsForCity } from '../data/turkeyData';
 
 const CITIES = CITIES_WITH_ALL;
 
@@ -69,6 +70,7 @@ export const EssentialAddresses: React.FC = () => {
   // Official addresses filtering
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedCity, setSelectedCity] = useState('همه شهرها');
+  const [selectedDistrict, setSelectedDistrict] = useState('همه');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -126,6 +128,9 @@ export const EssentialAddresses: React.FC = () => {
         return false;
       }
       if (selectedCity !== 'همه شهرها' && item.city !== selectedCity && item.city !== 'سراسری ترکیه') {
+        return false;
+      }
+      if (selectedDistrict !== 'همه' && item.district && !item.district.includes(selectedDistrict)) {
         return false;
       }
       if (searchQuery.trim()) {
@@ -454,22 +459,40 @@ export const EssentialAddresses: React.FC = () => {
               </div>
             </div>
 
-            {/* City Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none pt-2 border-t border-slate-800">
-              <span className="text-xs text-slate-400 shrink-0 ml-2 font-medium">فیلتر شهر:</span>
-              {CITIES.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setSelectedCity(c)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium shrink-0 transition ${
-                    selectedCity === c
-                      ? 'bg-slate-200 text-slate-900 font-bold'
-                      : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                  }`}
+            {/* City & District Filter Row */}
+            <div className="flex flex-wrap items-center gap-2 pb-1 pt-2 border-t border-slate-800">
+              <span className="text-xs text-slate-400 shrink-0 font-medium ml-1">فیلتر شهر و منطقه:</span>
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-none flex-1">
+                {CITIES.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => {
+                      setSelectedCity(c);
+                      setSelectedDistrict('همه');
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium shrink-0 transition ${
+                      selectedCity === c
+                        ? 'bg-slate-200 text-slate-900 font-bold'
+                        : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+
+              {selectedCity !== 'همه شهرها' && (
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 text-amber-300 rounded-lg px-2.5 py-1 text-xs font-bold"
                 >
-                  {c}
-                </button>
-              ))}
+                  <option value="همه">همه منطقه‌های {selectedCity}</option>
+                  {getDistrictsForCity(selectedCity).map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 

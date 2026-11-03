@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { TurkishLevel, ResidenceStatus, TargetCountry, Gender } from '../types';
 import { CommitmentModal } from './CommitmentModal';
+import { checkPasswordStrength, isValidEmail } from '../utils/validators';
+import { getDistrictsForCity } from '../data/turkeyData';
 import {
   X,
   User,
@@ -38,6 +40,8 @@ import {
   Square,
   Briefcase,
   Languages,
+  Mail,
+  KeyRound,
 } from 'lucide-react';
 
 interface AuthModalProps {
@@ -219,10 +223,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     registerSeeker,
     loginSeeker,
     loginAdmin,
-    switchToDemoUser,
-    switchToDemoAdmin,
+    recoverPassword,
     brokerSettings,
-    setActiveTab,
   } = useApp();
 
   const [mode, setMode] = useState<'login' | 'register' | 'admin'>(defaultMode);
@@ -237,10 +239,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
   const [nationalId, setNationalId] = useState('');
   const [phoneCountryCode, setPhoneCountryCode] = useState('+98');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [gender, setGender] = useState<Gender>('male');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Password Recovery state
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [recoverInput, setRecoverInput] = useState('');
+  const [recoverResult, setRecoverResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // 2. آدرس دقیق سکونت ایران و تعیین کشور مقصد (۴ کشور)
   const [iranProvince, setIranProvince] = useState('تهران');
@@ -248,6 +256,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
   const [iranAddress, setIranAddress] = useState('');
   const [targetCountry, setTargetCountry] = useState<TargetCountry>('ترکیه');
   const [targetCity, setTargetCity] = useState('استانبول');
+  const [targetDistrict, setTargetDistrict] = useState('فاتیح');
 
   // 3. شغل‌ها، تخصص‌ها، جستجو، حرفه کارجو، تسلط به زبان کشور انتخابی و زبان‌های بلدم
   const [selectedJobs, setSelectedJobs] = useState<string[]>(['سرآشپز غذاهای ایرانی و فرنگی']);
@@ -283,6 +292,52 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
 
   // Error message
   const [error, setError] = useState<string | null>(null);
+
+  // Password checks for visual feedback
+  const passCheck = checkPasswordStrength(password);
+
+  // Validation per step
+  const validateStep1 = (): boolean => {
+    if (!firstName.trim()) {
+      setError('لطفاً نام خود را وارد کنید.');
+      return false;
+    }
+    if (!lastName.trim()) {
+      setError('لطفاً نام خانوادگی خود را وارد کنید.');
+      return false;
+    }
+    if (!fatherName.trim()) {
+      setError('لطفاً نام پدر را وارد نمایید.');
+      return false;
+    }
+    const cleanNatId = nationalId.replace(/\s/g, '');
+    if (!cleanNatId || cleanNatId.length !== 10 || !/^\d+$/.test(cleanNatId)) {
+      setError('کد ملی باید دقیقاً ۱۰ رقم عددی باشد.');
+      return false;
+    }
+    const cleanPhone = phoneNumber.replace(/\s/g, '');
+    if (!cleanPhone || cleanPhone.length < 7 || !/^\d+$/.test(cleanPhone)) {
+      setError('لطفاً شماره تلفن همراه معتبر را وارد کنید.');
+      return false;
+    }
+    if (!email.trim() || !isValidEmail(email)) {
+      setError('لطفاً آدرس ایمیل معتبر وارد نمایید (جهت بازیابی رمز عبور).');
+      return false;
+    }
+    if (!gender) {
+      setError('لطفاً جنسیت خود را مشخص کنید.');
+      return false;
+    }
+    if (!username.trim() || username.trim().length < 3) {
+      setError('نام کاربری ورود باید حداقل ۳ کاراکتر باشد.');
+      return false;
+    }
+    if (!passCheck.isValid) {
+      setError(passCheck.error || 'رمز عبور باید حداقل ۸ کاراکتر و شامل حروف بزرگ، کوچک و اعداد باشد.');
+      return false;
+    }
+    return true;
+  };
 
   // Initialize canvas when entering Step 4
   useEffect(() => {
@@ -402,44 +457,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     j.category.toLowerCase().includes(jobSearchQuery.toLowerCase())
   );
 
-  // Validation per step
-  const validateStep1 = (): boolean => {
-    if (!firstName.trim()) {
-      setError('لطفاً نام خود را وارد کنید.');
-      return false;
-    }
-    if (!lastName.trim()) {
-      setError('لطفاً نام خانوادگی خود را وارد کنید.');
-      return false;
-    }
-    if (!fatherName.trim()) {
-      setError('لطفاً نام پدر را وارد نمایید.');
-      return false;
-    }
-    const cleanNatId = nationalId.replace(/\s/g, '');
-    if (!cleanNatId || cleanNatId.length !== 10 || !/^\d+$/.test(cleanNatId)) {
-      setError('کد ملی باید دقیقاً ۱۰ رقم عددی باشد.');
-      return false;
-    }
-    const cleanPhone = phoneNumber.replace(/\s/g, '');
-    if (!cleanPhone || cleanPhone.length < 7 || !/^\d+$/.test(cleanPhone)) {
-      setError('لطفاً شماره تلفن همراه معتبر را وارد کنید.');
-      return false;
-    }
-    if (!gender) {
-      setError('لطفاً جنسیت خود را مشخص کنید.');
-      return false;
-    }
-    if (!username.trim() || username.trim().length < 3) {
-      setError('نام کاربری ورود باید حداقل ۳ کاراکتر باشد.');
-      return false;
-    }
-    if (!password.trim() || password.trim().length < 5) {
-      setError('رمز عبور باید حداقل ۵ کاراکتر باشد.');
-      return false;
-    }
-    return true;
-  };
+
 
   const validateStep2 = (): boolean => {
     if (!iranProvince.trim()) {
@@ -551,6 +569,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
       fullName: `${firstName.trim()} ${lastName.trim()}`,
       fatherName: fatherName.trim(),
       nationalId: nationalId.trim(),
+      email: email.trim(),
       gender,
       phoneCountryCode,
       phoneNumber: phoneNumber.trim(),
@@ -562,6 +581,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
       iranAddress: iranAddress.trim(),
       targetCountry,
       targetCity: targetCity.trim() || 'استانبول',
+      targetDistrict: targetDistrict.trim() || undefined,
       turkishLevel: mappedLevel,
       residenceStatus,
       skills: combinedSkills,
@@ -859,6 +879,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                     </div>
                   </div>
 
+                  {/* Email Input Field */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      آدرس ایمیل معتبر (جهت بازیابی رمز عبور) <span className="text-red-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
+                      <input
+                        type="email"
+                        required
+                        dir="ltr"
+                        placeholder="example@gmail.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 text-left font-mono"
+                      />
+                    </div>
+                  </div>
+
                   {/* Gender Selection */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1.5">
@@ -923,7 +962,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
 
                       <div>
                         <label className="block text-xs font-semibold text-slate-300 mb-1">
-                          رمز عبور (پسوورد) <span className="text-red-400">*</span>
+                          رمز عبور (حداقل ۸ کاراکتر + حروف + عدد) <span className="text-red-400">*</span>
                         </label>
                         <div className="relative">
                           <Lock className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
@@ -931,7 +970,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                             type={showPassword ? 'text' : 'password'}
                             required
                             dir="ltr"
-                            placeholder="حداقل ۵ کاراکتر"
+                            placeholder="Abc12345"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-9 py-2 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 text-left font-mono"
@@ -944,6 +983,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Password Strength Visual Checklist */}
+                    <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                      <div className={`flex items-center gap-1.5 ${passCheck.hasMinLength ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>
+                        {passCheck.hasMinLength ? '✓' : '○'} حداقل ۸ کاراکتر
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${passCheck.hasUpper ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>
+                        {passCheck.hasUpper ? '✓' : '○'} حرف بزرگ (A-Z)
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${passCheck.hasLower ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>
+                        {passCheck.hasLower ? '✓' : '○'} حرف کوچک (a-z)
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${passCheck.hasDigit ? 'text-emerald-400 font-bold' : 'text-slate-500'}`}>
+                        {passCheck.hasDigit ? '✓' : '○'} عدد انگلیسی (0-9)
                       </div>
                     </div>
                   </div>
@@ -1073,8 +1128,49 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                     </div>
                   </div>
 
-                  {/* Target City within chosen country - Excluded for Turkey as requested */}
-                  {targetCountry !== 'ترکیه' && (
+                  {/* Target City and District for selected country */}
+                  {targetCountry === 'ترکیه' ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                          شهر مد نظر در ترکیه <span className="text-red-400">*</span>
+                        </label>
+                        <select
+                          value={targetCity}
+                          onChange={(e) => {
+                            const newCity = e.target.value;
+                            setTargetCity(newCity);
+                            const districts = getDistrictsForCity(newCity);
+                            if (districts.length > 0) setTargetDistrict(districts[0]);
+                          }}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white focus:outline-hidden focus:border-red-500"
+                        >
+                          {['استانبول', 'آنتالیا', 'آنکارا', 'ازمیر', 'بورسا', 'ترابزون', 'ارزروم', 'آدانا', 'غازیان‌تپ', 'قونیه', 'مرسین', 'اسکی‌شهر', 'سامسون', 'دنیزلی', 'قیصری'].map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                          منطقه / شهرستان مد نظر
+                        </label>
+                        <select
+                          value={targetDistrict}
+                          onChange={(e) => setTargetDistrict(e.target.value)}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white focus:outline-hidden focus:border-red-500"
+                        >
+                          {getDistrictsForCity(targetCity).map((dist) => (
+                            <option key={dist} value={dist}>
+                              {dist}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ) : (
                     <div>
                       <label className="block text-xs font-semibold text-slate-300 mb-1">
                         شهر مد نظر در کشور مقصد ({targetCountry})
@@ -1817,7 +1913,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">رمز عبور (پسوورد)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-300">رمز عبور (پسوورد)</label>
+                  {mode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForgotPasswordModal(true);
+                        setRecoverResult(null);
+                        setRecoverInput('');
+                      }}
+                      className="text-xs text-amber-400 hover:text-amber-300 font-bold transition flex items-center gap-1"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      فراموشی رمز عبور؟
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
                   <input
@@ -1854,6 +1966,80 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
           )}
         </div>
       </div>
+
+      {/* FORGOT PASSWORD MODAL */}
+      {showForgotPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="relative w-full max-w-md bg-slate-900 border border-amber-500/40 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-amber-400 font-bold text-base">
+                <KeyRound className="w-5 h-5" />
+                <span>بازیابی رمز عبور کارباما</span>
+              </div>
+              <button
+                onClick={() => setShowForgotPasswordModal(false)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              جهت بازیابی رمز عبور، آدرس ایمیل ثبت‌شده هنگام ثبت‌نام یا نام کاربری خود را وارد نمایید.
+            </p>
+
+            {recoverResult && (
+              <div
+                className={`p-3 rounded-xl text-xs font-bold ${
+                  recoverResult.success
+                    ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
+                    : 'bg-red-500/20 border border-red-500/40 text-red-300'
+                }`}
+              >
+                {recoverResult.message}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                ایمیل یا نام کاربری (یوزرنیم)
+              </label>
+              <input
+                type="text"
+                dir="ltr"
+                value={recoverInput}
+                onChange={(e) => setRecoverInput(e.target.value)}
+                placeholder="example@gmail.com یا ali_reza"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-hidden focus:border-amber-500 font-mono text-left"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowForgotPasswordModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold"
+              >
+                انصراف
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!recoverInput.trim()) return;
+                  const res = recoverPassword(recoverInput);
+                  setRecoverResult({
+                    success: res.success,
+                    message: res.message || res.error || '',
+                  });
+                }}
+                className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-700/30"
+              >
+                ارسال لینک / بازیابی رمز
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* COMMITMENT MODAL POPUP */}
       <CommitmentModal

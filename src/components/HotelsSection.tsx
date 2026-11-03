@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Hotel } from '../types';
 import { ALL_TURKEY_CITIES_FA } from '../data/turkeyCities';
+import { getDistrictsForCity } from '../data/turkeyData';
 import { InteractiveMap, calculateDistanceKm } from './InteractiveMap';
 import {
   Hotel as HotelIcon,
@@ -44,6 +45,7 @@ export const HotelsSection: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCity, setSelectedCity] = useState('همه');
+  const [selectedDistrict, setSelectedDistrict] = useState('همه');
   const [maxPrice, setMaxPrice] = useState<number>(2000);
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
 
@@ -125,6 +127,7 @@ export const HotelsSection: React.FC = () => {
     const list = hotels
       .filter((h) => {
         if (selectedCity !== 'همه' && h.city !== selectedCity) return false;
+        if (selectedDistrict !== 'همه' && h.district && !h.district.includes(selectedDistrict)) return false;
         if (h.pricePerNight > maxPrice) return false;
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
@@ -295,12 +298,15 @@ export const HotelsSection: React.FC = () => {
 
       {/* Filter Row */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
-        {/* City Filter */}
+        {/* City & District Filter */}
         <div className="flex items-center gap-2 overflow-x-auto">
-          <span className="text-xs text-slate-400 font-medium ml-1">شهر:</span>
+          <span className="text-xs text-slate-400 font-medium ml-1">شهر و منطقه:</span>
           <select
             value={selectedCity}
-            onChange={(e) => setSelectedCity(e.target.value)}
+            onChange={(e) => {
+              setSelectedCity(e.target.value);
+              setSelectedDistrict('همه');
+            }}
             className="bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-1.5 text-xs font-bold"
           >
             <option value="همه">همه شهرهای ترکیه</option>
@@ -308,6 +314,19 @@ export const HotelsSection: React.FC = () => {
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
+
+          {selectedCity !== 'همه' && (
+            <select
+              value={selectedDistrict}
+              onChange={(e) => setSelectedDistrict(e.target.value)}
+              className="bg-slate-800 border border-slate-700 text-amber-300 rounded-xl px-3 py-1.5 text-xs font-bold"
+            >
+              <option value="همه">همه منطقه‌های {selectedCity}</option>
+              {getDistrictsForCity(selectedCity).map((dist) => (
+                <option key={dist} value={dist}>{dist}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Price Slider */}
@@ -858,23 +877,30 @@ export const HotelsSection: React.FC = () => {
                   <label className="block text-slate-300 font-bold mb-1">شهر</label>
                   <select
                     value={newHotelCity}
-                    onChange={(e) => setNewHotelCity(e.target.value)}
+                    onChange={(e) => {
+                      const newC = e.target.value;
+                      setNewHotelCity(newC);
+                      const dists = getDistrictsForCity(newC);
+                      if (dists.length > 0) setNewHotelDistrict(dists[0]);
+                    }}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
                   >
-                    <option value="استانبول">استانبول</option>
-                    <option value="آنتالیا">آنتالیا</option>
-                    <option value="آنکارا">آنکارا</option>
-                    <option value="ازمیر">ازمیر</option>
+                    {ALL_TURKEY_CITIES_FA.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">منطقه / محله</label>
-                  <input
-                    type="text"
+                  <select
                     value={newHotelDistrict}
                     onChange={(e) => setNewHotelDistrict(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
-                  />
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white font-bold"
+                  >
+                    {getDistrictsForCity(newHotelCity).map((dist) => (
+                      <option key={dist} value={dist}>{dist}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">قیمت هر شب (لیر) *</label>

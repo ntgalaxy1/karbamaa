@@ -464,7 +464,7 @@ export const AdminPanel: React.FC = () => {
       s.fatherName.toLowerCase().includes(q) ||
       s.nationalId.includes(q) ||
       s.username.toLowerCase().includes(q) ||
-      s.phone.includes(q) ||
+      (s.phone || s.phoneNumber || '').includes(q) ||
       s.targetCity.toLowerCase().includes(q)
     );
   });
@@ -2121,7 +2121,7 @@ export const AdminPanel: React.FC = () => {
                   </button>
 
                   <a
-                    href={`tel:${seeker.phone.replace(/\s/g, '')}`}
+                    href={`tel:${(seeker.phone || seeker.phoneNumber || '').replace(/\s/g, '')}`}
                     className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs"
                   >
                     <Phone className="w-3.5 h-3.5" />

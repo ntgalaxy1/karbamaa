@@ -58,6 +58,7 @@ import {
 import { JobImagePicker } from './JobImagePicker';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 import { ALL_TURKEY_CITIES_FA, CITIES_WITH_ALL } from '../data/turkeyCities';
+import { getDistrictsForCity } from '../data/turkeyData';
 
 const CITIES = ['همه شهرها', 'استانبول', 'آنتالیا', 'آنکارا', 'ازمیر', 'بورسا'];
 
@@ -207,6 +208,7 @@ export const JobSearch: React.FC = () => {
 
   // Location & Category
   const [selectedCity, setSelectedCity] = useState('همه شهرها');
+  const [selectedDistrict, setSelectedDistrict] = useState('همه منطقه‌ها');
   const [citySearchQuery, setCitySearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
@@ -439,8 +441,11 @@ export const JobSearch: React.FC = () => {
         }
       }
 
-      // 5. City filter
+      // 5. City & District filter
       if (selectedCity !== 'همه شهرها' && job.city !== selectedCity) {
+        return false;
+      }
+      if (selectedDistrict !== 'همه منطقه‌ها' && job.district && !job.district.includes(selectedDistrict)) {
         return false;
       }
 
@@ -1088,30 +1093,49 @@ export const JobSearch: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
               <MapPin className="w-4 h-4 text-red-500" />
-              انتخاب شهر یا شهرستان ترکیه (شامل تمام شهرها):
+              انتخاب شهر و منطقه ترکیه:
             </span>
 
             <div className="flex items-center gap-2">
               <select
                 value={selectedCity}
-                onChange={(e) => setSelectedCity(e.target.value)}
+                onChange={(e) => {
+                  setSelectedCity(e.target.value);
+                  setSelectedDistrict('همه منطقه‌ها');
+                }}
                 className="bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-hidden focus:border-red-500"
               >
                 {CITIES_WITH_ALL.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
+
+              {selectedCity !== 'همه شهرها' && (
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 text-amber-300 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-hidden focus:border-amber-500"
+                >
+                  <option value="همه منطقه‌ها">همه منطقه‌های {selectedCity}</option>
+                  {getDistrictsForCity(selectedCity).map((dist) => (
+                    <option key={dist} value={dist}>{dist}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {['همه شهرها', 'استانبول', 'فاتیح (Fatih)', 'اسنیورت (Esenyurt)', 'بیلیک‌دوزو (Beylikdüzü)', 'مرتر (Merter)', 'شیشلی (Şişli)', 'آنتالیا', 'آلانیا (Alanya)', 'لارا (Lara)', 'آنکارا', 'ازمیر', 'چشمه (Çeşme)', 'بورسا', 'بودروم (Bodrum)', 'کوش‌آداسی (Kuşadası)'].map((city) => {
+            {['همه شهرها', 'استانبول', 'آنتالیا', 'آنکارا', 'ازمیر', 'بورسا', 'ترابزون', 'ارزروم', 'آدانا', 'غازیان‌تپ', 'قونیه', 'مرسین', 'اسکی‌شهر', 'سامسون', 'دنیزلی', 'قیصری'].map((city) => {
               const isSelected = selectedCity === city;
               return (
                 <button
                   key={city}
                   type="button"
-                  onClick={() => setSelectedCity(city)}
+                  onClick={() => {
+                    setSelectedCity(city);
+                    setSelectedDistrict('همه منطقه‌ها');
+                  }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-medium shrink-0 transition ${
                     isSelected
                       ? 'bg-red-600 text-white font-bold shadow-md shadow-red-700/30'
@@ -2748,7 +2772,12 @@ export const JobSearch: React.FC = () => {
                   <label className="block text-slate-300 font-bold mb-1">شهر (تمام شهرهای ترکیه)</label>
                   <select
                     value={newCity}
-                    onChange={(e) => setNewCity(e.target.value)}
+                    onChange={(e) => {
+                      const newC = e.target.value;
+                      setNewCity(newC);
+                      const dists = getDistrictsForCity(newC);
+                      if (dists.length > 0) setNewDistrict(dists[0]);
+                    }}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
                   >
                     {ALL_TURKEY_CITIES_FA.map((c) => (
@@ -2758,12 +2787,15 @@ export const JobSearch: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">منطقه / محله</label>
-                  <input
-                    type="text"
+                  <select
                     value={newDistrict}
                     onChange={(e) => setNewDistrict(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
-                  />
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white font-bold"
+                  >
+                    {getDistrictsForCity(newCity).map((dist) => (
+                      <option key={dist} value={dist}>{dist}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">حداقل حقوق (لیر)</label>

@@ -70,11 +70,21 @@ export const calculateDistanceKm = (lat1: number, lon1: number, lat2: number, lo
 };
 
 const CITY_PRESETS = [
-  { name: 'استانبول', lat: 41.015, lng: 28.97, zoom: 12 },
+  { name: 'استانبول', lat: 41.015, lng: 28.97, zoom: 11 },
   { name: 'آنکارا', lat: 39.925, lng: 32.85, zoom: 12 },
+  { name: 'ازمیر', lat: 38.423, lng: 27.142, zoom: 12 },
   { name: 'آنتالیا', lat: 36.89, lng: 30.70, zoom: 12 },
-  { name: 'ترابزون', lat: 41.002, lng: 39.716, zoom: 13 },
-  { name: 'ارزروم', lat: 39.905, lng: 41.276, zoom: 13 },
+  { name: 'بورسا', lat: 40.188, lng: 29.061, zoom: 12 },
+  { name: 'ترابزون', lat: 41.002, lng: 39.716, zoom: 12 },
+  { name: 'ارزروم', lat: 39.905, lng: 41.276, zoom: 12 },
+  { name: 'آدانا', lat: 37.000, lng: 35.321, zoom: 12 },
+  { name: 'غازی‌آنتپ', lat: 37.066, lng: 37.383, zoom: 12 },
+  { name: 'قونیه', lat: 37.871, lng: 32.485, zoom: 12 },
+  { name: 'مرسین', lat: 36.812, lng: 34.641, zoom: 12 },
+  { name: 'اسکی‌شهر', lat: 39.776, lng: 30.520, zoom: 12 },
+  { name: 'سامسون', lat: 41.286, lng: 36.330, zoom: 12 },
+  { name: 'دنیزلی', lat: 37.776, lng: 29.086, zoom: 12 },
+  { name: 'کایسری', lat: 38.722, lng: 35.487, zoom: 12 },
 ];
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon?: string }> = {
@@ -633,9 +643,9 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           </div>
         </div>
 
-        {/* Category Pills */}
+        {/* Category Pills - Responsive flex-wrap so Emergency, Police, Exchange, Hospital are always accessible and fit neatly */}
         {showCategoryFilters && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none pt-1">
+          <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
             {Object.entries(CATEGORY_CONFIG).map(([catKey, config]) => {
               const isSelected = selectedCategory === catKey;
               const count = categoryCounts[catKey] || 0;
@@ -643,16 +653,17 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 <button
                   key={catKey}
                   onClick={() => setSelectedCategory(catKey)}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-medium shrink-0 flex items-center gap-1.5 transition ${
+                  className={`px-2.5 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
                     isSelected
-                      ? 'bg-white text-slate-900 font-bold shadow-md'
-                      : 'bg-slate-800/90 text-slate-300 hover:bg-slate-800 border border-slate-700/60'
+                      ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md shadow-red-600/25'
+                      : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700 border border-slate-700/80'
                   }`}
                 >
+                  {config.icon && <span className="text-sm">{config.icon}</span>}
                   <span>{config.label}</span>
                   <span
                     className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                      isSelected ? 'bg-slate-900/20 text-slate-900' : 'bg-slate-700 text-slate-300'
+                      isSelected ? 'bg-black/30 text-white' : 'bg-slate-700 text-slate-300'
                     }`}
                   >
                     {count}

@@ -28,6 +28,7 @@ import { useApp } from '../context/AppContext';
 import { JobCategory, ContractType, PayFrequency, TurkishLevel, PaymentMethod } from '../types';
 import { TURKEY_PROVINCES_AND_DISTRICTS } from '../data/turkeyCities';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
+import { getDistrictsForCity } from '../data/turkeyData';
 
 export const PostJobSection: React.FC = () => {
   const { paymentSettings, submitJobWithPayment, setActiveTab, showToast } = useApp();
@@ -272,7 +273,12 @@ export const PostJobSection: React.FC = () => {
               <label className="block text-xs font-bold text-slate-300 mb-1.5">شهر محل کار (ترکیه) *</label>
               <select
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
+                onChange={(e) => {
+                  const newC = e.target.value;
+                  setCity(newC);
+                  const dists = getDistrictsForCity(newC);
+                  if (dists.length > 0) setDistrict(dists[0]);
+                }}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:border-red-500 focus:outline-none"
               >
                 {TURKEY_PROVINCES_AND_DISTRICTS.map((c) => (
@@ -285,13 +291,15 @@ export const PostJobSection: React.FC = () => {
 
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1.5">منطقه / محله</label>
-              <input
-                type="text"
+              <select
                 value={district}
                 onChange={(e) => setDistrict(e.target.value)}
-                placeholder="مثال: فاتیح، مرتر، شیشلی، لارا، بیلیک‌دوزو"
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:border-red-500 focus:outline-none"
-              />
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-bold focus:border-red-500 focus:outline-none"
+              >
+                {getDistrictsForCity(city).map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
             </div>
 
             <div>

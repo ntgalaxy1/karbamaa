@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { checkPasswordStrength, isValidEmail } from '../utils/validators';
+import { getDistrictsForCity } from '../data/turkeyData';
 import {
   PartnerSubscriptionPlanId,
   PaymentMethod,
@@ -36,6 +38,7 @@ import {
   Send,
   Zap,
   Briefcase,
+  Mail,
 } from 'lucide-react';
 
 const COMMON_PARTNER_JOBS = [
@@ -81,10 +84,14 @@ export const PartnerSection: React.FC = () => {
   const [regCompanyName, setRegCompanyName] = useState('');
   const [regFullName, setRegFullName] = useState('');
   const [regPhone, setRegPhone] = useState('');
+  const [regEmail, setRegEmail] = useState('');
   const [regCity, setRegCity] = useState('استانبول');
   const [regUsername, setRegUsername] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
+
+  // Password Strength check for partner registration
+  const partnerPassCheck = checkPasswordStrength(regPassword);
 
   // Active Partner Dashboard state
   const [activePartnerTab, setActivePartnerTab] = useState<'add_seeker' | 'my_seekers' | 'subscription'>('add_seeker');
@@ -108,6 +115,7 @@ export const PartnerSection: React.FC = () => {
   const [seekerCity, setSeekerCity] = useState('تهران');
   const [seekerTargetCountry, setSeekerTargetCountry] = useState<TargetCountry>('ترکیه');
   const [seekerTargetCity, setSeekerTargetCity] = useState('استانبول');
+  const [seekerTargetDistrict, setSeekerTargetDistrict] = useState('فاتیح');
   const [seekerJob, setSeekerJob] = useState(COMMON_PARTNER_JOBS[0]);
   const [seekerCustomJob, setSeekerCustomJob] = useState('');
   const [seekerTurkishLevel, setSeekerTurkishLevel] = useState<TurkishLevel>('basic');
@@ -137,10 +145,22 @@ export const PartnerSection: React.FC = () => {
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+
+    if (regEmail && !isValidEmail(regEmail)) {
+      setAuthError('لطفاً یک آدرس ایمیل معتبر وارد کنید.');
+      return;
+    }
+
+    if (!partnerPassCheck.isValid) {
+      setAuthError(partnerPassCheck.error || 'رمز عبور باید حداقل ۸ کاراکتر و شامل حروف بزرگ، کوچک و اعداد انگلیسی باشد.');
+      return;
+    }
+
     const res = registerPartner({
       companyName: regCompanyName,
       fullName: regFullName,
       phone: regPhone,
+      email: regEmail,
       city: regCity,
       username: regUsername,
       password: regPassword,
@@ -449,16 +469,34 @@ export const PartnerSection: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    شهر محل فعالیت
+                    آدرس ایمیل معتبر (جهت بازیابی رمز عبور)
                   </label>
-                  <input
-                    type="text"
-                    value={regCity}
-                    onChange={(e) => setRegCity(e.target.value)}
-                    placeholder="استانبول، تهران، آنکارا..."
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
+                    <input
+                      type="email"
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      placeholder="agency@gmail.com"
+                      dir="ltr"
+                      required
+                      className="w-full pr-10 pl-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none font-mono"
+                    />
+                  </div>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  شهر محل فعالیت
+                </label>
+                <input
+                  type="text"
+                  value={regCity}
+                  onChange={(e) => setRegCity(e.target.value)}
+                  placeholder="استانبول، تهران، آنکارا..."
+                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -473,23 +511,39 @@ export const PartnerSection: React.FC = () => {
                     placeholder="omid_agency"
                     dir="ltr"
                     required
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none font-mono"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    رمز عبور
+                    رمز عبور (حداقل ۸ کاراکتر + حروف + عدد)
                   </label>
                   <input
                     type="password"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="Abc12345"
                     dir="ltr"
                     required
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none font-mono"
                   />
+                </div>
+              </div>
+
+              {/* Password Strength Visual Checklist */}
+              <div className="p-2.5 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                <div className={`flex items-center gap-1.5 ${partnerPassCheck.hasMinLength ? 'text-emerald-500 font-bold' : 'text-slate-400'}`}>
+                  {partnerPassCheck.hasMinLength ? '✓' : '○'} حداقل ۸ کاراکتر
+                </div>
+                <div className={`flex items-center gap-1.5 ${partnerPassCheck.hasUpper ? 'text-emerald-500 font-bold' : 'text-slate-400'}`}>
+                  {partnerPassCheck.hasUpper ? '✓' : '○'} حرف بزرگ (A-Z)
+                </div>
+                <div className={`flex items-center gap-1.5 ${partnerPassCheck.hasLower ? 'text-emerald-500 font-bold' : 'text-slate-400'}`}>
+                  {partnerPassCheck.hasLower ? '✓' : '○'} حرف کوچک (a-z)
+                </div>
+                <div className={`flex items-center gap-1.5 ${partnerPassCheck.hasDigit ? 'text-emerald-500 font-bold' : 'text-slate-400'}`}>
+                  {partnerPassCheck.hasDigit ? '✓' : '○'} عدد انگلیسی (0-9)
                 </div>
               </div>
 
@@ -1165,13 +1219,35 @@ export const PartnerSection: React.FC = () => {
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       شهر مد نظر
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={seekerTargetCity}
-                      onChange={(e) => setSeekerTargetCity(e.target.value)}
-                      placeholder="استانبول، آنتالیا..."
-                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none"
-                    />
+                      onChange={(e) => {
+                        const newCity = e.target.value;
+                        setSeekerTargetCity(newCity);
+                        const dists = getDistrictsForCity(newCity);
+                        if (dists.length > 0) setSeekerTargetDistrict(dists[0]);
+                      }}
+                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none font-bold"
+                    >
+                      {['استانبول', 'آنتالیا', 'آنکارا', 'ازمیر', 'بورسا', 'ترابزون', 'ارزروم', 'آدانا', 'غازیان‌تپ', 'قونیه', 'مرسین', 'اسکی‌شهر', 'سامسون', 'دنیزلی', 'قیصری'].map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      منطقه مد نظر
+                    </label>
+                    <select
+                      value={seekerTargetDistrict}
+                      onChange={(e) => setSeekerTargetDistrict(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs outline-none font-bold"
+                    >
+                      {getDistrictsForCity(seekerTargetCity).map((dist) => (
+                        <option key={dist} value={dist}>{dist}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>

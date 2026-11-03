@@ -65,7 +65,8 @@ export interface JobSeeker {
   gender?: Gender;           // جنسیت: مرد / زن
   phoneCountryCode?: string; // پیش‌شماره کشور (مثلاً +98, +90, +49, +964, +374)
   phoneNumber?: string;      // شماره تلفن بدون پیش‌شماره
-  phone: string;             // شماره تماس کامل / واتساپ با پیش‌شماره
+  phone?: string;            // شماره تلفن کامل همراه با پیش‌شماره
+  email?: string;            // آدرس ایمیل معتبر (جهت بازیابی رمز عبور)
   username: string;          // نام کاربری جهت ورود
   password: string;          // رمز عبور ورود
   iranProvince?: string;     // استان محل سکونت در ایران
@@ -122,6 +123,7 @@ export interface RegisterSeekerInput {
   phoneCountryCode?: string;
   phoneNumber?: string;
   phone?: string;
+  email?: string;
   username: string;
   password: string;
   iranProvince?: string;
@@ -129,10 +131,35 @@ export interface RegisterSeekerInput {
   iranAddress?: string;
   targetCountry?: TargetCountry;
   targetCity?: string;
+  targetDistrict?: string;
   turkishLevel?: TurkishLevel;
   residenceStatus?: ResidenceStatus;
   skills?: string[];
   bio?: string;
+  selectedJobs?: string[];
+  customProfession?: string;
+  targetLanguageLevel?: string;
+  knownLanguages?: string[];
+  passportPhotoUrl?: string;
+  fullBodyPhotoUrl?: string;
+  nationalCardPhotoUrl?: string;
+  contractDateShamsi?: string;
+  contractDateMiladi?: string;
+  contractAmount?: string;
+  payerCardNumber?: string;
+  brokerCardNumber?: string;
+  signatureDataUrl?: string;
+  contractAccepted?: boolean;
+}
+
+export interface RegisterPartnerInput {
+  companyName: string;
+  fullName: string;
+  phone: string;
+  email?: string;
+  username: string;
+  password: string;
+  city?: string;
 }
 
 export interface BrokerSettings {
@@ -199,6 +226,7 @@ export interface PartnerAccount {
   companyName: string;           // نام شرکت، آژانس یا دفتر همکار
   fullName: string;              // نام و نام خانوادگی مدیر/نماینده
   phone: string;                 // شماره تماس و واتساپ
+  email?: string;                // آدرس ایمیل جهت بازیابی رمز عبور
   username: string;              // نام کاربری ورود
   password: string;              // رمز عبور
   city?: string;                 // شهر محل فعالیت (استانبول، تهران، آنکارا...)

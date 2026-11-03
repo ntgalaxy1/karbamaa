@@ -29,6 +29,8 @@ import {
   PartnerSubscriptionPlanId,
   PartnerSubscriptionStatus,
   RegisterSeekerByPartnerInput,
+  RegisterSeekerInput,
+  RegisterPartnerInput,
   LiveChatSession,
   LiveChatMessage,
 } from '../types';
@@ -43,6 +45,7 @@ import {
   INITIAL_PARTNERS,
   DEFAULT_PARTNER_PLANS,
 } from '../data/initialData';
+import { idbCache } from '../utils/idbCache';
 import { safeStorage } from '../utils/safeStorage';
 import {
   requestSafeNotificationPermission,
@@ -53,7 +56,7 @@ import {
 } from '../utils/safeNotification';
 import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../services/firebase';
-import { idbCache } from '../utils/idbCache';
+import { checkPasswordStrength, isValidEmail } from '../utils/validators';
 
 
 export type ActiveTab =
@@ -87,46 +90,7 @@ export const THEME_COLOR_PRESETS: ThemeColorConfig[] = [
   { id: 'indigo', name: 'نیلی مدرن', primary: '#4f46e5', hover: '#4338ca', light: 'rgba(79, 70, 229, 0.15)' },
 ];
 
-export interface RegisterSeekerInput {
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  fatherName: string;
-  nationalId: string;
-  gender: Gender;
-  phoneCountryCode: string;
-  phoneNumber: string;
-  phone: string;
-  username: string;
-  password: string;
-  iranProvince: string;
-  iranCity: string;
-  iranAddress: string;
-  targetCountry: TargetCountry;
-  targetCity: string;
-  turkishLevel: TurkishLevel;
-  residenceStatus: ResidenceStatus;
-  skills: string[];
-  bio?: string;
 
-  // بخش ۳: شغل‌ها، تخصص‌ها و زبان‌ها
-  selectedJobs?: string[];
-  customProfession?: string;
-  targetLanguageLevel?: string;
-  knownLanguages?: string[];
-
-  // بخش ۴: مدارک، تعهدنامه و امضا
-  passportPhotoUrl?: string;
-  fullBodyPhotoUrl?: string;
-  nationalCardPhotoUrl?: string;
-  contractDateShamsi?: string;
-  contractDateMiladi?: string;
-  contractAmount?: string;
-  payerCardNumber?: string;
-  brokerCardNumber?: string;
-  signatureDataUrl?: string;
-  contractAccepted?: boolean;
-}
 
 interface AppContextType {
   role: UserRole;
@@ -162,6 +126,7 @@ interface AppContextType {
   logoutSeeker: () => void;
   logoutAdmin: () => void;
   changePassword: (oldPassword: string, newPassword: string) => { success: boolean; error?: string };
+  recoverPassword: (emailOrUsername: string) => { success: boolean; message?: string; error?: string; username?: string; password?: string };
   updateProfile: (updates: Partial<JobSeeker>) => { success: boolean; error?: string };
   updateResume: (resume: SeekerResume) => { success: boolean; error?: string };
 
@@ -252,14 +217,7 @@ interface AppContextType {
   partnerPlans: PartnerSubscriptionPlan[];
   isPartnerLoggedIn: boolean;
   loginPartner: (username: string, password: string) => { success: boolean; error?: string };
-  registerPartner: (input: {
-    companyName: string;
-    fullName: string;
-    phone: string;
-    username: string;
-    password: string;
-    city?: string;
-  }) => { success: boolean; error?: string };
+  registerPartner: (input: RegisterPartnerInput) => { success: boolean; error?: string };
   logoutPartner: () => void;
   submitPartnerSubscriptionPayment: (
     planId: PartnerSubscriptionPlanId,
@@ -1227,6 +1185,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'لطفاً نام کاربری و رمز عبور ورود به سامانه را تعیین کنید.' };
     }
 
+    if (!input.email?.trim() || !isValidEmail(input.email)) {
+      return { success: false, error: 'لطفاً آدرس ایمیل معتبر (جهت بازیابی رمز عبور) وارد نمایید.' };
+    }
+
+    const pwdCheck = checkPasswordStrength(input.password);
+    if (!pwdCheck.isValid) {
+      return { success: false, error: pwdCheck.error };
+    }
+
     if (input.nationalId.replace(/\s/g, '').length < 10) {
       return { success: false, error: 'کد ملی وارد شده باید ۱۰ رقم کامل باشد.' };
     }
@@ -1244,6 +1211,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const existingUser = jobSeekers.find((s) => s.username.toLowerCase() === cleanUsername);
     if (existingUser) {
       return { success: false, error: 'این نام کاربری قبلاً ثبت شده است. لطفاً نام کاربری دیگری انتخاب کنید.' };
+    }
+
+    const cleanEmail = input.email.trim().toLowerCase();
+    const existingEmail = jobSeekers.find((s) => s.email && s.email.toLowerCase() === cleanEmail);
+    if (existingEmail) {
+      return { success: false, error: 'با این آدرس ایمیل قبلاً حسابی در سیستم ثبت شده است.' };
     }
 
     const cleanNatId = input.nationalId.trim();
@@ -1277,6 +1250,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       phoneCountryCode: input.phoneCountryCode,
       phoneNumber: input.phoneNumber.trim(),
       phone: formattedPhone,
+      email: cleanEmail,
       username: cleanUsername,
       password: input.password,
       iranProvince: input.iranProvince.trim(),
@@ -1377,8 +1351,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'رمز عبور فعلی نادرست است.' };
     }
 
-    if (newPassword.length < 5) {
-      return { success: false, error: 'رمز عبور جدید باید حداقل ۵ کاراکتر باشد.' };
+    const pwdCheck = checkPasswordStrength(newPassword);
+    if (!pwdCheck.isValid) {
+      return { success: false, error: pwdCheck.error };
     }
 
     setJobSeekers((prev) =>
@@ -1387,6 +1362,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     showToast('رمز عبور شما با موفقیت تغییر یافت.', 'success');
     return { success: true };
+  };
+
+  const recoverPassword = (
+    emailOrUsername: string
+  ): { success: boolean; message?: string; error?: string; username?: string; password?: string } => {
+    if (!emailOrUsername || !emailOrUsername.trim()) {
+      return { success: false, error: 'لطفاً نام کاربری یا ایمیل ثبت‌شده خود را وارد کنید.' };
+    }
+
+    const cleanInput = emailOrUsername.trim().toLowerCase();
+
+    // 1. Search Seekers
+    const seeker = jobSeekers.find(
+      (s) => (s.email && s.email.toLowerCase() === cleanInput) || s.username.toLowerCase() === cleanInput
+    );
+    if (seeker) {
+      return {
+        success: true,
+        username: seeker.username,
+        password: seeker.password,
+        message: `اطلاعات حساب کارجو پیدا شد! نام کاربری: ${seeker.username} | رمز عبور: ${seeker.password}`,
+      };
+    }
+
+    // 2. Search Partners
+    const partner = partners.find(
+      (p) => (p.email && p.email.toLowerCase() === cleanInput) || p.username.toLowerCase() === cleanInput
+    );
+    if (partner) {
+      return {
+        success: true,
+        username: partner.username,
+        password: partner.password,
+        message: `اطلاعات حساب همکار پیدا شد! نام کاربری: ${partner.username} | رمز عبور: ${partner.password}`,
+      };
+    }
+
+    // 3. Search Admin Credentials
+    if (adminCredentials.username.toLowerCase() === cleanInput) {
+      return {
+        success: true,
+        username: adminCredentials.username,
+        password: adminCredentials.password,
+        message: `اطلاعات حساب مدیر ارشد پیدا شد! نام کاربری: ${adminCredentials.username} | رمز عبور: ${adminCredentials.password}`,
+      };
+    }
+
+    return {
+      success: false,
+      error: 'هیچ حسابی با این ایمیل یا نام کاربری در سامانه کارباما یافت نشد.',
+    };
   };
 
   const updateProfile = (updates: Partial<JobSeeker>): { success: boolean; error?: string } => {
@@ -1453,7 +1479,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       seekerName: currentSeeker.fullName,
       seekerFatherName: currentSeeker.fatherName,
       seekerNationalId: currentSeeker.nationalId,
-      seekerPhone: currentSeeker.phone,
+      seekerPhone: currentSeeker.phone || currentSeeker.phoneNumber || '',
       seekerUsername: currentSeeker.username,
       seekerSkills: currentSeeker.skills,
       seekerTurkishLevel: currentSeeker.turkishLevel,
@@ -1977,19 +2003,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { success: true };
   };
 
-  const registerPartner = (input: {
-    companyName: string;
-    fullName: string;
-    phone: string;
-    username: string;
-    password: string;
-    city?: string;
-  }): { success: boolean; error?: string } => {
+  const registerPartner = (input: RegisterPartnerInput): { success: boolean; error?: string } => {
     if (!input.companyName.trim() || !input.fullName.trim() || !input.phone.trim()) {
       return { success: false, error: 'لطفاً نام شرکت/آژانس، نام نماینده و شماره تماس را وارد فرمایید.' };
     }
     if (!input.username.trim() || !input.password.trim()) {
       return { success: false, error: 'تعیین نام کاربری و رمز عبور الزامی است.' };
+    }
+
+    if (input.email && !isValidEmail(input.email)) {
+      return { success: false, error: 'لطفاً یک آدرس ایمیل معتبر (جهت بازیابی رمز عبور) وارد کنید.' };
+    }
+
+    const pwdCheck = checkPasswordStrength(input.password);
+    if (!pwdCheck.isValid) {
+      return { success: false, error: pwdCheck.error };
     }
 
     const cleanUser = input.username.trim().toLowerCase();
@@ -2004,6 +2032,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       companyName: input.companyName.trim(),
       fullName: input.fullName.trim(),
       phone: input.phone.trim(),
+      email: input.email?.trim().toLowerCase() || '',
       username: cleanUser,
       password: input.password,
       city: input.city?.trim() || 'استانبول',
@@ -2479,6 +2508,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logoutSeeker,
         logoutAdmin,
         changePassword,
+        recoverPassword,
         updateProfile,
         updateResume,
         applyForJob,
