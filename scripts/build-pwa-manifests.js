@@ -1,7 +1,10 @@
 import fs from 'fs';
 
+const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+
 const manifestObj = {
   id: "/",
+  version: pkg.version || "10.0.0.17",
   name: "کارباما | کاریابی و اقامت ترکیه",
   short_name: "کارباما",
   description: "سامانه جامع و هوشمند کاریابی، ساخت رزومه اداری، هتل‌ها و اقامت ایرانیان در ترکیه",

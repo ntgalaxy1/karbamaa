@@ -242,10 +242,13 @@ const MainContent: React.FC = () => {
           </div>
 
           {/* User Requested Universal Faint Footer Attribution */}
-          <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-center">
+          <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-center gap-2">
             <p className="text-[11px] font-mono tracking-wide text-slate-400/70 dark:text-slate-500/70 select-none text-center">
               powered by Naser Tavakkoli . @Ntgalaxy
             </p>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400">
+              v10.0.0.17
+            </span>
           </div>
         </div>
       </footer>
