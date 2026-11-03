@@ -287,17 +287,17 @@ const DEFAULT_BROKER_SETTINGS: BrokerSettings = {
 };
 
 const STORAGE_KEYS = {
-  SEEKERS: 'karbama_seekers_v3',
+  SEEKERS: 'karbama_seekers_v4',
   JOBS: 'karbama_jobs_v3',
-  APPLICATIONS: 'karbama_applications_v3',
+  APPLICATIONS: 'karbama_applications_v4',
   ADDRESSES: 'karbama_addresses_v3',
   HOTELS: 'karbama_hotels_v3',
   BOOKINGS: 'karbama_bookings_v3',
   TRANSIT: 'karbama_transit_v3',
   TRANSIT_HUBS: 'karbama_transit_hubs_v3',
-  CURRENT_USER_ID: 'karbama_current_user_v3',
+  CURRENT_USER_ID: 'karbama_current_user_v4',
   IS_ADMIN: 'karbama_is_admin_v3',
-  SAVED_JOBS: 'karbama_saved_jobs_v3',
+  SAVED_JOBS: 'karbama_saved_jobs_v4',
   JOB_ALERTS: 'karbama_job_alerts_v3',
   NOTIFICATIONS: 'karbama_notifications_v3',
   THEME: 'karbama_theme_v3',
@@ -309,8 +309,8 @@ const STORAGE_KEYS = {
   PARTNERS: 'karbama_partners_v3',
   CURRENT_PARTNER_ID: 'karbama_current_partner_id_v3',
   PARTNER_PLANS: 'karbama_partner_plans_v3',
-  CHAT_SESSIONS: 'karbama_chat_sessions_v3',
-  ACTIVE_CHAT_ID: 'karbama_active_chat_id_v3',
+  CHAT_SESSIONS: 'karbama_chat_sessions_v4',
+  ACTIVE_CHAT_ID: 'karbama_active_chat_id_v4',
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -449,17 +449,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Admin Live Notifications State
   const [adminNotifications, setAdminNotifications] = useState<any[]>(() => {
     try {
-      const stored = safeStorage.getItem('karbama_admin_notifications');
-      return stored ? JSON.parse(stored) : [
-        {
-          id: 'an-1',
-          type: 'seeker_registered',
-          title: 'کارجو جدید ثبت‌نام کرد',
-          message: 'کارجو علی رضایی با کد ملی ۰۰۱۲۳۴۵۶۷۸ در سامانه کارباما ثبت‌نام نمود.',
-          read: false,
-          createdAt: new Date().toISOString(),
-        }
-      ];
+      const stored = safeStorage.getItem('karbama_admin_notifications_v4');
+      return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
     }
@@ -475,7 +466,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAdminNotifications((prev) => {
       const next = [item, ...prev];
       try {
-        safeStorage.setItem('karbama_admin_notifications', JSON.stringify(next));
+        safeStorage.setItem('karbama_admin_notifications_v4', JSON.stringify(next));
       } catch (e) {
         console.error(e);
       }
@@ -487,7 +478,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAdminNotifications((prev) => {
       const next = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
       try {
-        safeStorage.setItem('karbama_admin_notifications', JSON.stringify(next));
+        safeStorage.setItem('karbama_admin_notifications_v4', JSON.stringify(next));
       } catch (e) {
         console.error(e);
       }
@@ -498,7 +489,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const clearAdminNotifications = () => {
     setAdminNotifications([]);
     try {
-      safeStorage.removeItem('karbama_admin_notifications');
+      safeStorage.removeItem('karbama_admin_notifications_v4');
     } catch (e) {
       console.error(e);
     }
@@ -558,11 +549,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Safe load data with fallback to initial data
+  // Safe load data with fallback to initial data (filtering out legacy sample seekers)
+  const SAMPLE_SEEKER_IDS = new Set(['seeker-1', 'seeker-2', 'seeker-3']);
   const [jobSeekers, setJobSeekers] = useState<JobSeeker[]>(() => {
     try {
       const stored = safeStorage.getItem(STORAGE_KEYS.SEEKERS);
-      return stored ? JSON.parse(stored) : INITIAL_JOB_SEEKERS;
+      const parsed: JobSeeker[] = stored ? JSON.parse(stored) : INITIAL_JOB_SEEKERS;
+      return Array.isArray(parsed) ? parsed.filter((s) => !SAMPLE_SEEKER_IDS.has(s.id)) : [];
     } catch {
       return INITIAL_JOB_SEEKERS;
     }
@@ -634,9 +627,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [savedJobIds, setSavedJobIds] = useState<string[]>(() => {
     try {
       const stored = safeStorage.getItem(STORAGE_KEYS.SAVED_JOBS);
-      return stored ? JSON.parse(stored) : ['job-1', 'job-3'];
+      return stored ? JSON.parse(stored) : [];
     } catch {
-      return ['job-1', 'job-3'];
+      return [];
     }
   });
 
@@ -1013,14 +1006,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const firestoreUsers: JobSeeker[] = [];
           snapshot.forEach((docSnap) => {
             const data = docSnap.data() as JobSeeker;
-            if (data && data.id) {
+            if (data && data.id && !SAMPLE_SEEKER_IDS.has(data.id)) {
               firestoreUsers.push(data);
             }
           });
           if (firestoreUsers.length > 0) {
             setJobSeekers((prev) => {
               const map = new Map<string, JobSeeker>();
-              prev.forEach((s) => map.set(s.id, s));
+              prev.filter((s) => !SAMPLE_SEEKER_IDS.has(s.id)).forEach((s) => map.set(s.id, s));
               firestoreUsers.forEach((s) => map.set(s.id, s));
               return Array.from(map.values());
             });

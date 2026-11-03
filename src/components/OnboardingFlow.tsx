@@ -4,6 +4,8 @@ import { AppLanguage, TargetCountry, Gender } from '../types';
 import { t } from '../utils/translations';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 import { IRAN_PROVINCES, IRAN_CITIES_BY_PROVINCE } from '../data/iranCities';
+import { CITY_DISTRICTS_MAP, getDistrictsForCity } from '../data/turkeyData';
+import { checkPasswordStrength, isValidEmail } from '../utils/validators';
 import { CommitmentModal } from './CommitmentModal';
 import {
   Globe,
@@ -35,6 +37,7 @@ import {
   X,
   Eye,
   EyeOff,
+  Mail,
 } from 'lucide-react';
 
 const DESTINATION_COUNTRIES: { id: TargetCountry; nameKey: string; flag: string; descKey: string }[] = [
@@ -53,6 +56,7 @@ export const OnboardingFlow: React.FC = () => {
     loginSeeker,
     loginAdmin,
     loginPartner,
+    recoverPassword,
     showToast,
     brokerSettings,
   } = useApp();
@@ -70,12 +74,15 @@ export const OnboardingFlow: React.FC = () => {
   const [nationalId, setNationalId] = useState('');
   const [phoneCountryCode, setPhoneCountryCode] = useState('+98');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [payerCardNumber, setPayerCardNumber] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [gender, setGender] = useState<Gender>('male');
   const [targetCountry, setTargetCountry] = useState<TargetCountry>('ترکیه');
+  const [targetCity, setTargetCity] = useState('استانبول');
+  const [targetDistrict, setTargetDistrict] = useState('فاتیح (Fatih)');
 
   // STEP 2: محل سکونت در ایران
   const [iranProvince, setIranProvince] = useState('تهران');
@@ -103,6 +110,13 @@ export const OnboardingFlow: React.FC = () => {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginRole, setLoginRole] = useState<'seeker' | 'admin' | 'partner'>('seeker');
   const [loginError, setLoginError] = useState<string | null>(null);
+
+  // Forgot password modal state
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [recoverInput, setRecoverInput] = useState('');
+  const [recoverResult, setRecoverResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const passCheck = checkPasswordStrength(password);
 
   const languages: { code: AppLanguage; label: string; nativeName: string; flag: string; welcome: string; desc: string }[] = [
     {
@@ -179,12 +193,20 @@ export const OnboardingFlow: React.FC = () => {
       showToast('لطفاً شماره تلفن/واتساپ را وارد فرمایید.', 'error');
       return false;
     }
+    if (!email.trim() || !isValidEmail(email)) {
+      showToast('لطفاً آدرس ایمیل معتبر (جهت بازیابی رمز عبور) وارد فرمایید.', 'error');
+      return false;
+    }
     if (!payerCardNumber.trim() || payerCardNumber.replace(/\D/g, '').length < 16) {
       showToast('لطفاً شماره کارت ۱۶ رقمی واریزکننده (مشتری) را وارد فرمایید.', 'error');
       return false;
     }
-    if (!username.trim() || !password.trim()) {
-      showToast('لطفاً نام کاربری و رمز عبور ورود را وارد فرمایید.', 'error');
+    if (!username.trim() || username.trim().length < 3) {
+      showToast('نام کاربری باید حداقل ۳ کاراکتر باشد.', 'error');
+      return false;
+    }
+    if (!passCheck.isValid) {
+      showToast(passCheck.error || 'رمز عبور باید حداقل ۸ کاراکتر و شامل حروف بزرگ، کوچک و اعداد انگلیسی باشد.', 'error');
       return false;
     }
     return true;
@@ -256,6 +278,7 @@ export const OnboardingFlow: React.FC = () => {
       fullName,
       fatherName: fatherName.trim(),
       nationalId: nationalId.trim(),
+      email: email.trim(),
       gender,
       phoneCountryCode,
       phoneNumber: phoneNumber.trim(),
@@ -266,7 +289,8 @@ export const OnboardingFlow: React.FC = () => {
       iranCity: iranCity.trim(),
       iranAddress: iranAddress.trim(),
       targetCountry,
-      targetCity: 'استانبول',
+      targetCity: targetCity || 'استانبول',
+      targetDistrict: targetDistrict || undefined,
       turkishLevel: 'basic',
       residenceStatus: 'none',
       skills: combinedSkills.length > 0 ? combinedSkills : ['کار عمومی'],
@@ -588,6 +612,22 @@ export const OnboardingFlow: React.FC = () => {
                       />
                     </div>
 
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-slate-300 font-medium flex items-center gap-1">
+                        <Mail className="w-3.5 h-3.5 text-amber-400" />
+                        <span>آدرس ایمیل معتبر (جهت بازیابی رمز عبور) *</span>
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        dir="ltr"
+                        placeholder="example@gmail.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
+                      />
+                    </div>
+
                     <div className="space-y-1">
                       <label className="text-slate-300 font-medium">{t('usernameInputLabel', appLanguage)}</label>
                       <input
@@ -608,7 +648,7 @@ export const OnboardingFlow: React.FC = () => {
                           type={showPassword ? 'text' : 'password'}
                           required
                           dir="ltr"
-                          placeholder={t('passwordPlaceholderText', appLanguage)}
+                          placeholder="Abc12345"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
@@ -620,6 +660,20 @@ export const OnboardingFlow: React.FC = () => {
                         >
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 pt-1 text-[10px]">
+                        <span className={passCheck.hasMinLength ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                          {passCheck.hasMinLength ? '✓' : '○'} حداقل ۸ کاراکتر
+                        </span>
+                        <span className={passCheck.hasUppercase ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                          {passCheck.hasUppercase ? '✓' : '○'} حروف بزرگ (A-Z)
+                        </span>
+                        <span className={passCheck.hasLowercase ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                          {passCheck.hasLowercase ? '✓' : '○'} حروف کوچک (a-z)
+                        </span>
+                        <span className={passCheck.hasNumber ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                          {passCheck.hasNumber ? '✓' : '○'} شامل عدد (0-9)
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -665,7 +719,13 @@ export const OnboardingFlow: React.FC = () => {
                           <button
                             key={c.id}
                             type="button"
-                            onClick={() => setTargetCountry(c.id)}
+                            onClick={() => {
+                              setTargetCountry(c.id);
+                              if (c.id === 'ترکیه') {
+                                setTargetCity('استانبول');
+                                setTargetDistrict('فاتیح (Fatih)');
+                              }
+                            }}
                             className={`p-3 rounded-xl border text-right transition ${
                               isSelected ? 'bg-red-600/25 border-red-500 text-white font-bold ring-1 ring-red-500/40' : 'bg-slate-800/80 border-slate-700/80 text-slate-300 hover:bg-slate-800'
                             }`}
@@ -682,6 +742,44 @@ export const OnboardingFlow: React.FC = () => {
                         );
                       })}
                     </div>
+
+                    {targetCountry === 'ترکیه' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+                        <div className="space-y-1">
+                          <label className="text-slate-300 font-medium">شهر مقصد در ترکیه</label>
+                          <select
+                            value={targetCity}
+                            onChange={(e) => {
+                              const newCity = e.target.value;
+                              setTargetCity(newCity);
+                              const dists = getDistrictsForCity(newCity);
+                              setTargetDistrict(dists[0] || '');
+                            }}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold"
+                          >
+                            {Object.keys(CITY_DISTRICTS_MAP).map((city) => (
+                              <option key={city} value={city}>
+                                {city}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-slate-300 font-medium">منطقه / محله در {targetCity}</label>
+                          <select
+                            value={targetDistrict}
+                            onChange={(e) => setTargetDistrict(e.target.value)}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                          >
+                            {getDistrictsForCity(targetCity).map((dist) => (
+                              <option key={dist} value={dist}>
+                                {dist}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-3 flex justify-end">
@@ -1124,7 +1222,23 @@ export const OnboardingFlow: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-slate-300 font-medium">{t('loginPasswordInputLabel', appLanguage)}</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-slate-300 font-medium">{t('loginPasswordInputLabel', appLanguage)}</label>
+                    {loginRole === 'seeker' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowForgotPasswordModal(true);
+                          setRecoverResult(null);
+                          setRecoverInput('');
+                        }}
+                        className="text-[11px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1"
+                      >
+                        <KeyRound className="w-3 h-3" />
+                        فراموشی رمز عبور؟
+                      </button>
+                    )}
+                  </div>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
                     <input
@@ -1168,6 +1282,80 @@ export const OnboardingFlow: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* FORGOT PASSWORD MODAL */}
+      {showForgotPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="relative w-full max-w-md bg-slate-900 border border-amber-500/40 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-amber-400 font-bold text-base">
+                <KeyRound className="w-5 h-5" />
+                <span>بازیابی رمز عبور کارباما</span>
+              </div>
+              <button
+                onClick={() => setShowForgotPasswordModal(false)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              جهت بازیابی رمز عبور، آدرس ایمیل ثبت‌شده هنگام ثبت‌نام یا نام کاربری خود را وارد نمایید.
+            </p>
+
+            {recoverResult && (
+              <div
+                className={`p-3 rounded-xl text-xs font-bold ${
+                  recoverResult.success
+                    ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
+                    : 'bg-red-500/20 border border-red-500/40 text-red-300'
+                }`}
+              >
+                {recoverResult.message}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                ایمیل یا نام کاربری (یوزرنیم)
+              </label>
+              <input
+                type="text"
+                dir="ltr"
+                value={recoverInput}
+                onChange={(e) => setRecoverInput(e.target.value)}
+                placeholder="example@gmail.com / username"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-amber-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowForgotPasswordModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold"
+              >
+                انصراف
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!recoverInput.trim()) return;
+                  const res = recoverPassword(recoverInput);
+                  setRecoverResult({
+                    success: res.success,
+                    message: res.message || res.error || '',
+                  });
+                }}
+                className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-700/30"
+              >
+                ارسال لینک / بازیابی رمز
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* COMMITMENT MODAL POPUP */}
       <CommitmentModal

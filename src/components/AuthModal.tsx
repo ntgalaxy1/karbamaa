@@ -259,7 +259,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
   const [targetDistrict, setTargetDistrict] = useState('فاتیح');
 
   // 3. شغل‌ها، تخصص‌ها، جستجو، حرفه کارجو، تسلط به زبان کشور انتخابی و زبان‌های بلدم
-  const [selectedJobs, setSelectedJobs] = useState<string[]>(['سرآشپز غذاهای ایرانی و فرنگی']);
+  const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
   const [jobSearchQuery, setJobSearchQuery] = useState('');
   const [customProfession, setCustomProfession] = useState('');
   const [targetLanguageLevel, setTargetLanguageLevel] = useState<string>('basic');
@@ -1904,7 +1904,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                     type="text"
                     required
                     dir="ltr"
-                    placeholder={mode === 'admin' ? 'admin' : 'ali_reza'}
+                    placeholder={mode === 'admin' ? 'admin' : 'username'}
                     value={loginUsername}
                     onChange={(e) => setLoginUsername(e.target.value)}
                     className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 text-left font-mono"

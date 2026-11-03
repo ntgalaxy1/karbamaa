@@ -247,7 +247,7 @@ const MainContent: React.FC = () => {
               powered by Naser Tavakkoli . @Ntgalaxy
             </p>
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400">
-              v10.0.0.17
+              v10.0.0.18
             </span>
           </div>
         </div>
