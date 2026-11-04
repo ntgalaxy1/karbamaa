@@ -227,16 +227,7 @@ app.get(['/karbama.apk', '/karbama-latest.apk', '/*.apk', '/downloads/*.apk'], (
   return res.status(404).setHeader('Content-Type', 'text/plain').send('APK file not found');
 });
 
-// Serve static assets from dist/ and public/
-if (fs.existsSync(path.resolve(__dirname, 'dist'))) {
-  app.use(express.static(path.resolve(__dirname, 'dist'), {
-    maxAge: '1d',
-    setHeaders: (res) => {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-    },
-  }));
-}
-
+// Serve static assets from public/
 app.use(express.static(path.resolve(__dirname, 'public'), {
   maxAge: '1d',
   setHeaders: (res) => {
@@ -244,9 +235,10 @@ app.use(express.static(path.resolve(__dirname, 'public'), {
   },
 }));
 
-// In development mode, mount Vite middleware
-const distExists = fs.existsSync(path.resolve(__dirname, 'dist/index.html'));
-if (process.env.NODE_ENV !== 'production' && !distExists) {
+const isProduction = process.env.NODE_ENV === 'production';
+
+// In development mode, ALWAYS mount Vite middleware for instant live compilation
+if (!isProduction) {
   const { createServer: createViteServer } = await import('vite');
   const vite = await createViteServer({
     server: { middlewareMode: true },
@@ -254,6 +246,16 @@ if (process.env.NODE_ENV !== 'production' && !distExists) {
   });
   app.use(vite.middlewares);
 } else {
+  // In production mode, serve pre-built files from dist/
+  if (fs.existsSync(path.resolve(__dirname, 'dist'))) {
+    app.use(express.static(path.resolve(__dirname, 'dist'), {
+      maxAge: '1d',
+      setHeaders: (res) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+      },
+    }));
+  }
+
   // Production SPA fallback for HTML pages ONLY
   app.get('*', (req, res) => {
     // If the path looks like a missing file/asset, return 404 text/plain instead of index.html

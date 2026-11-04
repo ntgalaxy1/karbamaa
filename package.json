@@ -1,10 +1,10 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "10.0.0.24",
+  "version": "10.0.0.23",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/build-pwa-manifests.js && tsx server.ts",
+    "dev": "tsx server.ts",
     "build": "node scripts/build-pwa-manifests.js && vite build && python3 scripts/generate-apk.py && python3 scripts/zip-dist.py",
     "start": "tsx server.ts",
     "preview": "tsx server.ts",
