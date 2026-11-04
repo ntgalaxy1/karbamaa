@@ -132,6 +132,36 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose }) =
             </div>
           </div>
 
+          {/* Enamad Official Verification Badge in Modal */}
+          <div className="p-4 bg-slate-950/80 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
+            <div className="text-right">
+              <span className="text-xs font-bold text-white block">نماد اعتماد الکترونیکی رسمی (اینماد)</span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">شناسه کسب‌وکار کارباما: ۸۵۲۵۸۲۱</span>
+            </div>
+            <a
+              referrerPolicy="origin"
+              target="_blank"
+              rel="noopener noreferrer"
+              href="https://trustseal.enamad.ir/?id=8525821&Code=XEkLJtcaakG7VTxhSuZB80dckY4lQbqM"
+              className="p-1.5 bg-white rounded-xl shadow-xs shrink-0 hover:scale-105 transition-transform"
+              title="مشاهده تاییدیه رسمی نماد اعتماد الکترونیکی"
+            >
+              <img
+                referrerPolicy="origin"
+                src="https://trustseal.enamad.ir/logo.aspx?id=8525821&Code=XEkLJtcaakG7VTxhSuZB80dckY4lQbqM"
+                alt="نماد اعتماد الکترونیکی کارباما"
+                className="h-14 w-auto object-contain cursor-pointer"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.src.endsWith('/enamad.svg')) {
+                    target.src = '/enamad.svg';
+                  }
+                }}
+                {...({ code: 'XEkLJtcaakG7VTxhSuZB80dckY4lQbqM' } as any)}
+              />
+            </a>
+          </div>
+
         </div>
 
         {/* Footer */}

@@ -226,6 +226,44 @@ export const AboutUsSection: React.FC = () => {
           </div>
 
         </div>
+
+        {/* Official Enamad Trust Seal Badge Card */}
+        <div className="mt-4 p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 text-right">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-extrabold text-white text-sm">نماد اعتماد الکترونیکی رسمی (اینماد)</h4>
+              <p className="text-xs text-slate-400 mt-0.5">
+                تایید شده توسط مرکز توسعه تجارت الکترونیکی وزارت صمت | شناسه کسب‌وکار: ۸۵۲۵۸۲۱
+              </p>
+            </div>
+          </div>
+
+          <a
+            referrerPolicy="origin"
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://trustseal.enamad.ir/?id=8525821&Code=XEkLJtcaakG7VTxhSuZB80dckY4lQbqM"
+            className="p-2 bg-white rounded-2xl shadow-md shrink-0 hover:scale-105 transition-all flex items-center gap-2"
+            title="استعلام نماد اعتماد الکترونیکی کارباما در سامانه اینماد"
+          >
+            <img
+              referrerPolicy="origin"
+              src="https://trustseal.enamad.ir/logo.aspx?id=8525821&Code=XEkLJtcaakG7VTxhSuZB80dckY4lQbqM"
+              alt="نماد اعتماد الکترونیکی اینماد کارباما"
+              className="h-16 w-auto object-contain cursor-pointer"
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (!target.src.endsWith('/enamad.svg')) {
+                  target.src = '/enamad.svg';
+                }
+              }}
+              {...({ code: 'XEkLJtcaakG7VTxhSuZB80dckY4lQbqM' } as any)}
+            />
+          </a>
+        </div>
       </div>
 
       {/* Services Overview Cards */}

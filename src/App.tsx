@@ -221,6 +221,12 @@ const MainContent: React.FC = () => {
                   src="https://trustseal.enamad.ir/logo.aspx?id=8525821&Code=XEkLJtcaakG7VTxhSuZB80dckY4lQbqM"
                   alt="نماد اعتماد الکترونیکی اینماد کارباما"
                   className="h-16 w-auto cursor-pointer object-contain"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (!target.src.endsWith('/enamad.svg')) {
+                      target.src = '/enamad.svg';
+                    }
+                  }}
                   {...({ code: 'XEkLJtcaakG7VTxhSuZB80dckY4lQbqM' } as any)}
                 />
                 <div className="text-right hidden sm:block pr-1">
