@@ -346,29 +346,29 @@ export const OnboardingFlow: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-auto relative max-h-[92vh] min-h-[500px] flex flex-col transition-all duration-200">
+      <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-auto relative h-[88vh] min-h-[560px] max-h-[720px] flex flex-col">
         {/* Top bar */}
         <div style={{ background: 'var(--primary-topbar)' }} className="h-1.5 w-full shrink-0" />
 
         {/* Top Header Mode Indicator */}
-        <div className="px-6 py-3.5 flex items-center justify-between text-xs border-b border-slate-800/80 shrink-0 bg-slate-950/40">
-          <div className="flex items-center gap-3">
+        <div className="px-5 sm:px-6 py-3.5 flex items-center justify-between text-xs border-b border-slate-800/80 shrink-0 bg-slate-950/40">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <img
               src="/logo.png"
               alt="کارباما"
               className="w-8 h-8 rounded-full object-cover border border-amber-400/80 shadow-sm"
             />
             <div>
-              <span className="font-black text-sm text-white">کارباما | KARBAMA</span>
+              <span className="font-black text-xs sm:text-sm text-white">کارباما | KARBAMA</span>
               <p className="text-[10px] text-slate-400">{t('appOfficialTag', appLanguage)}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-800/90 p-1 rounded-xl border border-slate-700/80">
+          <div className="flex items-center gap-1 bg-slate-800/90 p-1 rounded-xl border border-slate-700/80">
             <button
               type="button"
               onClick={() => setViewMode('language')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
                 viewMode === 'language' ? 'bg-red-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -377,7 +377,7 @@ export const OnboardingFlow: React.FC = () => {
             <button
               type="button"
               onClick={() => setViewMode('register')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
                 viewMode === 'register' ? 'bg-red-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -386,8 +386,8 @@ export const OnboardingFlow: React.FC = () => {
             <button
               type="button"
               onClick={() => setViewMode('login')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                viewMode === 'login' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                viewMode === 'login' ? 'bg-red-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
               }`}
             >
               {t('login', appLanguage)}
@@ -398,59 +398,61 @@ export const OnboardingFlow: React.FC = () => {
         <div className="overflow-y-auto flex-1 p-5 sm:p-7">
           {/* SCREEN 1: WELCOME & LANGUAGE SELECTION */}
           {viewMode === 'language' && (
-            <div className="space-y-6 text-center py-2">
-              <div className="relative inline-block mx-auto">
-                <img
-                  src="/logo.png"
-                  alt="کارباما"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-amber-400/80 shadow-2xl ring-4 ring-amber-500/20"
-                />
-                <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center text-[10px] text-white">
-                  ✓
-                </span>
-              </div>
+            <div className="min-h-full flex flex-col justify-between py-1 text-center">
+              <div className="space-y-4">
+                <div className="relative inline-block mx-auto">
+                  <img
+                    src="/logo.png"
+                    alt="کارباما"
+                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-amber-400/80 shadow-2xl ring-4 ring-amber-500/20"
+                  />
+                  <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center text-[10px] text-white font-bold">
+                    ✓
+                  </span>
+                </div>
 
-              <div className="space-y-2">
-                <h1 className="text-2xl sm:text-3xl font-black text-white">
-                  {currentLangObj.welcome}
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
-                  {currentLangObj.desc}
-                </p>
-              </div>
+                <div className="space-y-1.5">
+                  <h1 className="text-xl sm:text-2xl font-black text-white">
+                    {currentLangObj.welcome}
+                  </h1>
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
+                    {currentLangObj.desc}
+                  </p>
+                </div>
 
-              {/* Language Selection Grid */}
-              <div className="space-y-2 pt-2 text-right">
-                <p className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-                  <Globe className="w-4 h-4 text-red-400" />
-                  {t('selectLanguagePrompt', appLanguage)}
-                </p>
+                {/* Language Selection Grid */}
+                <div className="space-y-2 pt-1 text-right">
+                  <p className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                    <Globe className="w-4 h-4 text-red-400" />
+                    {t('selectLanguagePrompt', appLanguage)}
+                  </p>
 
-                <div className="grid grid-cols-2 gap-3">
-                  {languages.map((l) => {
-                    const isSelected = appLanguage === l.code;
-                    return (
-                      <button
-                        key={l.code}
-                        type="button"
-                        onClick={() => setAppLanguage(l.code)}
-                        className={`p-3.5 rounded-2xl border text-right transition flex items-center justify-between gap-3 ${
-                          isSelected
-                            ? 'bg-amber-500/20 border-amber-500 text-amber-200 font-bold shadow-lg scale-[1.02]'
-                            : 'bg-slate-800/80 border-slate-700/80 text-slate-300 hover:bg-slate-800 hover:text-white'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-2xl">{l.flag}</span>
-                          <div>
-                            <p className="text-sm font-bold">{l.label}</p>
-                            <p className="text-[10px] text-slate-400">{l.nativeName}</p>
+                  <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                    {languages.map((l) => {
+                      const isSelected = appLanguage === l.code;
+                      return (
+                        <button
+                          key={l.code}
+                          type="button"
+                          onClick={() => setAppLanguage(l.code)}
+                          className={`p-3 rounded-2xl border text-right transition flex items-center justify-between gap-2 sm:gap-3 ${
+                            isSelected
+                              ? 'bg-amber-500/20 border-amber-500 text-amber-200 font-bold shadow-lg scale-[1.02]'
+                              : 'bg-slate-800/80 border-slate-700/80 text-slate-300 hover:bg-slate-800 hover:text-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl sm:text-2xl">{l.flag}</span>
+                            <div>
+                              <p className="text-xs sm:text-sm font-bold">{l.label}</p>
+                              <p className="text-[10px] text-slate-400">{l.nativeName}</p>
+                            </div>
                           </div>
-                        </div>
-                        {isSelected && <CheckCircle className="w-5 h-5 text-amber-400 shrink-0" />}
-                      </button>
-                    );
-                  })}
+                          {isSelected && <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -459,7 +461,7 @@ export const OnboardingFlow: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setViewMode('register')}
-                  className="w-full py-3.5 px-6 bg-red-600 hover:bg-red-500 text-white font-black text-sm rounded-2xl shadow-xl shadow-red-700/30 transition flex items-center justify-center gap-2 group"
+                  className="w-full py-3 sm:py-3.5 px-6 bg-red-600 hover:bg-red-500 text-white font-black text-sm rounded-2xl shadow-xl shadow-red-700/30 transition flex items-center justify-center gap-2 group"
                 >
                   <UserCheck className="w-4 h-4" />
                   <span>{t('startSeekerRegBtn', appLanguage)}</span>
@@ -469,7 +471,7 @@ export const OnboardingFlow: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setViewMode('login')}
-                  className="w-full sm:w-auto py-3.5 px-5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-2xl border border-slate-700 transition flex items-center justify-center gap-2 shrink-0"
+                  className="w-full sm:w-auto py-3 sm:py-3.5 px-5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-2xl border border-slate-700 transition flex items-center justify-center gap-2 shrink-0"
                 >
                   <LogIn className="w-4 h-4 text-amber-400" />
                   <span>{t('existingAccountLoginBtn', appLanguage)}</span>
@@ -480,9 +482,9 @@ export const OnboardingFlow: React.FC = () => {
 
           {/* SCREEN 2: 4-STEP REGISTRATION WIZARD */}
           {viewMode === 'register' && (
-            <div className="space-y-5">
+            <div className="space-y-5 pb-4">
               {/* Wizard Steps Progress Indicator */}
-              <div className="border-b border-slate-800 pb-3">
+              <div className="sticky -top-5 sm:-top-7 z-10 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 pb-3 pt-1">
                 <div className="flex items-center justify-between text-xs mb-2 font-bold">
                   <span className="text-white flex items-center gap-1.5">
                     <UserCheck className="w-4 h-4 text-emerald-400" />
@@ -1165,129 +1167,131 @@ export const OnboardingFlow: React.FC = () => {
 
           {/* SCREEN 3: LOGIN FORM */}
           {viewMode === 'login' && (
-            <form onSubmit={handleLoginSubmit} className="space-y-4 max-w-md mx-auto py-2">
-              <div className="text-center space-y-1 pb-2 border-b border-slate-800">
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto mb-2">
-                  <Lock className="w-6 h-6" />
-                </div>
-                <h2 className="text-lg font-bold text-white">{t('loginModalHeadline', appLanguage)}</h2>
-                <p className="text-xs text-slate-400">
-                  {t('loginModalSubtitle', appLanguage)}
-                </p>
-              </div>
-
-              {/* Role Selector */}
-              <div className="grid grid-cols-3 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setLoginRole('seeker')}
-                  className={`py-2 rounded-lg transition ${
-                    loginRole === 'seeker' ? 'bg-red-600 text-white font-bold' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {t('jobseekerRole', appLanguage)}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLoginRole('partner')}
-                  className={`py-2 rounded-lg transition ${
-                    loginRole === 'partner' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  همکار
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLoginRole('admin')}
-                  className={`py-2 rounded-lg transition ${
-                    loginRole === 'admin' ? 'bg-amber-600 text-white font-bold' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {t('adminRole', appLanguage)}
-                </button>
-              </div>
-
-              {loginError && (
-                <div className="p-3 bg-red-950/80 border border-red-500/50 rounded-xl text-red-200 text-xs">
-                  {loginError}
-                </div>
-              )}
-
-              <div className="space-y-3 text-xs">
-                <div className="space-y-1">
-                  <label className="text-slate-300 font-medium">{t('loginUsernameInputLabel', appLanguage)}</label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
-                    <input
-                      type="text"
-                      required
-                      dir="ltr"
-                      placeholder={t('loginUsernamePlaceholderText', appLanguage)}
-                      value={loginUsername}
-                      onChange={(e) => setLoginUsername(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
-                    />
+            <div className="min-h-full flex flex-col justify-center py-2 animate-in fade-in duration-150">
+              <form onSubmit={handleLoginSubmit} className="space-y-4 max-w-md w-full mx-auto">
+                <div className="text-center space-y-1 pb-2 border-b border-slate-800">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto mb-2">
+                    <Lock className="w-6 h-6" />
                   </div>
+                  <h2 className="text-lg font-bold text-white">{t('loginModalHeadline', appLanguage)}</h2>
+                  <p className="text-xs text-slate-400">
+                    {t('loginModalSubtitle', appLanguage)}
+                  </p>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-slate-300 font-medium">{t('loginPasswordInputLabel', appLanguage)}</label>
-                    {loginRole === 'seeker' && (
+                {/* Role Selector */}
+                <div className="grid grid-cols-3 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setLoginRole('seeker')}
+                    className={`py-2 rounded-lg transition ${
+                      loginRole === 'seeker' ? 'bg-red-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {t('jobseekerRole', appLanguage)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLoginRole('partner')}
+                    className={`py-2 rounded-lg transition ${
+                      loginRole === 'partner' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    همکار
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLoginRole('admin')}
+                    className={`py-2 rounded-lg transition ${
+                      loginRole === 'admin' ? 'bg-amber-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {t('adminRole', appLanguage)}
+                  </button>
+                </div>
+
+                {loginError && (
+                  <div className="p-3 bg-red-950/80 border border-red-500/50 rounded-xl text-red-200 text-xs">
+                    {loginError}
+                  </div>
+                )}
+
+                <div className="space-y-3 text-xs">
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">{t('loginUsernameInputLabel', appLanguage)}</label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
+                      <input
+                        type="text"
+                        required
+                        dir="ltr"
+                        placeholder={t('loginUsernamePlaceholderText', appLanguage)}
+                        value={loginUsername}
+                        onChange={(e) => setLoginUsername(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-slate-300 font-medium">{t('loginPasswordInputLabel', appLanguage)}</label>
+                      {loginRole === 'seeker' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowForgotPasswordModal(true);
+                            setRecoverResult(null);
+                            setRecoverInput('');
+                          }}
+                          className="text-[11px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1"
+                        >
+                          <KeyRound className="w-3 h-3" />
+                          فراموشی رمز عبور؟
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
+                      <input
+                        type={showLoginPassword ? 'text' : 'password'}
+                        required
+                        dir="ltr"
+                        placeholder={t('loginPasswordPlaceholderText', appLanguage)}
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl pr-9 pl-9 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
+                      />
                       <button
                         type="button"
-                        onClick={() => {
-                          setShowForgotPasswordModal(true);
-                          setRecoverResult(null);
-                          setRecoverInput('');
-                        }}
-                        className="text-[11px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1"
+                        onClick={() => setShowLoginPassword(!showLoginPassword)}
+                        className="absolute left-2.5 top-3 text-slate-400 hover:text-white"
                       >
-                        <KeyRound className="w-3 h-3" />
-                        فراموشی رمز عبور؟
+                        {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
-                    <input
-                      type={showLoginPassword ? 'text' : 'password'}
-                      required
-                      dir="ltr"
-                      placeholder={t('loginPasswordPlaceholderText', appLanguage)}
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl pr-9 pl-9 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowLoginPassword(!showLoginPassword)}
-                      className="absolute left-2.5 top-3 text-slate-400 hover:text-white"
-                    >
-                      {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
-                <button
-                  type="submit"
-                  className="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-700/30 transition flex items-center justify-center gap-2"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span>{t('loginSubmitBtnText', appLanguage)}</span>
-                </button>
+                <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                  <button
+                    type="submit"
+                    className="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-700/30 transition flex items-center justify-center gap-2"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>{t('loginSubmitBtnText', appLanguage)}</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setViewMode('register')}
-                  className="w-full sm:w-auto py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium border border-slate-700 transition"
-                >
-                  {t('noAccountRegBtnText', appLanguage)}
-                </button>
-              </div>
-            </form>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('register')}
+                    className="w-full sm:w-auto py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium border border-slate-700 transition"
+                  >
+                    {t('noAccountRegBtnText', appLanguage)}
+                  </button>
+                </div>
+              </form>
+            </div>
           )}
         </div>
       </div>

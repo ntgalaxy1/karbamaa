@@ -634,9 +634,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden my-4">
+      <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden my-auto h-[88vh] min-h-[560px] max-h-[720px] flex flex-col">
         {/* Top Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-red-700/30 via-slate-850 to-slate-900 border-b border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-red-700/30 via-slate-850 to-slate-900 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
             <img
               src="/logo.png"
@@ -661,7 +661,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
         </div>
 
         {/* Tab switchers */}
-        <div className="grid grid-cols-3 p-1.5 mx-6 mt-4 bg-slate-950/70 border border-slate-800 rounded-2xl gap-1 text-xs font-semibold">
+        <div className="grid grid-cols-3 p-1.5 mx-6 mt-4 bg-slate-950/70 border border-slate-800 rounded-2xl gap-1 text-xs font-semibold shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -711,13 +711,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
 
         {/* Error notification */}
         {error && (
-          <div className="mx-6 mt-3 p-3 bg-red-950/90 border border-red-500/60 rounded-2xl text-red-200 text-xs flex items-center gap-2.5 animate-fadeIn">
+          <div className="mx-6 mt-3 p-3 bg-red-950/90 border border-red-500/60 rounded-2xl text-red-200 text-xs flex items-center gap-2.5 animate-fadeIn shrink-0">
             <span className="h-2.5 w-2.5 rounded-full bg-red-500 shrink-0 animate-ping"></span>
             <span className="font-bold">{error}</span>
           </div>
         )}
 
-        <div className="p-4 sm:p-6 max-h-[76vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 flex-1 overflow-y-auto">
           {mode === 'register' ? (
             <div>
               {/* Wizard Steps Progress Indicator */}
@@ -1885,84 +1885,86 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
             </div>
           ) : (
             /* Login Form (Seeker or Admin) */
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              {mode === 'admin' ? (
-                <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-200">
-                  اطلاعات پیش‌فرض ورود مدیر: <strong>نام کاربری: admin</strong> | <strong>رمز عبور: admin123</strong>
-                </div>
-              ) : (
-                <div className="p-3.5 bg-slate-800/80 border border-slate-700 rounded-2xl text-xs text-slate-300">
-                  جهت ورود به پنل کارجو، <strong>نام کاربری (یوزرنیم)</strong> و <strong>رمز عبور (پسوورد)</strong> خود را وارد نمایید.
-                </div>
-              )}
+            <div className="min-h-full flex flex-col justify-center max-w-md w-full mx-auto py-2">
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
+                {mode === 'admin' ? (
+                  <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-200">
+                    اطلاعات پیش‌فرض ورود مدیر: <strong>نام کاربری: admin</strong> | <strong>رمز عبور: admin123</strong>
+                  </div>
+                ) : (
+                  <div className="p-3.5 bg-slate-800/80 border border-slate-700 rounded-2xl text-xs text-slate-300">
+                    جهت ورود به پنل کارجو، <strong>نام کاربری (یوزرنیم)</strong> و <strong>رمز عبور (پسوورد)</strong> خود را وارد نمایید.
+                  </div>
+                )}
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">نام کاربری (یوزرنیم)</label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
-                  <input
-                    type="text"
-                    required
-                    dir="ltr"
-                    placeholder={mode === 'admin' ? 'admin' : 'username'}
-                    value={loginUsername}
-                    onChange={(e) => setLoginUsername(e.target.value)}
-                    className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 text-left font-mono"
-                  />
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">نام کاربری (یوزرنیم)</label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
+                    <input
+                      type="text"
+                      required
+                      dir="ltr"
+                      placeholder={mode === 'admin' ? 'admin' : 'username'}
+                      value={loginUsername}
+                      onChange={(e) => setLoginUsername(e.target.value)}
+                      className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 text-left font-mono"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-slate-300">رمز عبور (پسوورد)</label>
-                  {mode === 'login' && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-300">رمز عبور (پسوورد)</label>
+                    {mode === 'login' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowForgotPasswordModal(true);
+                          setRecoverResult(null);
+                          setRecoverInput('');
+                        }}
+                        className="text-xs text-amber-400 hover:text-amber-300 font-bold transition flex items-center gap-1"
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                        فراموشی رمز عبور؟
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
+                    <input
+                      type={showLoginPassword ? 'text' : 'password'}
+                      required
+                      dir="ltr"
+                      placeholder="••••••••"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-9 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 text-left font-mono"
+                    />
                     <button
                       type="button"
-                      onClick={() => {
-                        setShowForgotPasswordModal(true);
-                        setRecoverResult(null);
-                        setRecoverInput('');
-                      }}
-                      className="text-xs text-amber-400 hover:text-amber-300 font-bold transition flex items-center gap-1"
+                      onClick={() => setShowLoginPassword(!showLoginPassword)}
+                      className="absolute left-3 top-3 text-slate-400 hover:text-white"
                     >
-                      <KeyRound className="w-3.5 h-3.5" />
-                      فراموشی رمز عبور؟
+                      {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
-                  )}
+                  </div>
                 </div>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
-                  <input
-                    type={showLoginPassword ? 'text' : 'password'}
-                    required
-                    dir="ltr"
-                    placeholder="••••••••"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-9 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 text-left font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowLoginPassword(!showLoginPassword)}
-                    className="absolute left-3 top-3 text-slate-400 hover:text-white"
-                  >
-                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
 
-              <button
-                type="submit"
-                className={`w-full py-3 text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 ${
-                  mode === 'admin'
-                    ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-700/30'
-                    : 'bg-red-600 hover:bg-red-500 shadow-red-700/30'
-                }`}
-              >
-                <LogIn className="w-4 h-4" />
-                {mode === 'admin' ? 'ورود به پنل مدیریت' : 'ورود به حساب کارجو'}
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  className={`w-full py-3 text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 ${
+                    mode === 'admin'
+                      ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-700/30'
+                      : 'bg-red-600 hover:bg-red-500 shadow-red-700/30'
+                  }`}
+                >
+                  <LogIn className="w-4 h-4" />
+                  {mode === 'admin' ? 'ورود به پنل مدیریت' : 'ورود به حساب کارجو'}
+                </button>
+              </form>
+            </div>
           )}
         </div>
       </div>

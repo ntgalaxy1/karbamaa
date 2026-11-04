@@ -3,8 +3,10 @@ set -e
 
 REPO="$1"      # e.g. "nasertavakkoliii/karbama"
 TOKEN="$2"     # GitHub Personal Access Token (ghp_...)
-TAG="v10.0.0.1"
-APK_FILE="public/karbama-v10.0.0.1.apk"
+VERSION=$(node -p "require('./package.json').version")
+TAG="v${VERSION}"
+APK_FILE="public/karbama-v${VERSION}.apk"
+AAB_FILE="public/karbama-v${VERSION}.aab"
 
 if [ -z "$REPO" ] || [ -z "$TOKEN" ]; then
     echo "Usage: $0 <owner/repo> <github_token>"
@@ -12,7 +14,7 @@ if [ -z "$REPO" ] || [ -z "$TOKEN" ]; then
 fi
 
 if [ ! -f "$APK_FILE" ]; then
-    echo "Error: APK file $APK_FILE not found. Running generator..."
+    echo "Notice: APK file $APK_FILE not found. Running generator..."
     python3 scripts/generate-apk.py
 fi
 
@@ -31,7 +33,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d '{
     "tag_name": "'"${TAG}"'",
     "name": "کارباما نسخه اندروید '"${TAG}"'",
-    "body": "دانلود مستقیم بسته نصبی اندروید نسخه ۱۰.۰.۰.۱ اپلیکیشن رسمی کارباما.\n\n- شناسه پکیج: `app.karbama.twa`\n- نسخه: `10.0.0.1`\n- توسعه‌دهنده: ناصر توکلی (@Ntgalaxy)",
+    "body": "دانلود مستقیم بسته نصبی اندروید نسخه '"${VERSION}"' اپلیکیشن رسمی کارباما.\n\n- شناسه پکیج: `app.karbama.twa`\n- نسخه: `'"${VERSION}"'`\n- توسعه‌دهنده: ناصر توکلی (@Ntgalaxy)",
     "draft": false,
     "prerelease": false
   }')
