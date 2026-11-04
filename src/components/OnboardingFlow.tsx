@@ -346,7 +346,7 @@ export const OnboardingFlow: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-auto relative animate-in fade-in zoom-in-95 duration-300 max-h-[92vh] flex flex-col">
+      <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-auto relative max-h-[92vh] min-h-[500px] flex flex-col transition-all duration-200">
         {/* Top bar */}
         <div style={{ background: 'var(--primary-topbar)' }} className="h-1.5 w-full shrink-0" />
 

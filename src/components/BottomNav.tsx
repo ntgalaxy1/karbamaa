@@ -27,9 +27,9 @@ export const BottomNav: React.FC = () => {
           type="button"
           onClick={() => setActiveTab('jobs')}
           style={activeTab === 'jobs' ? { color: 'var(--primary-color)' } : undefined}
-          className={`flex flex-col items-center justify-center gap-1 py-1 transition ${
+          className={`flex flex-col items-center justify-center gap-1 py-1 transition-colors ${
             activeTab === 'jobs'
-              ? 'font-bold scale-105'
+              ? 'font-bold'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -42,9 +42,9 @@ export const BottomNav: React.FC = () => {
           type="button"
           onClick={() => setActiveTab('map')}
           style={activeTab === 'map' ? { color: 'var(--primary-color)' } : undefined}
-          className={`flex flex-col items-center justify-center gap-1 py-1 transition ${
+          className={`flex flex-col items-center justify-center gap-1 py-1 transition-colors ${
             activeTab === 'map'
-              ? 'font-bold scale-105'
+              ? 'font-bold'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -57,9 +57,9 @@ export const BottomNav: React.FC = () => {
           type="button"
           onClick={() => setActiveTab('my-applications')}
           style={activeTab === 'my-applications' ? { color: 'var(--primary-color)' } : undefined}
-          className={`flex flex-col items-center justify-center gap-1 py-1 transition relative ${
+          className={`flex flex-col items-center justify-center gap-1 py-1 transition-colors relative ${
             activeTab === 'my-applications'
-              ? 'font-bold scale-105'
+              ? 'font-bold'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -82,9 +82,9 @@ export const BottomNav: React.FC = () => {
           type="button"
           onClick={() => setActiveTab('addresses')}
           style={activeTab === 'addresses' ? { color: 'var(--primary-color)' } : undefined}
-          className={`flex flex-col items-center justify-center gap-1 py-1 transition ${
+          className={`flex flex-col items-center justify-center gap-1 py-1 transition-colors ${
             activeTab === 'addresses'
-              ? 'font-bold scale-105'
+              ? 'font-bold'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -97,9 +97,9 @@ export const BottomNav: React.FC = () => {
           type="button"
           onClick={() => setActiveTab('about-us')}
           style={activeTab === 'about-us' ? { color: 'var(--primary-color)' } : undefined}
-          className={`flex flex-col items-center justify-center gap-1 py-1 transition ${
+          className={`flex flex-col items-center justify-center gap-1 py-1 transition-colors ${
             activeTab === 'about-us'
-              ? 'font-bold scale-105'
+              ? 'font-bold'
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -112,9 +112,9 @@ export const BottomNav: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab('admin')}
-            className={`flex flex-col items-center justify-center gap-1 py-1 transition ${
+            className={`flex flex-col items-center justify-center gap-1 py-1 transition-colors ${
               activeTab === 'admin'
-                ? 'text-amber-400 font-bold scale-105'
+                ? 'text-amber-400 font-bold'
                 : 'text-amber-500/70 hover:text-amber-400'
             }`}
           >

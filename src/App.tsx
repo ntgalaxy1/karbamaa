@@ -102,6 +102,11 @@ const MainContent: React.FC = () => {
   const isUserAuthenticated = Boolean(currentSeeker || isAdminLoggedIn || currentPartner);
   const isPrivacyPolicyPage = activeTab === 'privacy-policy';
 
+  // Prevent scroll jump and layout distortion on tab switch
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+  }, [activeTab]);
+
   return (
     <>
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
