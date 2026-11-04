@@ -2342,55 +2342,6 @@ export const AdminPanel: React.FC = () => {
       {/* 4. REGISTERED JOB SEEKERS (With Father Name & National ID) */}
       {adminTab === 'seekers' && (
         <div className="space-y-4">
-          {/* FIREBASE DATABASE PURGE BANNER (پاکسازی دیتابیس Firebase و آماده‌سازی نهایی) */}
-          <div className="bg-gradient-to-r from-slate-900 via-red-950/30 to-slate-900 border border-red-500/30 rounded-3xl p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-start gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0 mt-0.5">
-                <Database className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="font-extrabold text-white text-sm">
-                    پاکسازی پایگاه داده Firebase و آماده‌سازی برای استفاده نهایی
-                  </h4>
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
-                    محیط ابری (neat-craft-p01dl)
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-                  با این دکمه تمامی کارجویان پیش‌فرض و آزمایشی (مانند علی رضایی، محمد کریمی و کدهای seeker-1 تا seeker-5)، اعلان‌های تستی و چت‌های نمونه به صورت مستقیم از سرور Firebase Firestore پاکسازی شده تا سامانه ۱۰۰٪ آماده ثبت‌نام متقاضیان و همکاران واقعی گردد.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0 flex-wrap">
-              <button
-                type="button"
-                disabled={isPurgingDb}
-                onClick={() => setShowPurgeConfirmModal('demo')}
-                className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-red-700/30 disabled:opacity-50"
-              >
-                {isPurgingDb ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Trash2 className="w-4 h-4" />
-                )}
-                <span>پاکسازی کارجویان پیش‌فرض و تستی</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={isPurgingDb}
-                onClick={() => setShowPurgeConfirmModal('full')}
-                className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-red-300 border border-slate-700 rounded-xl text-xs font-medium transition flex items-center gap-1.5 disabled:opacity-50"
-                title="پاکسازی کامل تمامی رکوردهای کارجویان از Firebase"
-              >
-                <Flame className="w-3.5 h-3.5 text-amber-400" />
-                <span>ریست کامل</span>
-              </button>
-            </div>
-          </div>
-
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
@@ -2402,17 +2353,6 @@ export const AdminPanel: React.FC = () => {
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl pr-9 pl-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-500"
               />
             </div>
-
-            {jobSeekers.length > 0 && (
-              <button
-                type="button"
-                onClick={clearAllSeekers}
-                className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>پاکسازی کل لیست کارجویان ({jobSeekers.length})</span>
-              </button>
-            )}
           </div>
 
           {filteredSeekers.length === 0 ? (

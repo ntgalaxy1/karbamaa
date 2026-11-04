@@ -94,8 +94,9 @@ export const CommitmentModal: React.FC<CommitmentModalProps> = ({
     ctx.beginPath();
     ctx.moveTo(clientX - rect.left, clientY - rect.top);
     ctx.strokeStyle = '#ef4444'; // Red signature ink
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 3.5;
     ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -385,9 +386,9 @@ export const CommitmentModal: React.FC<CommitmentModalProps> = ({
             </div>
 
             {isReadOnly || signatureDataUrl ? (
-              <div className="border border-slate-800 print:border-slate-300 rounded-xl p-3 bg-slate-900 print:bg-white text-center">
+              <div className="border border-slate-800 print:border-slate-300 rounded-2xl p-4 bg-slate-900 print:bg-white text-center">
                 {currentSignature ? (
-                  <img src={currentSignature} alt="امضای دیجیتال متقاضی" className="h-24 max-w-xs mx-auto object-contain" />
+                  <img src={currentSignature} alt="امضای دیجیتال متقاضی" className="h-32 sm:h-40 max-w-md mx-auto object-contain" />
                 ) : (
                   <span className="text-xs text-slate-500">امضا ثبت گردید</span>
                 )}
@@ -396,8 +397,8 @@ export const CommitmentModal: React.FC<CommitmentModalProps> = ({
               <div className="relative border-2 border-dashed border-red-500/50 rounded-2xl bg-white/5 p-1 touch-none">
                 <canvas
                   ref={canvasRef}
-                  width={600}
-                  height={120}
+                  width={800}
+                  height={240}
                   onMouseDown={startDrawing}
                   onMouseMove={draw}
                   onMouseUp={stopDrawing}
@@ -405,11 +406,20 @@ export const CommitmentModal: React.FC<CommitmentModalProps> = ({
                   onTouchStart={startDrawing}
                   onTouchMove={draw}
                   onTouchEnd={stopDrawing}
-                  className="w-full h-28 bg-slate-950 rounded-xl cursor-crosshair"
+                  className="w-full h-48 sm:h-56 bg-slate-950 rounded-xl cursor-crosshair"
                 />
+                
+                {/* Visual Signing Baseline */}
+                <div className="absolute bottom-8 left-6 right-6 border-b border-dashed border-slate-700/60 pointer-events-none flex items-center justify-between text-[10px] text-slate-600">
+                  <span>خط تراز امضای متقاضی</span>
+                  <span className="font-mono">X ..............................................</span>
+                </div>
+
                 {!hasDrawn && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-500 text-xs gap-1.5">
-                    <span>✍️ با لمس صفحه یا کشیدن ماوس در این کادر امضا کنید</span>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-slate-400 text-xs gap-1.5 bg-black/10">
+                    <span className="text-sm">✍️</span>
+                    <span className="font-bold text-slate-300">با انگشت یا قلم در این کادر بزرگ امضا نمایید</span>
+                    <span className="text-[10px] text-slate-500">صفحه را لمس کنید و امضای خود را ترسیم نمایید</span>
                   </div>
                 )}
               </div>

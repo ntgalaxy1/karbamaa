@@ -328,8 +328,8 @@ const MainContent: React.FC = () => {
         </div>
       )}
 
-      {/* Omnipresent Floating Round Live Chat with Admin Button on ALL screens */}
-      <LiveChatWidget />
+      {/* Live Chat with Admin: active only after job seeker logs in */}
+      {currentSeeker && <LiveChatWidget />}
     </>
   );
 };

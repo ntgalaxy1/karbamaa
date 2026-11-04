@@ -121,7 +121,7 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
               هر دو فرمت مورد پذیرش <strong>پیشخوان توسعه‌دهندگان کافه‌بازار</strong> (فایل نصبی <code className="text-emerald-300 font-mono">.apk</code> و باندل <code className="text-amber-300 font-mono">.aab</code>) با امضای دیجیتال <code className="text-emerald-300 font-mono">V1 + V2</code> و مانیفست باینری آماده دانلود و بارگذاری هستند:
             </p>
 
-            {/* Primary Download Buttons: APK & AAB */}
+            {/* Primary Download Buttons: APK & AAB Only */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
               <a
                 href={`/downloads/karbama-v${APP_VERSION}.apk`}
@@ -148,34 +148,6 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
                 </div>
                 <span className="text-[10px] text-slate-900 font-mono font-bold">
                   karbama-v{APP_VERSION}.aab
-                </span>
-              </a>
-
-              <a
-                href={`/downloads/karbama-cafebazaar-v${APP_VERSION}.zip`}
-                download={`karbama-cafebazaar-v${APP_VERSION}.zip`}
-                className="py-3 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl transition flex flex-col items-center justify-center gap-1 text-xs shadow-md shadow-indigo-700/30"
-              >
-                <div className="flex items-center gap-1.5">
-                  <Download className="w-4 h-4" />
-                  <span>دانلود فایل زیپ کافه‌بازار (APK+AAB)</span>
-                </div>
-                <span className="text-[10px] text-indigo-100 font-mono">
-                  karbama-cafebazaar-v{APP_VERSION}.zip
-                </span>
-              </a>
-
-              <a
-                href="/downloads/karbama-dist.zip"
-                download={`karbama-dist-v${APP_VERSION}.zip`}
-                className="py-3 px-3 bg-sky-700 hover:bg-sky-600 text-white font-black rounded-xl transition flex flex-col items-center justify-center gap-1 text-xs shadow-md shadow-sky-800/30"
-              >
-                <div className="flex items-center gap-1.5">
-                  <Download className="w-4 h-4" />
-                  <span>دانلود فایل زیپ هاست (dist.zip)</span>
-                </div>
-                <span className="text-[10px] text-sky-100 font-mono">
-                  karbama-dist-v{APP_VERSION}.zip
                 </span>
               </a>
             </div>

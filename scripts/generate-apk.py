@@ -16,9 +16,9 @@ def get_package_version():
     try:
         with open("package.json", "r", encoding="utf-8") as f:
             data = json.load(f)
-            return data.get("version", "10.0.0.22")
+            return data.get("version", "10.0.0.23")
     except Exception:
-        return "10.0.0.22"
+        return "10.0.0.23"
 
 
 def build_string_pool_utf16(strings):

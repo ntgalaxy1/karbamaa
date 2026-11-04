@@ -275,6 +275,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
   const [contractTermsAgreed, setContractTermsAgreed] = useState<boolean>(true);
   const [isCommitmentModalOpen, setIsCommitmentModalOpen] = useState<boolean>(false);
 
+  // File input refs for reliable WebView / mobile taps
+  const passportInputRef = useRef<HTMLInputElement | null>(null);
+  const fullBodyInputRef = useRef<HTMLInputElement | null>(null);
+  const nationalCardInputRef = useRef<HTMLInputElement | null>(null);
+
   // Canvas Signature state
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -346,7 +351,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.strokeStyle = '#dc2626';
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 3.5;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
       }
@@ -492,12 +497,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
   };
 
   const validateStep4 = (): boolean => {
-    if (!passportPhotoUrl) {
-      setError('بارگذاری عکس صفحه اصلی پاسپورت الزامی است.');
+    if (!fullBodyPhotoUrl) {
+      setError('بارگذاری عکس تمام قد پرسنلی الزامی است. لطفاً تصویر تمام قد خود را بارگذاری فرمایید.');
       return false;
     }
-    if (!fullBodyPhotoUrl) {
-      setError('بارگذاری عکس تمام قد ایستاده (با رعایت نکات آرایش و ریش) الزامی است.');
+    if (!passportPhotoUrl && !nationalCardPhotoUrl) {
+      setError('بارگذاری مدارک هویتی (تصویر کارت شناسایی / کارت ملی یا عکس پاسپورت) الزامی است.');
       return false;
     }
     const cleanPayerCard = payerCardNumber.replace(/\D/g, '');
@@ -1128,66 +1133,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                     </div>
                   </div>
 
-                  {/* Target City and District for selected country */}
-                  {targetCountry === 'ترکیه' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">
-                          شهر مد نظر در ترکیه <span className="text-red-400">*</span>
-                        </label>
-                        <select
-                          value={targetCity}
-                          onChange={(e) => {
-                            const newCity = e.target.value;
-                            setTargetCity(newCity);
-                            const districts = getDistrictsForCity(newCity);
-                            if (districts.length > 0) setTargetDistrict(districts[0]);
-                          }}
-                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white focus:outline-hidden focus:border-red-500"
-                        >
-                          {['استانبول', 'آنتالیا', 'آنکارا', 'ازمیر', 'بورسا', 'ترابزون', 'ارزروم', 'آدانا', 'غازیان‌تپ', 'قونیه', 'مرسین', 'اسکی‌شهر', 'سامسون', 'دنیزلی', 'قیصری'].map((c) => (
-                            <option key={c} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">
-                          منطقه / شهرستان مد نظر
-                        </label>
-                        <select
-                          value={targetDistrict}
-                          onChange={(e) => setTargetDistrict(e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white focus:outline-hidden focus:border-red-500"
-                        >
-                          {getDistrictsForCity(targetCity).map((dist) => (
-                            <option key={dist} value={dist}>
-                              {dist}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        شهر مد نظر در کشور مقصد ({targetCountry})
-                      </label>
-                      <div className="relative">
-                        <Compass className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
-                        <input
-                          type="text"
-                          placeholder="مثال: ایروان / اربیل / برلین..."
-                          value={targetCity}
-                          onChange={(e) => setTargetCity(e.target.value)}
-                          className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500"
-                        />
-                      </div>
-                    </div>
-                  )}
-
                   <div className="pt-2 flex items-center justify-between gap-3">
                     <button
                       type="button"
@@ -1435,87 +1380,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {/* Document 1: عکس پاسپورت */}
+                      {/* Document 1: عکس تمام قد پرسنلی (الزامی) */}
                       <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 space-y-2 flex flex-col justify-between">
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-xs text-white">عکس پاسپورت</span>
-                            <span className="text-[10px] text-red-400 font-bold">* ضروری</span>
+                            <span className="font-bold text-xs text-white">عکس تمام قد پرسنلی</span>
+                            <span className="text-[10px] text-red-400 font-bold">* ضروری و الزامی</span>
                           </div>
                           <p className="text-[11px] text-slate-400 leading-tight">
-                            «صفحه اصلی پاسپورت کامل و خوانا»
+                            «قدی ایستاده رو به دوربین با پس‌زمینه ساده»
                           </p>
                         </div>
 
-                        {passportPhotoUrl ? (
-                          <div className="relative rounded-xl overflow-hidden border border-slate-700 aspect-4/3 bg-slate-900">
-                            <img
-                              src={passportPhotoUrl}
-                              alt="پیش‌نمایش پاسپورت"
-                              className="w-full h-full object-cover"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setPassportPhotoUrl('')}
-                              className="absolute top-1.5 left-1.5 p-1 bg-red-600/90 text-white rounded-lg hover:bg-red-700 transition"
-                              title="حذف و تغییر عکس"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="absolute bottom-1 right-1 px-2 py-0.5 bg-black/70 text-emerald-300 rounded text-[10px] font-bold">
-                              بارگذاری شد ✓
-                            </span>
-                          </div>
-                        ) : (
-                          <label className="border-2 border-dashed border-slate-700 hover:border-red-500 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/60 group">
-                            <Upload className="w-6 h-6 text-slate-500 group-hover:text-red-400 mb-1" />
-                            <span className="text-[11px] font-bold text-slate-300 group-hover:text-white">
-                              انتخاب تصویر پاسپورت
-                            </span>
-                            <span className="text-[10px] text-slate-500 mt-0.5">JPG یا PNG حداکثر ۸MB</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => handleFileUpload(e, setPassportPhotoUrl)}
-                              className="hidden"
-                            />
-                          </label>
-                        )}
-
-                        {!passportPhotoUrl && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setPassportPhotoUrl(
-                                'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80'
-                              )
-                            }
-                            className="text-[10px] text-slate-400 hover:text-red-400 underline self-center"
-                          >
-                            استفاده از نمونه پاسپورت
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Document 2: عکس تمام قد با نکات مهم ریش و آرایش */}
-                      <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 space-y-2 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-xs text-white">عکس تمام قد</span>
-                            <span className="text-[10px] text-red-400 font-bold">* ضروری</span>
-                          </div>
-                          <p className="text-[11px] text-slate-400 leading-tight">
-                            «قدی ایستاده با پس‌زمینه ساده»
-                          </p>
-                        </div>
-
-                        {/* Critical warning notice requested by user */}
+                        {/* Critical warning notice */}
                         <div className="p-2 bg-amber-950/40 border border-amber-500/40 rounded-xl text-[10px] text-amber-200 space-y-0.5">
                           <strong className="block text-amber-300 font-bold">نکات مهم برای عکس تمام قد:</strong>
                           <div>• خانم‌ها بدون آرایش</div>
                           <div>• آقایان بدون ریش بلند (حداکثر ته‌ریش)</div>
                           <div>• ایستاده رو به دوربین و پس‌زمینه ساده</div>
                         </div>
+
+                        <input
+                          ref={fullBodyInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleFileUpload(e, setFullBodyPhotoUrl)}
+                          className="hidden"
+                        />
 
                         {fullBodyPhotoUrl ? (
                           <div className="relative rounded-xl overflow-hidden border border-slate-700 aspect-4/3 bg-slate-900">
@@ -1537,18 +1428,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                             </span>
                           </div>
                         ) : (
-                          <label className="border-2 border-dashed border-slate-700 hover:border-red-500 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/60 group">
-                            <Camera className="w-6 h-6 text-slate-500 group-hover:text-red-400 mb-1" />
-                            <span className="text-[11px] font-bold text-slate-300 group-hover:text-white">
-                              انتخاب عکس تمام قد
+                          <button
+                            type="button"
+                            onClick={() => fullBodyInputRef.current?.click()}
+                            className="border-2 border-dashed border-red-500/50 hover:border-red-400 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/60 group w-full"
+                          >
+                            <Camera className="w-6 h-6 text-red-400 group-hover:scale-110 mb-1 transition-transform" />
+                            <span className="text-[11px] font-bold text-white">
+                              بارگذاری عکس تمام قد (لمس کنید)
                             </span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => handleFileUpload(e, setFullBodyPhotoUrl)}
-                              className="hidden"
-                            />
-                          </label>
+                            <span className="text-[10px] text-slate-400 mt-0.5">انتخاب از گالری یا دوربین</span>
+                          </button>
                         )}
 
                         {!fullBodyPhotoUrl && (
@@ -1566,17 +1456,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                         )}
                       </div>
 
-                      {/* Document 3: محل الصاق و یا اسکن کارت شناسایی */}
+                      {/* Document 2: کارت شناسایی / کارت ملی (الزامی) */}
                       <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 space-y-2 flex flex-col justify-between">
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-xs text-white">کارت شناسایی</span>
-                            <span className="text-[10px] text-slate-400">کارت ملی / شناسنامه</span>
+                            <span className="font-bold text-xs text-white">کارت شناسایی / ملی</span>
+                            <span className="text-[10px] text-red-400 font-bold">* ضروری</span>
                           </div>
                           <p className="text-[11px] text-slate-400 leading-tight">
                             «محل الصاق و یا اسکن کارت شناسایی»
                           </p>
                         </div>
+
+                        <input
+                          ref={nationalCardInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleFileUpload(e, setNationalCardPhotoUrl)}
+                          className="hidden"
+                        />
 
                         {nationalCardPhotoUrl ? (
                           <div className="relative rounded-xl overflow-hidden border border-slate-700 aspect-4/3 bg-slate-900">
@@ -1598,19 +1496,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                             </span>
                           </div>
                         ) : (
-                          <label className="border-2 border-dashed border-slate-700 hover:border-red-500 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/60 group">
-                            <IdCard className="w-6 h-6 text-slate-500 group-hover:text-red-400 mb-1" />
-                            <span className="text-[11px] font-bold text-slate-300 group-hover:text-white">
-                              الصاق یا اسکن کارت ملی
+                          <button
+                            type="button"
+                            onClick={() => nationalCardInputRef.current?.click()}
+                            className="border-2 border-dashed border-red-500/50 hover:border-red-400 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/60 group w-full"
+                          >
+                            <IdCard className="w-6 h-6 text-red-400 group-hover:scale-110 mb-1 transition-transform" />
+                            <span className="text-[11px] font-bold text-white">
+                              الصاق یا اسکن کارت ملی (لمس کنید)
                             </span>
-                            <span className="text-[10px] text-slate-500 mt-0.5">تصویر واضح از روی کارت</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => handleFileUpload(e, setNationalCardPhotoUrl)}
-                              className="hidden"
-                            />
-                          </label>
+                            <span className="text-[10px] text-slate-400 mt-0.5">تصویر واضح از روی کارت</span>
+                          </button>
                         )}
 
                         {!nationalCardPhotoUrl && (
@@ -1624,6 +1520,74 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                             className="text-[10px] text-slate-400 hover:text-red-400 underline self-center"
                           >
                             استفاده از نمونه کارت شناسایی
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Document 3: عکس پاسپورت (در صورت داشتن) */}
+                      <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-3.5 space-y-2 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-xs text-white">عکس پاسپورت</span>
+                            <span className="text-[10px] text-slate-400">در صورت داشتن</span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 leading-tight">
+                            «صفحه اصلی پاسپورت کامل و خوانا»
+                          </p>
+                        </div>
+
+                        <input
+                          ref={passportInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleFileUpload(e, setPassportPhotoUrl)}
+                          className="hidden"
+                        />
+
+                        {passportPhotoUrl ? (
+                          <div className="relative rounded-xl overflow-hidden border border-slate-700 aspect-4/3 bg-slate-900">
+                            <img
+                              src={passportPhotoUrl}
+                              alt="پیش‌نمایش پاسپورت"
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setPassportPhotoUrl('')}
+                              className="absolute top-1.5 left-1.5 p-1 bg-red-600/90 text-white rounded-lg hover:bg-red-700 transition"
+                              title="حذف و تغییر عکس"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="absolute bottom-1 right-1 px-2 py-0.5 bg-black/70 text-emerald-300 rounded text-[10px] font-bold">
+                              بارگذاری شد ✓
+                            </span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => passportInputRef.current?.click()}
+                            className="border-2 border-dashed border-slate-700 hover:border-red-500 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/60 group w-full"
+                          >
+                            <Upload className="w-6 h-6 text-slate-400 group-hover:text-red-400 mb-1 transition-colors" />
+                            <span className="text-[11px] font-bold text-slate-300 group-hover:text-white">
+                              انتخاب تصویر پاسپورت
+                            </span>
+                            <span className="text-[10px] text-slate-500 mt-0.5">JPG یا PNG حداکثر ۸MB</span>
+                          </button>
+                        )}
+
+                        {!passportPhotoUrl && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPassportPhotoUrl(
+                                'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80'
+                              )
+                            }
+                            className="text-[10px] text-slate-400 hover:text-red-400 underline self-center"
+                          >
+                            استفاده از نمونه پاسپورت
                           </button>
                         )}
                       </div>
@@ -1793,12 +1757,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                         </button>
                       </div>
 
-                      {/* Canvas Pad */}
-                      <div className="relative border-2 border-dashed border-red-500/40 rounded-2xl bg-white/5 p-1 touch-none">
+                      {/* Canvas Pad (Enlarged) */}
+                      <div className="relative border-2 border-dashed border-red-500/50 rounded-2xl bg-white/5 p-1 touch-none">
                         <canvas
                           ref={canvasRef}
-                          width={600}
-                          height={120}
+                          width={800}
+                          height={240}
                           onMouseDown={startDrawing}
                           onMouseMove={draw}
                           onMouseUp={stopDrawing}
@@ -1806,11 +1770,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                           onTouchStart={startDrawing}
                           onTouchMove={draw}
                           onTouchEnd={stopDrawing}
-                          className="w-full h-28 bg-slate-950/80 rounded-xl cursor-crosshair"
+                          className="w-full h-48 sm:h-56 bg-slate-950 rounded-xl cursor-crosshair"
                         />
+
+                        {/* Visual Signing Baseline */}
+                        <div className="absolute bottom-8 left-6 right-6 border-b border-dashed border-slate-700/60 pointer-events-none flex items-center justify-between text-[10px] text-slate-600">
+                          <span>خط تراز امضای متقاضی</span>
+                          <span className="font-mono">X ..............................................</span>
+                        </div>
+
                         {!hasDrawnSignature && !signatureDataUrl && (
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-500 text-xs gap-1.5">
-                            <span>✍️ با لمس صفحه یا کشیدن ماوس در این کادر امضا کنید</span>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-slate-400 text-xs gap-1.5 bg-black/10">
+                            <span className="text-sm">✍️</span>
+                            <span className="font-bold text-slate-300">با انگشت یا قلم در این کادر بزرگ امضا نمایید</span>
+                            <span className="text-[10px] text-slate-500">صفحه را لمس کنید و امضای خود را ترسیم نمایید</span>
                           </div>
                         )}
                       </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { AppLanguage, TargetCountry, Gender } from '../types';
 import { t } from '../utils/translations';
@@ -93,6 +93,9 @@ export const OnboardingFlow: React.FC = () => {
   const [fullBodyPhotoUrl, setFullBodyPhotoUrl] = useState('');
   const [passportPhotoUrl, setPassportPhotoUrl] = useState('');
   const [nationalCardPhotoUrl, setNationalCardPhotoUrl] = useState('');
+  const fullBodyInputRef = useRef<HTMLInputElement>(null);
+  const passportInputRef = useRef<HTMLInputElement>(null);
+  const nationalCardInputRef = useRef<HTMLInputElement>(null);
   const [selectedCommonJobs, setSelectedCommonJobs] = useState<string[]>([]);
   const [isJobsMenuOpen, setIsJobsMenuOpen] = useState(false);
   const [activeCategoryKey, setActiveCategoryKey] = useState<string>('restaurant');
@@ -221,6 +224,14 @@ export const OnboardingFlow: React.FC = () => {
   };
 
   const validateStep3 = (): boolean => {
+    if (!fullBodyPhotoUrl) {
+      showToast('بارگذاری عکس تمام قد / پرسنلی الزامی است.', 'error');
+      return false;
+    }
+    if (!nationalCardPhotoUrl && !passportPhotoUrl) {
+      showToast('بارگذاری حداقل یکی از مدارک هویتی (کارت ملی یا پاسپورت) الزامی است.', 'error');
+      return false;
+    }
     if (selectedCommonJobs.length === 0 && !customWrittenSkills.trim()) {
       showToast('لطفاً حداقل یک شغل از منوی شغل‌های رایج انتخاب کنید یا تخصص خود را بنویسید.', 'error');
       return false;
@@ -744,44 +755,6 @@ export const OnboardingFlow: React.FC = () => {
                         );
                       })}
                     </div>
-
-                    {targetCountry === 'ترکیه' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
-                        <div className="space-y-1">
-                          <label className="text-slate-300 font-medium">شهر مقصد در ترکیه</label>
-                          <select
-                            value={targetCity}
-                            onChange={(e) => {
-                              const newCity = e.target.value;
-                              setTargetCity(newCity);
-                              const dists = getDistrictsForCity(newCity);
-                              setTargetDistrict(dists[0] || '');
-                            }}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold"
-                          >
-                            {Object.keys(CITY_DISTRICTS_MAP).map((city) => (
-                              <option key={city} value={city}>
-                                {city}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-slate-300 font-medium">منطقه / محله در {targetCity}</label>
-                          <select
-                            value={targetDistrict}
-                            onChange={(e) => setTargetDistrict(e.target.value)}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white"
-                          >
-                            {getDistrictsForCity(targetCity).map((dist) => (
-                              <option key={dist} value={dist}>
-                                {dist}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   <div className="pt-3 flex justify-end">
@@ -891,63 +864,174 @@ export const OnboardingFlow: React.FC = () => {
                       <span>{t('part1DocsTitle', appLanguage)}</span>
                     </h3>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      {/* Full body photo with strict notice */}
-                      <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl space-y-2 flex flex-col justify-between">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      {/* 1. Full Body / Personal Photo (REQUIRED) */}
+                      <div className="p-3.5 bg-slate-950 border-2 border-red-500/40 rounded-2xl space-y-2.5 flex flex-col justify-between">
                         <div>
-                          <span className="font-bold text-white block mb-0.5">{t('fullBodyPhotoLabel', appLanguage)}</span>
-                          <div className="p-2 bg-amber-950/40 border border-amber-500/40 rounded-xl text-[10px] text-amber-200 space-y-0.5">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-extrabold text-white text-xs">عکس تمام قد / پرسنلی</span>
+                            <span className="px-2 py-0.5 rounded-full bg-red-600/30 border border-red-500/60 text-red-300 text-[10px] font-black">
+                              الزامی *
+                            </span>
+                          </div>
+                          <div className="p-2 bg-amber-950/40 border border-amber-500/30 rounded-xl text-[10px] text-amber-200 space-y-0.5">
                             <strong className="block text-amber-300 font-bold">{t('fullBodyGuideTitle', appLanguage)}</strong>
                             <div>{t('fullBodyRule1', appLanguage)}</div>
                             <div>{t('fullBodyRule2', appLanguage)}</div>
-                            <div>{t('fullBodyRule3', appLanguage)}</div>
                           </div>
                         </div>
 
                         {fullBodyPhotoUrl ? (
-                          <div className="relative rounded-xl overflow-hidden border border-slate-700 h-28 bg-slate-900">
-                            <img src={fullBodyPhotoUrl} alt="عکس قدی" className="w-full h-full object-cover" />
+                          <div className="space-y-1.5">
+                            <div className="relative rounded-xl overflow-hidden border-2 border-emerald-500/60 h-28 bg-slate-900 shadow-md">
+                              <img src={fullBodyPhotoUrl} alt="عکس تمام قد" className="w-full h-full object-cover" />
+                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-emerald-600 text-white text-[9px] rounded font-bold">
+                                بارگذاری شد ✓
+                              </span>
+                            </div>
                             <button
                               type="button"
-                              onClick={() => setFullBodyPhotoUrl('')}
-                              className="absolute top-1 left-1 p-1 bg-red-600 text-white rounded-lg"
+                              onClick={() => {
+                                setFullBodyPhotoUrl('');
+                                if (fullBodyInputRef.current) fullBodyInputRef.current.value = '';
+                              }}
+                              className="w-full py-1.5 bg-slate-800 hover:bg-red-950/60 text-red-400 hover:text-red-300 rounded-lg text-[10.5px] font-bold border border-slate-700 transition flex items-center justify-center gap-1"
                             >
                               <X className="w-3.5 h-3.5" />
+                              <span>حذف و انتخاب مجدد</span>
                             </button>
                           </div>
                         ) : (
-                          <label className="border-2 border-dashed border-slate-700 hover:border-red-500 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/60">
-                            <Upload className="w-5 h-5 text-slate-500 mb-1" />
-                            <span className="text-[11px] font-bold text-slate-300">{t('selectFullBodyPhotoBtn', appLanguage)}</span>
-                            <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, setFullBodyPhotoUrl)} className="hidden" />
-                          </label>
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => fullBodyInputRef.current?.click()}
+                              className="w-full border-2 border-dashed border-red-500/50 hover:border-red-400 hover:bg-red-950/20 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/80 gap-1"
+                            >
+                              <Camera className="w-6 h-6 text-red-400 mb-0.5" />
+                              <span className="text-[11px] font-black text-white">انتخاب عکس یا دوربین</span>
+                              <span className="text-[9.5px] text-slate-400">فرمت‌های JPG و PNG (حداکثر ۱۰ مگابایت)</span>
+                            </button>
+                            <input
+                              ref={fullBodyInputRef}
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleFileUpload(e, setFullBodyPhotoUrl)}
+                              className="hidden"
+                            />
+                          </div>
                         )}
                       </div>
 
-                      {/* Passport/ID photo */}
-                      <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl space-y-2 flex flex-col justify-between">
+                      {/* 2. National ID / Birth Certificate (REQUIRED) */}
+                      <div className="p-3.5 bg-slate-950 border-2 border-red-500/40 rounded-2xl space-y-2.5 flex flex-col justify-between">
                         <div>
-                          <span className="font-bold text-white block mb-0.5">{t('passportPhotoLabel', appLanguage)}</span>
-                          <p className="text-[10px] text-slate-400">{t('passportPhotoDescText', appLanguage)}</p>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-extrabold text-white text-xs">کارت ملی / شناسنامه</span>
+                            <span className="px-2 py-0.5 rounded-full bg-red-600/30 border border-red-500/60 text-red-300 text-[10px] font-black">
+                              الزامی *
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 leading-snug">
+                            تصویر واضح و خوانا از روی کارت ملی هوشمند یا صفحه اول شناسنامه متقاضی.
+                          </p>
                         </div>
 
-                        {passportPhotoUrl ? (
-                          <div className="relative rounded-xl overflow-hidden border border-slate-700 h-28 bg-slate-900">
-                            <img src={passportPhotoUrl} alt="عکس پاسپورت" className="w-full h-full object-cover" />
+                        {nationalCardPhotoUrl ? (
+                          <div className="space-y-1.5">
+                            <div className="relative rounded-xl overflow-hidden border-2 border-emerald-500/60 h-28 bg-slate-900 shadow-md">
+                              <img src={nationalCardPhotoUrl} alt="کارت ملی" className="w-full h-full object-cover" />
+                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-emerald-600 text-white text-[9px] rounded font-bold">
+                                بارگذاری شد ✓
+                              </span>
+                            </div>
                             <button
                               type="button"
-                              onClick={() => setPassportPhotoUrl('')}
-                              className="absolute top-1 left-1 p-1 bg-red-600 text-white rounded-lg"
+                              onClick={() => {
+                                setNationalCardPhotoUrl('');
+                                if (nationalCardInputRef.current) nationalCardInputRef.current.value = '';
+                              }}
+                              className="w-full py-1.5 bg-slate-800 hover:bg-red-950/60 text-red-400 hover:text-red-300 rounded-lg text-[10.5px] font-bold border border-slate-700 transition flex items-center justify-center gap-1"
                             >
                               <X className="w-3.5 h-3.5" />
+                              <span>حذف و انتخاب مجدد</span>
                             </button>
                           </div>
                         ) : (
-                          <label className="border-2 border-dashed border-slate-700 hover:border-red-500 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/60">
-                            <IdCard className="w-5 h-5 text-slate-500 mb-1" />
-                            <span className="text-[11px] font-bold text-slate-300">{t('selectPassportPhotoBtn', appLanguage)}</span>
-                            <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, setPassportPhotoUrl)} className="hidden" />
-                          </label>
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => nationalCardInputRef.current?.click()}
+                              className="w-full border-2 border-dashed border-red-500/50 hover:border-red-400 hover:bg-red-950/20 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/80 gap-1"
+                            >
+                              <IdCard className="w-6 h-6 text-red-400 mb-0.5" />
+                              <span className="text-[11px] font-black text-white">انتخاب کارت ملی / دوربین</span>
+                              <span className="text-[9.5px] text-slate-400">عکس رو به رو با وضوح بالا</span>
+                            </button>
+                            <input
+                              ref={nationalCardInputRef}
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleFileUpload(e, setNationalCardPhotoUrl)}
+                              className="hidden"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 3. Passport Photo (Optional or if available) */}
+                      <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl space-y-2.5 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-extrabold text-white text-xs">صفحه اول پاسپورت</span>
+                            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-bold border border-slate-700">
+                              در صورت داشتن
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 leading-snug">
+                            تصویر صفحه اول پاسپورت معتبر (جهت تسریع در اخذ ویزا و امور اقامت).
+                          </p>
+                        </div>
+
+                        {passportPhotoUrl ? (
+                          <div className="space-y-1.5">
+                            <div className="relative rounded-xl overflow-hidden border-2 border-emerald-500/60 h-28 bg-slate-900 shadow-md">
+                              <img src={passportPhotoUrl} alt="پاسپورت" className="w-full h-full object-cover" />
+                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-emerald-600 text-white text-[9px] rounded font-bold">
+                                بارگذاری شد ✓
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPassportPhotoUrl('');
+                                if (passportInputRef.current) passportInputRef.current.value = '';
+                              }}
+                              className="w-full py-1.5 bg-slate-800 hover:bg-red-950/60 text-red-400 hover:text-red-300 rounded-lg text-[10.5px] font-bold border border-slate-700 transition flex items-center justify-center gap-1"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>حذف و انتخاب مجدد</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => passportInputRef.current?.click()}
+                              className="w-full border-2 border-dashed border-slate-700 hover:border-amber-500 hover:bg-slate-900 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/60 gap-1"
+                            >
+                              <Upload className="w-6 h-6 text-amber-400 mb-0.5" />
+                              <span className="text-[11px] font-bold text-white">انتخاب عکس پاسپورت</span>
+                              <span className="text-[9.5px] text-slate-400">اختیاری / در صورت وجود</span>
+                            </button>
+                            <input
+                              ref={passportInputRef}
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleFileUpload(e, setPassportPhotoUrl)}
+                              className="hidden"
+                            />
+                          </div>
                         )}
                       </div>
                     </div>
