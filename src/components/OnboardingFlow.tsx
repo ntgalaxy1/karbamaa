@@ -1177,7 +1177,7 @@ export const OnboardingFlow: React.FC = () => {
               </div>
 
               {/* Role Selector */}
-              <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+              <div className="grid grid-cols-3 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
                 <button
                   type="button"
                   onClick={() => setLoginRole('seeker')}
@@ -1186,6 +1186,15 @@ export const OnboardingFlow: React.FC = () => {
                   }`}
                 >
                   {t('jobseekerRole', appLanguage)}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLoginRole('partner')}
+                  className={`py-2 rounded-lg transition ${
+                    loginRole === 'partner' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  همکار
                 </button>
                 <button
                   type="button"

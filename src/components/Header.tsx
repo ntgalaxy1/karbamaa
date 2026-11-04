@@ -208,7 +208,7 @@ export const Header: React.FC = () => {
                               title="افزودن سریع آگهی جدید"
                             >
                               <PlusCircle className="w-3.5 h-3.5 text-white" />
-                              <span>+ کار جدید</span>
+                              <span>+ ثبت آگهی استخدام</span>
                             </button>
 
                             <button
@@ -259,6 +259,25 @@ export const Header: React.FC = () => {
                             <span>خروج از مدیریت سیستم</span>
                           </button>
                         </div>
+                      )}
+
+                      {/* Partner Panel (پنل ساده همکاران) */}
+                      {(isAdminLoggedIn || currentPartner) && (
+                        <button
+                          onClick={() => {
+                            setActiveTab('partner');
+                            setToolsDropdown(false);
+                          }}
+                          className="w-full text-right px-3 py-2 rounded-xl text-indigo-200 bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-500/30 flex items-center justify-between transition mb-1"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-indigo-400" />
+                            <span className="font-bold">پنل همکار (ثبت و مدیریت کارجویان)</span>
+                          </div>
+                          <span className="text-[10px] bg-indigo-500/30 text-indigo-200 px-1.5 py-0.5 rounded-md font-bold">
+                            همکار
+                          </span>
+                        </button>
                       )}
 
                       {/* Jobseeker Profile & Settings (مشخصات و تنظیمات حساب) */}
@@ -342,7 +361,7 @@ export const Header: React.FC = () => {
                           <span className="font-bold">{t('downloadApk', appLanguage)}</span>
                         </div>
                         <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-md font-mono">
-                          v10.0.0.12
+                          v10.0.0.19
                         </span>
                       </button>
 

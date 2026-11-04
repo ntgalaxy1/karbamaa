@@ -24,8 +24,8 @@ interface ApkDownloadModalProps {
   onClose: () => void;
 }
 
-const APP_VERSION = '10.0.0.18';
-const APP_VERSION_CODE = '100018';
+const APP_VERSION = '10.0.0.19';
+const APP_VERSION_CODE = '100019';
 const APP_PACKAGE_NAME = 'app.karbama.twa';
 
 export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onClose }) => {

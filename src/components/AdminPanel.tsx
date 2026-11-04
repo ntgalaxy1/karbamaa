@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { JobVacancy, JobCategory, TurkishLevel, ApplicationStatus, AddressCategory, Hotel, ContractType, JobSeeker } from '../types';
+import { JobVacancy, JobCategory, TurkishLevel, ApplicationStatus, AddressCategory, Hotel, ContractType, JobSeeker, PartnerSubscriptionPlanId, PartnerSubscriptionStatus } from '../types';
 import { MapLocationPicker } from './MapLocationPicker';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 import { ALL_TURKEY_CITIES_FA } from '../data/turkeyCities';
@@ -9,6 +9,7 @@ import {
   Briefcase,
   Users,
   User,
+  UserPlus,
   FileCheck2,
   MapPin,
   Plus,
@@ -87,9 +88,12 @@ export const AdminPanel: React.FC = () => {
     clearAdminNotifications,
     approveSeekerAccount,
     rejectSeekerAccount,
+    deleteSeekerRecord,
+    clearAllSeekers,
     // Partner system
     partners,
     partnerPlans,
+    adminCreatePartner,
     approvePartnerSubscription,
     rejectPartnerSubscription,
     updatePartnerPlanPricing,
@@ -99,6 +103,8 @@ export const AdminPanel: React.FC = () => {
     approveLiveChat,
     rejectLiveChat,
     sendLiveChatMessage,
+    setAdminJobModalOpen,
+    setActiveTab,
   } = useApp();
 
   // Admin login credentials state (if not logged in)
@@ -239,6 +245,70 @@ export const AdminPanel: React.FC = () => {
   const [newAddrPhone, setNewAddrPhone] = useState('+90 ');
   const [newAddrHours, setNewAddrHours] = useState('۰۸:۳۰ الی ۱۷:۰۰');
   const [newAddrDesc, setNewAddrDesc] = useState('');
+
+  // Add Partner Modal state (ثبت همکار جدید در پنل مدیریت)
+  const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
+  const [partnerCompanyName, setPartnerCompanyName] = useState('');
+  const [partnerFullName, setPartnerFullName] = useState('');
+  const [partnerPhone, setPartnerPhone] = useState('');
+  const [partnerEmail, setPartnerEmail] = useState('');
+  const [partnerCity, setPartnerCity] = useState('استانبول');
+  const [partnerUsername, setPartnerUsername] = useState('');
+  const [partnerPassword, setPartnerPassword] = useState('');
+  const [partnerPlanId, setPartnerPlanId] = useState<PartnerSubscriptionPlanId>('1_year');
+  const [partnerSubStatus, setPartnerSubStatus] = useState<PartnerSubscriptionStatus>('active');
+  const [partnerDaysRemaining, setPartnerDaysRemaining] = useState<number>(365);
+  const [partnerAdminNote, setPartnerAdminNote] = useState('');
+
+  const handleGenerateRandomPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789#@!';
+    let pwd = '';
+    for (let i = 0; i < 10; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setPartnerPassword(pwd);
+  };
+
+  const handleAdminRegisterPartner = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!partnerCompanyName.trim() || !partnerFullName.trim() || !partnerPhone.trim()) {
+      showToast('لطفاً نام شرکت/آژانس، نام نماینده و تلفن را وارد فرمایید.', 'error');
+      return;
+    }
+    if (!partnerUsername.trim() || !partnerPassword.trim()) {
+      showToast('تعیین نام کاربری و رمز عبور همکار الزامی است.', 'error');
+      return;
+    }
+
+    const res = adminCreatePartner({
+      companyName: partnerCompanyName,
+      fullName: partnerFullName,
+      phone: partnerPhone,
+      email: partnerEmail,
+      city: partnerCity,
+      username: partnerUsername,
+      password: partnerPassword,
+      planId: partnerPlanId,
+      subscriptionStatus: partnerSubStatus,
+      daysRemaining: Number(partnerDaysRemaining) || 365,
+      adminNote: partnerAdminNote,
+    });
+
+    if (res.success) {
+      setShowAddPartnerModal(false);
+      // Reset form
+      setPartnerCompanyName('');
+      setPartnerFullName('');
+      setPartnerPhone('');
+      setPartnerEmail('');
+      setPartnerCity('استانبول');
+      setPartnerUsername('');
+      setPartnerPassword('');
+      setPartnerAdminNote('');
+    } else if (res.error) {
+      showToast(res.error, 'error');
+    }
+  };
 
   // Handle Admin Login submission
   const handleAdminLoginSubmit = (e: React.FormEvent) => {
@@ -507,11 +577,11 @@ export const AdminPanel: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setShowAddJobModal(true)}
+            onClick={() => setAdminJobModalOpen(true)}
             className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl shadow-lg transition flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
-            افزودن آگهی کار
+            ثبت آگهی استخدام / موقعیت شغلی
           </button>
 
           <button
@@ -531,7 +601,7 @@ export const AdminPanel: React.FC = () => {
             <Download className="w-4 h-4 text-emerald-400" />
             <span>فایل‌های رسمی ویژه آپلود در پیشخوان کافه‌بازار (APK و App Bundle)</span>
             <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono text-[11px]">
-              v10.0.0.18 | Code: 100018
+              v10.0.0.19 | Code: 100019
             </span>
           </div>
           <p className="text-xs text-slate-300">
@@ -540,24 +610,24 @@ export const AdminPanel: React.FC = () => {
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <a
-            href="/downloads/karbama-v10.0.0.18.apk"
-            download="karbama-v10.0.0.18.apk"
+            href="/downloads/karbama-v10.0.0.19.apk"
+            download="karbama-v10.0.0.19.apk"
             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5"
           >
             <Download className="w-4 h-4" />
-            <span>دانلود فایل APK (v10.0.0.18)</span>
+            <span>دانلود فایل APK (v10.0.0.19)</span>
           </a>
           <a
-            href="/downloads/karbama-v10.0.0.18.aab"
-            download="karbama-v10.0.0.18.aab"
+            href="/downloads/karbama-v10.0.0.19.aab"
+            download="karbama-v10.0.0.19.aab"
             className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5"
           >
             <Download className="w-4 h-4" />
             <span>دانلود App Bundle (فایل .aab)</span>
           </a>
           <a
-            href="/downloads/karbama-cafebazaar-v10.0.0.18.zip"
-            download="karbama-cafebazaar-v10.0.0.18.zip"
+            href="/downloads/karbama-cafebazaar-v10.0.0.19.zip"
+            download="karbama-cafebazaar-v10.0.0.19.zip"
             className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5"
           >
             <Download className="w-4 h-4" />
@@ -565,7 +635,7 @@ export const AdminPanel: React.FC = () => {
           </a>
           <a
             href="/downloads/karbama-dist.zip"
-            download="karbama-dist-v10.0.0.18.zip"
+            download="karbama-dist-v10.0.0.19.zip"
             className="px-3.5 py-2 bg-sky-700 hover:bg-sky-600 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5"
           >
             <Download className="w-4 h-4" />
@@ -1450,11 +1520,11 @@ export const AdminPanel: React.FC = () => {
               />
             </div>
             <button
-              onClick={() => setShowAddJobModal(true)}
+              onClick={() => setAdminJobModalOpen(true)}
               className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition"
             >
               <Plus className="w-4 h-4" />
-              ثبت آگهی کار جدید
+              ثبت آگهی استخدام / موقعیت شغلی جدید
             </button>
           </div>
 
@@ -1663,6 +1733,22 @@ export const AdminPanel: React.FC = () => {
             </div>
           </div>
 
+          <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h4 className="text-sm font-black text-white">ورود به پنل ساده همکار (ثبت و مدیریت کارجو، شغل انتخابی و مبلغ پرداختی)</h4>
+              <p className="text-xs text-slate-300 mt-0.5">
+                همکاران با ورود به پنل خود، صرفاً فرم ساده ثبت و مدیریت کارجویانِ ثبت‌شده توسط خودشان را مشاهده می‌کنند.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('partner')}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl text-xs transition shrink-0"
+            >
+              مشاهده پنل ساده همکار
+            </button>
+          </div>
+
           {/* 1. SET PARTNER SUBSCRIPTION PLAN PRICES (User Request: با قیمتهایی متفاوت که توسط مدیر تعیین بشه) */}
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
@@ -1867,15 +1953,26 @@ export const AdminPanel: React.FC = () => {
                 </p>
               </div>
 
-              <div className="relative w-full sm:w-64">
-                <Search className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
-                <input
-                  type="text"
-                  value={partnerSearchQuery}
-                  onChange={(e) => setPartnerSearchQuery(e.target.value)}
-                  placeholder="جستجو بر اساس نام همکار، کد یا شهر..."
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl pr-9 pl-3 py-2 text-xs text-white placeholder-slate-500 outline-none"
-                />
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setShowAddPartnerModal(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition shrink-0"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  ثبت همکار جدید
+                </button>
+
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={partnerSearchQuery}
+                    onChange={(e) => setPartnerSearchQuery(e.target.value)}
+                    placeholder="جستجو بر اساس نام همکار، کد یا شهر..."
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pr-9 pl-3 py-2 text-xs text-white placeholder-slate-500 outline-none"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1990,25 +2087,278 @@ export const AdminPanel: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* Modal for Registering New Partner by Admin */}
+          {showAddPartnerModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
+              <div className="w-full max-w-2xl bg-slate-900 border border-slate-700/80 rounded-3xl p-6 shadow-2xl space-y-5 my-8">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                      <UserPlus className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-white text-base">ثبت و ایجاد حساب همکار جدید</h4>
+                      <p className="text-xs text-slate-400">صدور خودکار کد اختصاصی و دسترسی مستقیم به پنل همکاران کارباما</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPartnerModal(false)}
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleAdminRegisterPartner} className="space-y-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-slate-300 font-medium flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-indigo-400" />
+                        نام آژانس / شرکت / دفتر همکار *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={partnerCompanyName}
+                        onChange={(e) => setPartnerCompanyName(e.target.value)}
+                        placeholder="مثلاً: دفتر مهاجرتی و کاریابی آریا"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 outline-none focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-slate-300 font-medium flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-indigo-400" />
+                        نام و نام خانوادگی مدیر یا نماینده *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={partnerFullName}
+                        onChange={(e) => setPartnerFullName(e.target.value)}
+                        placeholder="مثلاً: سامان نادری"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 outline-none focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-slate-300 font-medium flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-indigo-400" />
+                        شماره تماس مستقیم / واتساپ *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        dir="ltr"
+                        value={partnerPhone}
+                        onChange={(e) => setPartnerPhone(e.target.value)}
+                        placeholder="+90 534 000 0000"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono outline-none focus:border-indigo-500 text-left"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-slate-300 font-medium flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-indigo-400" />
+                        شهر محل فعالیت *
+                      </label>
+                      <select
+                        value={partnerCity}
+                        onChange={(e) => setPartnerCity(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white outline-none focus:border-indigo-500"
+                      >
+                        {ALL_TURKEY_CITIES_FA.map((city) => (
+                          <option key={city} value={city}>{city}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-slate-300 font-medium">ایمیل همکار (اختیاری جهت بازیابی)</label>
+                      <input
+                        type="email"
+                        dir="ltr"
+                        value={partnerEmail}
+                        onChange={(e) => setPartnerEmail(e.target.value)}
+                        placeholder="partner@example.com"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono outline-none focus:border-indigo-500 text-left"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-slate-300 font-medium">وضعیت اولیه اشتراک</label>
+                      <select
+                        value={partnerSubStatus}
+                        onChange={(e) => {
+                          const val = e.target.value as PartnerSubscriptionStatus;
+                          setPartnerSubStatus(val);
+                          if (val === 'active' && partnerDaysRemaining === 0) {
+                            setPartnerDaysRemaining(365);
+                          }
+                        }}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white outline-none focus:border-indigo-500"
+                      >
+                        <option value="active">اشتراک فعال (دسترسی کامل فوری)</option>
+                        <option value="pending_approval">در انتظار پرداخت / تایید فیش</option>
+                        <option value="unpaid">غیرفعال / آزمایشی</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-slate-300 font-medium flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-amber-400" />
+                        نام کاربری ورود همکار *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        dir="ltr"
+                        value={partnerUsername}
+                        onChange={(e) => setPartnerUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+                        placeholder="مثلاً: arya_agency"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono outline-none focus:border-indigo-500 text-left"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-slate-300 font-medium flex items-center gap-1.5">
+                          <Lock className="w-3.5 h-3.5 text-amber-400" />
+                          کلمه عبور ورود *
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleGenerateRandomPassword}
+                          className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          تولید رمز امن
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        dir="ltr"
+                        value={partnerPassword}
+                        onChange={(e) => setPartnerPassword(e.target.value)}
+                        placeholder="رمز عبور همکار"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono outline-none focus:border-indigo-500 text-left"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-slate-300 font-medium">نوع پلن اشتراک</label>
+                      <select
+                        value={partnerPlanId}
+                        onChange={(e) => {
+                          const pid = e.target.value as PartnerSubscriptionPlanId;
+                          setPartnerPlanId(pid);
+                          if (pid === '1_year') setPartnerDaysRemaining(365);
+                          else if (pid === '6_months') setPartnerDaysRemaining(180);
+                          else if (pid === '3_months') setPartnerDaysRemaining(90);
+                          else setPartnerDaysRemaining(30);
+                        }}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white outline-none focus:border-indigo-500"
+                      >
+                        {partnerPlans.map((pl) => (
+                          <option key={pl.id} value={pl.id}>
+                            {pl.title} ({pl.priceTL.toLocaleString('fa-IR')} لیر)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-slate-300 font-medium">تعداد روزهای اعتبار اشتراک</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={3650}
+                        value={partnerDaysRemaining}
+                        onChange={(e) => setPartnerDaysRemaining(Number(e.target.value))}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white outline-none focus:border-indigo-500 font-mono text-left"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-slate-300 font-medium">یادداشت مدیر (اختیاری)</label>
+                    <textarea
+                      rows={2}
+                      value={partnerAdminNote}
+                      onChange={(e) => setPartnerAdminNote(e.target.value)}
+                      placeholder="توضیحات و شرایط اختصاصی این همکار..."
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white placeholder-slate-500 outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center gap-2 text-indigo-300 text-xs">
+                    <Sparkles className="w-4 h-4 shrink-0" />
+                    <span>پس از ثبت، کد یکتای همکاری (PART-XXXX) به همراه اطلاعات ورود صادر شده و بلافاصله آماده تحویل به همکار خواهد بود.</span>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="submit"
+                      className="flex-1 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      تایید و ایجاد حساب کاربری همکار
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddPartnerModal(false)}
+                      className="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition"
+                    >
+                      انصراف
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* 4. REGISTERED JOB SEEKERS (With Father Name & National ID) */}
       {adminTab === 'seekers' && (
         <div className="space-y-4">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="جستجو در کارجویان بر اساس نام، نام پدر، کد ملی یا شماره تلفن..."
-              value={seekerSearch}
-              onChange={(e) => setSeekerSearch(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl pr-9 pl-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-500"
-            />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="جستجو در کارجویان بر اساس نام، نام پدر، کد ملی یا شماره تلفن..."
+                value={seekerSearch}
+                onChange={(e) => setSeekerSearch(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl pr-9 pl-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-500"
+              />
+            </div>
+
+            {jobSeekers.length > 0 && (
+              <button
+                type="button"
+                onClick={clearAllSeekers}
+                className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>پاکسازی کل لیست کارجویان ({jobSeekers.length})</span>
+              </button>
+            )}
           </div>
 
-          <div className="space-y-3">
-            {filteredSeekers.map((seeker) => (
+          {filteredSeekers.length === 0 ? (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-2">
+              <p className="text-sm font-bold text-white">لیست کارجویان خالی است (بدون کارجوی پیش‌فرض)</p>
+              <p className="text-xs text-slate-400">
+                تمامی کارجویان پیش‌فرض حذف شده‌اند و سامانه آماده ثبت‌نام کارجویان واقعی توسط خود کارجو یا پنل همکار است.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredSeekers.map((seeker) => (
               <div
                 key={seeker.id}
                 className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs"
@@ -2078,15 +2428,26 @@ export const AdminPanel: React.FC = () => {
                   )}
 
                   <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
-                    <span className="text-slate-400">شغل‌ها:</span>
-                    <span className="text-slate-200 font-medium">
-                      {seeker.selectedJobs && seeker.selectedJobs.length > 0
-                        ? seeker.selectedJobs.join('، ')
-                        : seeker.skills.join('، ')}
+                    <span className="text-slate-400">کار انتخاب‌شده توسط کارجو:</span>
+                    <span className="text-amber-300 font-bold">
+                      {seeker.selectedJobTitle ||
+                        (seeker.selectedJobs && seeker.selectedJobs.length > 0
+                          ? seeker.selectedJobs.join('، ')
+                          : seeker.skills.join('، '))}
                     </span>
+                    {seeker.seekerPaidAmount && (
+                      <span className="px-2.5 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                        مبلغ پرداختی کارجو: {seeker.seekerPaidAmount}{' '}
+                        {seeker.seekerPaymentCurrency === 'TRY'
+                          ? 'لیر'
+                          : seeker.seekerPaymentCurrency === 'USD'
+                          ? 'دلار'
+                          : 'تومان'}
+                      </span>
+                    )}
                     {seeker.customProfession && (
                       <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                        حرفه اختصاصی: {seeker.customProfession}
+                        توضیحات / حرفه: {seeker.customProfession}
                       </span>
                     )}
                   </div>
@@ -2178,10 +2539,21 @@ export const AdminPanel: React.FC = () => {
                     <Phone className="w-3.5 h-3.5" />
                     تماس
                   </a>
+
+                  <button
+                    type="button"
+                    onClick={() => deleteSeekerRecord(seeker.id)}
+                    className="px-3 py-2 bg-red-950/60 hover:bg-red-900/70 text-red-300 border border-red-500/30 rounded-xl font-bold transition flex items-center justify-center gap-1 text-xs"
+                    title="حذف کارجو"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>حذف</span>
+                  </button>
                 </div>
               </div>
             ))}
           </div>
+          )}
         </div>
       )}
 

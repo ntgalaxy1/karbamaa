@@ -9,9 +9,9 @@ def get_package_version():
     try:
         with open("package.json", "r", encoding="utf-8") as f:
             data = json.load(f)
-            return data.get("version", "10.0.0.18")
+            return data.get("version", "10.0.0.19")
     except Exception:
-        return "10.0.0.18"
+        return "10.0.0.19"
 
 
 def zip_dist():
@@ -58,7 +58,7 @@ def zip_dist():
 ==========================================================
 نام بسته (Package Name): app.karbama.twa
 نام نسخه (Version Name): {version}
-کد نسخه (Version Code): 100018
+کد نسخه (Version Code): 100019
 حداقل اندروید (Min SDK): 21 (Android 5.0)
 اندروید هدف (Target SDK): 34 (Android 14)
 امضای دیجیتال: V1 (JAR) + V2 (APK Signature Scheme v2)

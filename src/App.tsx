@@ -149,7 +149,7 @@ const MainContent: React.FC = () => {
           <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24">
             {activeTab === 'jobs' && <JobSearch />}
             {activeTab === 'post-job' && <PostJobSection />}
-            {activeTab === 'partner' && (isAdminLoggedIn ? <PartnerSection /> : <JobSearch />)}
+            {activeTab === 'partner' && <PartnerSection />}
             {activeTab === 'currency' && <CurrencyExchangeSection />}
             {activeTab === 'about-us' && <AboutUsSection />}
             {activeTab === 'privacy-policy' && <PrivacyPolicySection />}
@@ -182,24 +182,54 @@ const MainContent: React.FC = () => {
       </main>
 
       {/* Footer (Desktop & Universal) */}
-      <footer className="bg-white/80 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 py-4 pb-20 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-right">
+      <footer className="bg-white/80 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 py-6 pb-24 sm:pb-20 transition-colors">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-right">
             <div className="flex items-center gap-3">
               <img
                 src="/logo.png"
                 alt="لوگوی کارباما"
-                className="w-7 h-7 rounded-full object-cover border border-amber-400/50 shadow-sm"
+                className="w-8 h-8 rounded-full object-cover border border-amber-400/50 shadow-xs shrink-0"
               />
-              <span className="font-bold text-slate-800 dark:text-white">
-                کارباما (KARBAMA) | سامانه کاریابی و اقامت ایرانیان در ترکیه
-              </span>
-              <span className="hidden sm:inline text-slate-400">|</span>
-              <span className="hidden sm:inline text-slate-500">پشتیبانی آفلاین PWA و اندروید</span>
+              <div className="flex flex-col sm:flex-row items-center gap-2">
+                <span className="font-bold text-slate-800 dark:text-white text-sm">
+                  کارباما (KARBAMA) | سامانه کاریابی و اقامت ایرانیان در ترکیه
+                </span>
+                <span className="hidden sm:inline text-slate-400">|</span>
+                <span className="hidden sm:inline text-slate-500">پشتیبانی PWA و اندروید</span>
+              </div>
             </div>
 
-            <div className="flex items-center gap-4 text-[11px]">
-              <span className="hidden md:inline">شماره‌های ضروری: ۱۵۷ (اقامت) - ۱۷۰ (وزارت کار) - ۱۱۲ (اورژانس)</span>
+            {/* Enamad (نماد اعتماد الکترونیکی) Official Badge */}
+            <div className="flex items-center gap-3 justify-center my-1 md:my-0">
+              <a
+                referrerPolicy="origin"
+                target="_blank"
+                rel="noopener noreferrer"
+                href="https://trustseal.enamad.ir/?id=8525821&Code=XEkLJtcaakG7VTxhSuZB80dckY4lQbqM"
+                className="inline-flex items-center gap-2 p-1.5 px-2.5 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-xs hover:shadow-md hover:border-amber-400/60 transition-all shrink-0 group"
+                title="نماد اعتماد الکترونیکی (اینماد)"
+              >
+                <img
+                  referrerPolicy="origin"
+                  src="https://trustseal.enamad.ir/logo.aspx?id=8525821&Code=XEkLJtcaakG7VTxhSuZB80dckY4lQbqM"
+                  alt="نماد اعتماد الکترونیکی اینماد کارباما"
+                  className="h-16 w-auto cursor-pointer object-contain"
+                  {...({ code: 'XEkLJtcaakG7VTxhSuZB80dckY4lQbqM' } as any)}
+                />
+                <div className="text-right hidden sm:block pr-1">
+                  <span className="block text-[11px] font-bold text-slate-800 dark:text-slate-100 group-hover:text-amber-500 transition-colors">
+                    نماد اعتماد الکترونیکی
+                  </span>
+                  <span className="block text-[9px] text-slate-500 dark:text-slate-400 font-mono">
+                    کد کسب‌وکار: 8525821
+                  </span>
+                </div>
+              </a>
+            </div>
+
+            <div className="flex items-center gap-4 text-[11px] flex-wrap justify-center">
+              <span className="hidden xl:inline text-slate-500">شماره‌های ضروری: ۱۵۷ (اقامت) - ۱۷۰ (وزارت کار) - ۱۱۲ (اورژانس)</span>
               
               {/* About Us Link */}
               <button
@@ -247,7 +277,7 @@ const MainContent: React.FC = () => {
               powered by Naser Tavakkoli . @Ntgalaxy
             </p>
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400">
-              v10.0.0.18
+              v10.0.0.19
             </span>
           </div>
         </div>

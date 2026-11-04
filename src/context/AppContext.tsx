@@ -31,6 +31,7 @@ import {
   RegisterSeekerByPartnerInput,
   RegisterSeekerInput,
   RegisterPartnerInput,
+  AdminCreatePartnerInput,
   LiveChatSession,
   LiveChatMessage,
 } from '../types';
@@ -54,7 +55,7 @@ import {
   playNotificationDingSound,
   playNewJobHotelDingSound,
 } from '../utils/safeNotification';
-import { collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../services/firebase';
 import { checkPasswordStrength, isValidEmail } from '../utils/validators';
 
@@ -218,6 +219,7 @@ interface AppContextType {
   isPartnerLoggedIn: boolean;
   loginPartner: (username: string, password: string) => { success: boolean; error?: string };
   registerPartner: (input: RegisterPartnerInput) => { success: boolean; error?: string };
+  adminCreatePartner: (input: AdminCreatePartnerInput) => { success: boolean; error?: string; partner?: PartnerAccount };
   logoutPartner: () => void;
   submitPartnerSubscriptionPayment: (
     planId: PartnerSubscriptionPlanId,
@@ -231,6 +233,9 @@ interface AppContextType {
   updatePartnerPlanPricing: (planId: PartnerSubscriptionPlanId, priceTL: number, priceToman: number) => void;
   updatePartnerPlans: (plans: PartnerSubscriptionPlan[]) => void;
   registerSeekerByPartner: (input: RegisterSeekerByPartnerInput) => { success: boolean; error?: string; seekerId?: string };
+  updateSeekerRecord: (seekerId: string, updates: Partial<JobSeeker>) => void;
+  deleteSeekerRecord: (seekerId: string) => void;
+  clearAllSeekers: () => void;
   switchToDemoPartner: () => void;
   activatePartnerInstantly: (partnerId: string) => void;
   // Quick Admin Modals State (Triggered from Header & Admin Tools)
@@ -287,15 +292,15 @@ const DEFAULT_BROKER_SETTINGS: BrokerSettings = {
 };
 
 const STORAGE_KEYS = {
-  SEEKERS: 'karbama_seekers_v4',
+  SEEKERS: 'karbama_seekers_v20_clean_final',
   JOBS: 'karbama_jobs_v3',
-  APPLICATIONS: 'karbama_applications_v4',
+  APPLICATIONS: 'karbama_applications_v19_clean',
   ADDRESSES: 'karbama_addresses_v3',
   HOTELS: 'karbama_hotels_v3',
   BOOKINGS: 'karbama_bookings_v3',
   TRANSIT: 'karbama_transit_v3',
   TRANSIT_HUBS: 'karbama_transit_hubs_v3',
-  CURRENT_USER_ID: 'karbama_current_user_v4',
+  CURRENT_USER_ID: 'karbama_current_user_v20_clean_final',
   IS_ADMIN: 'karbama_is_admin_v3',
   SAVED_JOBS: 'karbama_saved_jobs_v4',
   JOB_ALERTS: 'karbama_job_alerts_v3',
@@ -549,15 +554,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Safe load data with fallback to initial data (filtering out legacy sample seekers)
-  const SAMPLE_SEEKER_IDS = new Set(['seeker-1', 'seeker-2', 'seeker-3']);
+  // Safe load data with fallback to empty array (strictly filtering out all legacy/default sample seekers)
+  const isSampleOrLegacySeeker = (s?: Partial<JobSeeker> | null): boolean => {
+    if (!s || !s.id) return true;
+    const idLower = s.id.toLowerCase();
+    if (
+      idLower.startsWith('seeker-1') ||
+      idLower.startsWith('seeker-2') ||
+      idLower.startsWith('seeker-3') ||
+      idLower.startsWith('seeker-4') ||
+      idLower.startsWith('seeker-5') ||
+      idLower.includes('demo') ||
+      idLower.includes('sample') ||
+      idLower.includes('test') ||
+      idLower.includes('mock')
+    ) {
+      return true;
+    }
+    const name = s.fullName ? s.fullName.trim() : '';
+    if (
+      ['علی رضایی', 'محمد کریمی', 'سارا احمدی', 'رضا محمدی', 'امیر حسینی', 'مهدی حسینی', 'کارجو نمونه', 'کارجو تست'].includes(name) ||
+      name.includes('نمونه') ||
+      name.includes('تست')
+    ) {
+      return true;
+    }
+    const username = s.username ? s.username.toLowerCase() : '';
+    if (
+      ['ali_rezaei', 'mohammad_k', 'sara_ahmadi', 'seeker1', 'seeker2', 'seeker3', 'seeker4', 'seeker5', 'seeker_demo', 'demo_seeker'].includes(username) ||
+      username.includes('demo') ||
+      username.includes('sample')
+    ) {
+      return true;
+    }
+    return false;
+  };
+
   const [jobSeekers, setJobSeekers] = useState<JobSeeker[]>(() => {
     try {
+      // Always purge all legacy seeker localStorage keys
+      safeStorage.removeItem('karbama_seekers');
+      safeStorage.removeItem('karbama_seekers_v2');
+      safeStorage.removeItem('karbama_seekers_v3');
+      safeStorage.removeItem('karbama_seekers_v4');
+      safeStorage.removeItem('karbama_seekers_v19_clean');
+      safeStorage.removeItem('karbama_current_user_v19_clean');
+
+      if (safeStorage.getItem('karbama_purge_all_default_seekers_v20_final') !== 'done') {
+        safeStorage.removeItem(STORAGE_KEYS.SEEKERS);
+        safeStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+        safeStorage.setItem('karbama_purge_all_default_seekers_v20_final', 'done');
+        return [];
+      }
       const stored = safeStorage.getItem(STORAGE_KEYS.SEEKERS);
-      const parsed: JobSeeker[] = stored ? JSON.parse(stored) : INITIAL_JOB_SEEKERS;
-      return Array.isArray(parsed) ? parsed.filter((s) => !SAMPLE_SEEKER_IDS.has(s.id)) : [];
+      const parsed: JobSeeker[] = stored ? JSON.parse(stored) : [];
+      return Array.isArray(parsed) ? parsed.filter((s) => !isSampleOrLegacySeeker(s)) : [];
     } catch {
-      return INITIAL_JOB_SEEKERS;
+      return [];
     }
   });
 
@@ -998,27 +1051,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (!db) return;
 
-    // Listen to users collection
+    // Listen to users collection (and purge any legacy/sample seekers from Firestore)
+    const shouldPurgeFirestoreOnce = safeStorage.getItem('karbama_firestore_seekers_purged_v20_final') !== 'done';
     const unsubUsers = onSnapshot(
       collection(db, 'users'),
       (snapshot) => {
-        if (!snapshot.empty) {
-          const firestoreUsers: JobSeeker[] = [];
+        if (shouldPurgeFirestoreOnce) {
+          safeStorage.setItem('karbama_firestore_seekers_purged_v20_final', 'done');
           snapshot.forEach((docSnap) => {
-            const data = docSnap.data() as JobSeeker;
-            if (data && data.id && !SAMPLE_SEEKER_IDS.has(data.id)) {
-              firestoreUsers.push(data);
-            }
+            deleteDoc(doc(db, 'users', docSnap.id)).catch(() => {});
           });
-          if (firestoreUsers.length > 0) {
-            setJobSeekers((prev) => {
-              const map = new Map<string, JobSeeker>();
-              prev.filter((s) => !SAMPLE_SEEKER_IDS.has(s.id)).forEach((s) => map.set(s.id, s));
-              firestoreUsers.forEach((s) => map.set(s.id, s));
-              return Array.from(map.values());
-            });
-          }
+          setJobSeekers([]);
+          return;
         }
+        const firestoreUsers: JobSeeker[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data() as JobSeeker;
+          if (isSampleOrLegacySeeker(data)) {
+            deleteDoc(doc(db, 'users', docSnap.id)).catch(() => {});
+          } else if (data && data.id) {
+            firestoreUsers.push(data);
+          }
+        });
+        setJobSeekers((prev) => {
+          const map = new Map<string, JobSeeker>();
+          prev.filter((s) => !isSampleOrLegacySeeker(s)).forEach((s) => map.set(s.id, s));
+          firestoreUsers.forEach((s) => map.set(s.id, s));
+          return Array.from(map.values());
+        });
       },
       (error) => {
         handleFirestoreError(error, OperationType.GET, 'users');
@@ -1962,11 +2022,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const unreadNotificationCount = jobNotifications.filter((n) => !n.read).length;
 
   const switchToDemoUser = () => {
-    const demo = jobSeekers[0] || INITIAL_JOB_SEEKERS[0];
-    setCurrentSeekerId(demo.id);
-    setRole('jobseeker');
-    setActiveTab('jobs');
-    showToast(`ورود سریع به حساب کارجو (${demo.fullName}) انجام شد.`, 'info');
+    const demo = jobSeekers[0];
+    if (demo) {
+      setCurrentSeekerId(demo.id);
+      setRole('jobseeker');
+      setActiveTab('jobs');
+      showToast(`ورود سریع به حساب کارجو (${demo.fullName}) انجام شد.`, 'info');
+    } else {
+      setRole('jobseeker');
+      setActiveTab('jobs');
+      showToast('هیچ کارجویی در سامانه ثبت نشده است. سامانه آماده ثبت‌نام اولین کارجو می‌باشد.', 'info');
+    }
   };
 
   const switchToDemoAdmin = () => {
@@ -2029,7 +2095,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       username: cleanUser,
       password: input.password,
       city: input.city?.trim() || 'استانبول',
-      subscriptionStatus: 'unpaid',
+      subscriptionStatus: 'active',
+      daysRemaining: 365,
       createdAt: new Date().toISOString(),
     };
 
@@ -2046,6 +2113,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     showToast(`حساب همکاری با موفقیت ایجاد شد! کد همکاری شما: ${newPartner.partnerCode}`, 'success');
     return { success: true };
+  };
+
+  const adminCreatePartner = (input: AdminCreatePartnerInput): { success: boolean; error?: string; partner?: PartnerAccount } => {
+    if (!input.companyName.trim() || !input.fullName.trim() || !input.phone.trim()) {
+      return { success: false, error: 'لطفاً نام شرکت/دفتر همکار، نام نماینده و شماره تماس را وارد فرمایید.' };
+    }
+    if (!input.username.trim() || !input.password.trim()) {
+      return { success: false, error: 'تعیین نام کاربری و کلمه عبور الزامی است.' };
+    }
+
+    if (input.email && !isValidEmail(input.email)) {
+      return { success: false, error: 'لطفاً یک آدرس ایمیل معتبر وارد کنید.' };
+    }
+
+    const cleanUser = input.username.trim().toLowerCase();
+    if (partners.some((p) => p.username.toLowerCase() === cleanUser)) {
+      return { success: false, error: 'این نام کاربری قبلاً در سامانه همکاران ثبت شده است. نام دیگری انتخاب نمایید.' };
+    }
+
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const code = input.partnerCode?.trim() || `PART-${randomNum}`;
+    const plan = input.planId ? partnerPlans.find(p => p.id === input.planId) : undefined;
+    const initialStatus = input.subscriptionStatus || 'active';
+    const initialDays = input.daysRemaining !== undefined ? input.daysRemaining : (initialStatus === 'active' ? 365 : 0);
+
+    const newPartner: PartnerAccount = {
+      id: 'partner-' + Date.now(),
+      partnerCode: code,
+      companyName: input.companyName.trim(),
+      fullName: input.fullName.trim(),
+      phone: input.phone.trim(),
+      email: input.email?.trim().toLowerCase() || '',
+      username: cleanUser,
+      password: input.password,
+      city: input.city?.trim() || 'استانبول',
+      subscriptionStatus: initialStatus,
+      planId: input.planId || '1_year',
+      planTitle: plan?.title || 'اشتراک ۱ ساله همکاران کارباما',
+      daysRemaining: initialDays,
+      adminApprovalNote: input.adminNote?.trim() || 'ثبت و تایید مستقیم توسط مدیریت سامانه',
+      createdAt: new Date().toISOString(),
+    };
+
+    setPartners((prev) => [newPartner, ...prev]);
+
+    addAdminNotification({
+      type: 'partner_registered',
+      title: 'همکار جدید توسط مدیر ثبت شد',
+      message: `حساب کاربری همکار «${newPartner.companyName}» با مدیریت ${newPartner.fullName} و کد اختصاصی ${newPartner.partnerCode} در سامانه فعال گردید.`,
+    });
+
+    showToast(`همکار جدید «${newPartner.companyName}» با کد همکاری ${newPartner.partnerCode} با موفقیت ثبت شد.`, 'success');
+    return { success: true, partner: newPartner };
   };
 
   const logoutPartner = () => {
@@ -2156,14 +2276,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const registerSeekerByPartner = (
     input: RegisterSeekerByPartnerInput
   ): { success: boolean; error?: string; seekerId?: string } => {
-    if (!currentPartner) {
+    const activePartnerObj = currentPartner || (isAdminLoggedIn ? partners[0] || {
+      id: 'partner-admin',
+      partnerCode: 'PART-ADMIN',
+      companyName: 'پنل همکار (مدیریت)',
+      fullName: 'مدیر سیستم',
+    } : null);
+
+    if (!activePartnerObj) {
       return { success: false, error: 'برای ثبت کارجو ابتدا وارد پنل همکار شوید.' };
-    }
-    if (currentPartner.subscriptionStatus !== 'active') {
-      return {
-        success: false,
-        error: 'اشتراک شما فعال نیست. لطفاً ابتدا یکی از پلن‌های اشتراک را فعال نمایید.',
-      };
     }
     if (!input.fullName.trim() || !input.nationalId.trim() || !input.phoneNumber.trim()) {
       return { success: false, error: 'نام و نام خانوادگی، کد ملی و شماره تماس کارجو الزامی است.' };
@@ -2172,7 +2293,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cleanNatId = input.nationalId.replace(/\s/g, '');
     const cleanPhone = input.phone || `${input.phoneCountryCode} ${input.phoneNumber.trim()}`;
     const autoUsername = `seeker_${cleanNatId.slice(-4)}_${Math.floor(100 + Math.random() * 900)}`;
-    const autoPassword = `kb${Math.floor(1000 + Math.random() * 9000)}`;
+    const autoPassword = `Kb${Math.floor(100000 + Math.random() * 900000)}`;
+    const jobTitle = input.selectedJobTitle || input.customProfession || (input.selectedJobs && input.selectedJobs[0]) || 'کار عمومی';
 
     const newSeeker: JobSeeker = {
       id: 'seeker-p-' + Date.now(),
@@ -2187,55 +2309,111 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       password: autoPassword,
       iranProvince: input.iranProvince || 'تهران',
       iranCity: input.iranCity || 'تهران',
-      iranAddress: input.iranProvince ? `${input.iranProvince}، ${input.iranCity || ''}` : 'ثبت‌شده در آژانس همکار',
+      iranAddress: input.iranProvince ? `${input.iranProvince}، ${input.iranCity || ''}` : 'ثبت‌شده توسط همکار',
       targetCountry: input.targetCountry,
       targetCity: input.targetCity || 'استانبول',
+      targetDistrict: input.targetDistrict || '',
       turkishLevel: input.turkishLevel,
       residenceStatus: input.residenceStatus,
-      skills: input.skills.length > 0 ? input.skills : ['کار عمومی'],
-      selectedJobs: input.selectedJobs || [],
-      customProfession: input.customProfession || '',
+      skills: input.skills.length > 0 ? input.skills : [jobTitle],
+      selectedJobs: input.selectedJobs && input.selectedJobs.length > 0 ? input.selectedJobs : [jobTitle],
+      customProfession: input.customProfession || jobTitle,
+      selectedJobId: input.selectedJobId || '',
+      selectedJobTitle: jobTitle,
+      seekerPaidAmount: input.seekerPaidAmount || '۰',
+      seekerPaymentCurrency: input.seekerPaymentCurrency || 'IRT',
+      seekerPaymentStatus: input.seekerPaymentStatus || 'paid',
       verificationStatus: 'pending',
-      isPaymentVerified: false,
+      isPaymentVerified: input.seekerPaymentStatus === 'paid',
       registeredByRole: 'partner',
-      registeredByPartnerId: currentPartner.id,
-      registeredByPartnerName: currentPartner.companyName || currentPartner.fullName,
-      registeredByPartnerCode: currentPartner.partnerCode,
+      registeredByPartnerId: activePartnerObj.id,
+      registeredByPartnerName: activePartnerObj.companyName || activePartnerObj.fullName,
+      registeredByPartnerCode: activePartnerObj.partnerCode,
       isTemporaryRegistration: input.isTemporaryRegistration,
       partnerInternalNote: input.partnerInternalNote,
       createdAt: new Date().toISOString(),
     };
 
     setJobSeekers((prev) => [newSeeker, ...prev]);
+    syncUserToFirestore(newSeeker);
 
     addAdminNotification({
       type: 'seeker_registered',
-      title: input.isTemporaryRegistration
-        ? 'پیش‌ثبت‌نام موقت کارجو توسط همکار'
-        : 'ثبت‌نام رسمی کارجو توسط همکار',
-      message: `کارجو «${newSeeker.fullName}» با کد ملی ${newSeeker.nationalId} توسط همکار ${currentPartner.companyName} (${currentPartner.partnerCode}) ثبت شد.`,
+      title: '👤 ثبت کارجو توسط همکار',
+      message: `کارجو «${newSeeker.fullName}» | شغل انتخابی: «${jobTitle}» | مبلغ پرداختی: ${newSeeker.seekerPaidAmount || 'ثبت نشده'} توسط همکار ${activePartnerObj.companyName} ثبت شد.`,
+      data: { seekerId: newSeeker.id },
     });
 
-    showToast(
-      input.isTemporaryRegistration
-        ? `پیش‌ثبت‌نام موقت کارجو «${newSeeker.fullName}» با موفقیت ثبت شد.`
-        : `کارجو «${newSeeker.fullName}» با موفقیت ثبت گردید.`,
-      'success'
-    );
+    showToast(`کارجو «${newSeeker.fullName}» با موفقیت ثبت گردید.`, 'success');
 
     return { success: true, seekerId: newSeeker.id };
+  };
+
+  const updateSeekerRecord = (seekerId: string, updates: Partial<JobSeeker>) => {
+    setJobSeekers((prev) => {
+      const next = prev.map((s) => {
+        if (s.id === seekerId) {
+          const updated = { ...s, ...updates };
+          syncUserToFirestore(updated);
+          return updated;
+        }
+        return s;
+      });
+      try {
+        safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+    showToast('مشخصات کارجو با موفقیت ویرایش و ذخیره شد.', 'success');
+  };
+
+  const deleteSeekerRecord = (seekerId: string) => {
+    setJobSeekers((prev) => {
+      const next = prev.filter((s) => s.id !== seekerId);
+      try {
+        safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+    if (db) {
+      deleteDoc(doc(db, 'users', seekerId)).catch(() => {});
+    }
+    if (currentSeekerId === seekerId) {
+      setCurrentSeekerId(null);
+    }
+    showToast('پرونده کارجو حذف گردید.', 'info');
+  };
+
+  const clearAllSeekers = () => {
+    const ids = jobSeekers.map((s) => s.id);
+    setJobSeekers([]);
+    try {
+      safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify([]));
+    } catch (e) {
+      console.error(e);
+    }
+    if (db) {
+      ids.forEach((id) => {
+        deleteDoc(doc(db, 'users', id)).catch(() => {});
+      });
+    }
+    showToast('لیست کارجویان به طور کامل پاکسازی شد.', 'info');
   };
 
   const switchToDemoPartner = () => {
     setCurrentPartnerId('partner-1');
     setRole('partner');
     setActiveTab('partner');
-    showToast('ورود سریع به پنل همکار (آژانس کاریابی و مهاجرتی استانبول پارس) انجام شد.', 'info');
+    showToast('ورود به پنل همکار انجام شد.', 'info');
   };
 
   const activatePartnerInstantly = (partnerId: string) => {
-    approvePartnerSubscription(partnerId, 'فعال‌سازی سریع تستی توسط سامانه');
-    showToast('اشتراک همکار به صورت تستی و فوری فعال شد!', 'success');
+    approvePartnerSubscription(partnerId, 'فعال‌سازی توسط سامانه');
+    showToast('حساب همکار فعال شد!', 'success');
   };
 
   // Quick Admin Modals State (Triggered from Header > امکانات)
@@ -2563,6 +2741,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isPartnerLoggedIn,
         loginPartner,
         registerPartner,
+        adminCreatePartner,
         logoutPartner,
         submitPartnerSubscriptionPayment,
         approvePartnerSubscription,
@@ -2570,6 +2749,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updatePartnerPlanPricing,
         updatePartnerPlans,
         registerSeekerByPartner,
+        updateSeekerRecord,
+        deleteSeekerRecord,
+        clearAllSeekers,
         switchToDemoPartner,
         activatePartnerInstantly,
         adminJobModalOpen,

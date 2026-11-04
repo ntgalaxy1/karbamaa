@@ -160,25 +160,53 @@ app.get('/favicon.ico', (req, res) => sendStaticFile(res, 'favicon.ico', 'image/
 app.get('/icon.svg', (req, res) => sendStaticFile(res, 'icon.svg', 'image/svg+xml'));
 
 // Explicit Web App Zip Build Download Route for cPanel/DirectAdmin deployment
-app.get(['/karbama-dist.zip', '/dist.zip', '/karbama-latest-build.zip'], (req, res) => {
+app.get(['/karbama-dist.zip', '/dist.zip', '/karbama-latest-build.zip', '/*.zip', '/downloads/*.zip'], (req, res) => {
+  const filename = path.basename(req.path) || 'karbama-dist.zip';
   const candidates = [
+    path.resolve(__dirname, 'public', filename),
+    path.resolve(__dirname, 'public', 'downloads', filename),
+    path.resolve(__dirname, 'dist', filename),
+    path.resolve(__dirname, 'dist', 'downloads', filename),
+    path.resolve(__dirname, filename),
     path.resolve(__dirname, 'public', 'karbama-dist.zip'),
     path.resolve(__dirname, 'dist', 'karbama-dist.zip'),
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) {
       res.setHeader('Content-Type', 'application/zip');
-      res.setHeader('Content-Disposition', 'attachment; filename="karbama-dist.zip"');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Cache-Control', 'public, max-age=3600');
       return res.sendFile(c);
     }
   }
-  return res.status(404).setHeader('Content-Type', 'text/plain').send('Zip build file not found');
+  return res.status(404).setHeader('Content-Type', 'text/plain').send('Zip file not found');
+});
+
+// Explicit AAB (Android App Bundle for Cafe Bazaar) Download Routes
+app.get(['/*.aab', '/downloads/*.aab'], (req, res) => {
+  const filename = path.basename(req.path) || 'karbama-latest.aab';
+  const candidates = [
+    path.resolve(__dirname, 'public', filename),
+    path.resolve(__dirname, 'public', 'downloads', filename),
+    path.resolve(__dirname, 'dist', filename),
+    path.resolve(__dirname, 'dist', 'downloads', filename),
+    path.resolve(__dirname, filename),
+    path.resolve(__dirname, 'public', 'karbama-latest.aab'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.sendFile(c);
+    }
+  }
+  return res.status(404).setHeader('Content-Type', 'text/plain').send('AAB file not found');
 });
 
 // Explicit APK Download Routes with correct MIME type and download disposition
-app.get(['/karbama.apk', '/karbama-latest.apk', '/karbama-v:ver.apk', '/downloads/:file'], (req, res) => {
-  const filename = req.params.file || path.basename(req.path) || 'karbama-latest.apk';
+app.get(['/karbama.apk', '/karbama-latest.apk', '/*.apk', '/downloads/*.apk'], (req, res) => {
+  const filename = path.basename(req.path) || 'karbama-latest.apk';
   const candidates = [
     path.resolve(__dirname, filename),
     path.resolve(__dirname, 'public', filename),

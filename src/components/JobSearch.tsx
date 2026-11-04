@@ -148,6 +148,7 @@ export const JobSearch: React.FC = () => {
     paymentSettings,
     addAdminNotification,
     appLanguage,
+    setAdminJobModalOpen,
   } = useApp();
 
   // Payment referral state for locked jobseeker with Receipt Photo Upload
@@ -674,15 +675,15 @@ export const JobSearch: React.FC = () => {
                 {t('smartSystemTag', appLanguage)}
               </div>
 
-              {/* Only show 'ثبت آگهی استخدام' if NOT in jobseeker mode */}
-              {(!currentSeeker || isAdminLoggedIn) && (
+              {/* Unified Job Posting & Position Registration Button for Admin */}
+              {isAdminLoggedIn && (
                 <button
                   type="button"
-                  onClick={() => setActiveTab('post-job')}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/40 text-xs font-bold transition shadow-md animate-pulse"
+                  onClick={() => setAdminJobModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/40 text-xs font-bold transition shadow-md"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  {t('postEmployerJobBtn', appLanguage)}
+                  <span>+ ثبت آگهی استخدام / موقعیت شغلی</span>
                 </button>
               )}
 
@@ -884,11 +885,11 @@ export const JobSearch: React.FC = () => {
           </div>
 
           <button
-            onClick={() => setShowAddJobModal(true)}
+            onClick={() => setAdminJobModalOpen(true)}
             className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-2xl text-xs shadow-lg shadow-red-700/30 transition flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            <span>+ افزودن فرصت شغلی جدید</span>
+            <span>+ ثبت آگهی استخدام / موقعیت شغلی جدید</span>
           </button>
         </div>
       )}

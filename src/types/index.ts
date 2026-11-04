@@ -74,6 +74,7 @@ export interface JobSeeker {
   iranAddress?: string;      // آدرس کامل محل سکونت در ایران
   targetCountry?: TargetCountry; // کشور مقصد انتخابی (ترکیه، ارمنستان، عراق، آلمان)
   targetCity: string;        // شهر مد نظر در کشور مقصد
+  targetDistrict?: string;   // منطقه مد نظر در شهر مقصد
   turkishLevel: TurkishLevel;// سطح زبان (ترکی یا کشور مقصد)
   residenceStatus: ResidenceStatus; // وضعیت کیملیک / اقامت / پاسپورت
   skills: string[];          // مهارت‌ها و تجارب
@@ -91,6 +92,13 @@ export interface JobSeeker {
   registeredByPartnerCode?: string;   // کد همکاری همکار (مثلاً PART-8801)
   isTemporaryRegistration?: boolean;  // آیا ثبت‌نام اولیه و موقت است؟
   partnerInternalNote?: string;       // یادداشت خصوصی همکار برای این کارجو
+
+  // کار انتخاب‌شده و مبلغ پرداختی توسط کارجو (ویژه مدیریت ساده در پنل همکار و مدیر)
+  selectedJobId?: string;             // شناسه آگهی کار انتخاب‌شده توسط کارجو
+  selectedJobTitle?: string;          // عنوان کار انتخاب‌شده توسط کارجو
+  seekerPaidAmount?: string;          // مبلغ پرداختی توسط کارجو
+  seekerPaymentCurrency?: 'IRT' | 'TRY' | 'USD'; // واحد مبلغ پرداختی (تومان / لیر / دلار)
+  seekerPaymentStatus?: 'paid' | 'partial' | 'unpaid'; // وضعیت پرداخت کارجو
 
   // بخش ۳: شغل‌ها، تخصص‌ها و زبان‌ها
   selectedJobs?: string[];      // شغل‌ها و تخصص‌های انتخابی کارجو از لیست
@@ -160,6 +168,21 @@ export interface RegisterPartnerInput {
   username: string;
   password: string;
   city?: string;
+}
+
+export interface AdminCreatePartnerInput {
+  companyName: string;
+  fullName: string;
+  phone: string;
+  email?: string;
+  city?: string;
+  username: string;
+  password: string;
+  partnerCode?: string;
+  planId?: PartnerSubscriptionPlanId;
+  subscriptionStatus?: PartnerSubscriptionStatus;
+  daysRemaining?: number;
+  adminNote?: string;
 }
 
 export interface BrokerSettings {
@@ -259,9 +282,15 @@ export interface RegisterSeekerByPartnerInput {
   iranCity?: string;
   targetCountry: TargetCountry;
   targetCity: string;
+  targetDistrict?: string;
   skills: string[];
   selectedJobs?: string[];
   customProfession?: string;
+  selectedJobId?: string;
+  selectedJobTitle?: string;
+  seekerPaidAmount?: string;
+  seekerPaymentCurrency?: 'IRT' | 'TRY' | 'USD';
+  seekerPaymentStatus?: 'paid' | 'partial' | 'unpaid';
   turkishLevel: TurkishLevel;
   residenceStatus: ResidenceStatus;
   isTemporaryRegistration: boolean; // آیا ثبت‌نام اولیه و موقت است؟
