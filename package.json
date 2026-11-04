@@ -10,6 +10,8 @@
     "preview": "tsx server.ts",
     "bump": "node scripts/bump-version.js",
     "version:bump": "node scripts/bump-version.js",
+    "purge:firebase": "tsx scripts/purge-firebase-db.ts",
+    "release": "node scripts/bump-version.js && npm run build && bash scripts/publish-to-github.sh",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
   },

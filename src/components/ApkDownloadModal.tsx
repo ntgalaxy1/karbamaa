@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { useApp } from '../context/AppContext';
+import { APP_VERSION, APP_VERSION_CODE, APP_PACKAGE_NAME } from '../version';
 import {
   X,
   Smartphone,
@@ -23,10 +24,6 @@ interface ApkDownloadModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const APP_VERSION = '10.0.0.19';
-const APP_VERSION_CODE = '100019';
-const APP_PACKAGE_NAME = 'app.karbama.twa';
 
 export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onClose }) => {
   const { isInstallable, install } = usePWAInstall();

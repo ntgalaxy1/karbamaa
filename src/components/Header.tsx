@@ -9,6 +9,7 @@ import { ThemeCustomizerModal } from './ThemeCustomizerModal';
 import { AboutUsModal } from './AboutUsModal';
 import { AppLanguage } from '../types';
 import { t } from '../utils/translations';
+import { APP_VERSION } from '../version';
 import {
   Briefcase,
   MapPin,
@@ -361,7 +362,7 @@ export const Header: React.FC = () => {
                           <span className="font-bold">{t('downloadApk', appLanguage)}</span>
                         </div>
                         <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-md font-mono">
-                          v10.0.0.19
+                          v{APP_VERSION}
                         </span>
                       </button>
 

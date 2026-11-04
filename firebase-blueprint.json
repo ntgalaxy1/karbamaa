@@ -21,6 +21,28 @@
       },
       "required": ["id", "username", "role"]
     },
+    "Partner": {
+      "title": "Partner Account",
+      "description": "Registered partner agencies and placement offices",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "partnerCode": { "type": "string", "maxLength": 32 },
+        "companyName": { "type": "string", "maxLength": 128 },
+        "fullName": { "type": "string", "maxLength": 128 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "email": { "type": "string", "maxLength": 128 },
+        "username": { "type": "string", "maxLength": 64 },
+        "password": { "type": "string", "maxLength": 128 },
+        "city": { "type": "string", "maxLength": 64 },
+        "subscriptionStatus": { "type": "string", "enum": ["unpaid", "pending_approval", "active", "expired"] },
+        "planId": { "type": "string", "maxLength": 32 },
+        "planTitle": { "type": "string", "maxLength": 128 },
+        "daysRemaining": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "partnerCode", "companyName", "fullName", "phone", "username", "password"]
+    },
     "Notification": {
       "title": "Push Notification",
       "description": "App and device notifications for new job alerts or status changes",
@@ -77,6 +99,10 @@
     "/users/{userId}": {
       "schema": "User",
       "description": "User accounts and push notification preference state"
+    },
+    "/partners/{partnerId}": {
+      "schema": "Partner",
+      "description": "Registered agency and placement partner accounts"
     },
     "/notifications/{notificationId}": {
       "schema": "Notification",

@@ -55,7 +55,7 @@ import {
   playNotificationDingSound,
   playNewJobHotelDingSound,
 } from '../utils/safeNotification';
-import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../services/firebase';
 import { checkPasswordStrength, isValidEmail } from '../utils/validators';
 
@@ -260,6 +260,10 @@ interface AppContextType {
   sendLiveChatMessage: (chatId: string, sender: 'seeker' | 'admin', text: string) => void;
   markChatRead: (chatId: string, viewer: 'seeker' | 'admin') => void;
   resetSeekerChat: () => void;
+
+  // Firebase Database Purge & Sync (پاکسازی دیتابیس و همگام‌سازی ابری)
+  purgeFirebaseDatabase: (fullReset?: boolean) => Promise<{ success: boolean; deletedCount: number; message: string }>;
+  syncPartnerToFirestore: (partner: PartnerAccount) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -1170,11 +1174,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     );
 
+    // Listen to partners collection
+    const unsubPartners = onSnapshot(
+      collection(db, 'partners'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const firestorePartners: PartnerAccount[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data() as PartnerAccount;
+            if (data && data.id) {
+              firestorePartners.push(data);
+            }
+          });
+          if (firestorePartners.length > 0) {
+            setPartners((prev) => {
+              const map = new Map<string, PartnerAccount>();
+              prev.forEach((p) => map.set(p.id, p));
+              firestorePartners.forEach((p) => map.set(p.id, p));
+              return Array.from(map.values());
+            });
+          }
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, 'partners');
+      }
+    );
+
     return () => {
       unsubUsers();
       unsubNotifs();
       unsubJobs();
       unsubChats();
+      unsubPartners();
     };
   }, []);
 
@@ -1187,6 +1219,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `users/${user.id}`);
+    }
+  };
+
+  const syncPartnerToFirestore = async (partner: PartnerAccount) => {
+    try {
+      if (!db) return;
+      await setDoc(doc(db, 'partners', partner.id), {
+        ...partner,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, `partners/${partner.id}`);
     }
   };
 
@@ -1209,6 +1253,101 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `jobs/${job.id}`);
+    }
+  };
+
+  const purgeFirebaseDatabase = async (fullReset: boolean = false): Promise<{
+    success: boolean;
+    deletedCount: number;
+    message: string;
+  }> => {
+    let deletedCount = 0;
+    try {
+      if (db) {
+        // 1. Purge users collection
+        const usersSnap = await getDocs(collection(db, 'users'));
+        for (const docSnap of usersSnap.docs) {
+          const data = docSnap.data() as JobSeeker;
+          const shouldDelete = fullReset ? true : isSampleOrLegacySeeker(data);
+          if (shouldDelete) {
+            await deleteDoc(docSnap.ref);
+            deletedCount++;
+          }
+        }
+
+        // 2. Purge test notifications
+        const notifsSnap = await getDocs(collection(db, 'notifications'));
+        for (const docSnap of notifsSnap.docs) {
+          const data = docSnap.data();
+          const msg = String(data.message || data.title || '').toLowerCase();
+          const id = String(data.id || '').toLowerCase();
+          if (
+            fullReset ||
+            msg.includes('تست') ||
+            msg.includes('نمونه') ||
+            msg.includes('demo') ||
+            id.includes('test') ||
+            id.includes('demo')
+          ) {
+            await deleteDoc(docSnap.ref);
+            deletedCount++;
+          }
+        }
+
+        // 3. Purge test chats
+        const chatsSnap = await getDocs(collection(db, 'chats'));
+        for (const docSnap of chatsSnap.docs) {
+          const data = docSnap.data();
+          const name = String(data.fullName || data.firstName || '').toLowerCase();
+          const id = String(data.id || '').toLowerCase();
+          if (
+            fullReset ||
+            name.includes('تست') ||
+            name.includes('نمونه') ||
+            name.includes('demo') ||
+            id.includes('test') ||
+            id.includes('demo')
+          ) {
+            await deleteDoc(docSnap.ref);
+            deletedCount++;
+          }
+        }
+
+        // 4. Test doc
+        try {
+          await deleteDoc(doc(db, 'test', 'connection'));
+        } catch {
+          // Ignore
+        }
+      }
+
+      // Update local state
+      if (fullReset) {
+        setJobSeekers([]);
+        safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify([]));
+        safeStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+        setCurrentSeekerId(null);
+      } else {
+        setJobSeekers((prev) => prev.filter((s) => !isSampleOrLegacySeeker(s)));
+      }
+
+      safeStorage.setItem('karbama_purge_all_default_seekers_v20_final', 'done');
+      safeStorage.setItem('karbama_firestore_seekers_purged_v20_final', 'done');
+
+      showToast(`پایگاه داده Firebase پاکسازی شد (${deletedCount} سند تستی حذف گردید).`, 'success');
+      return {
+        success: true,
+        deletedCount,
+        message: `عملیات پاکسازی با موفقیت انجام شد و ${deletedCount} سند تستی از پایگاه داده حذف گردید.`,
+      };
+    } catch (err: any) {
+      console.error('Purge error:', err);
+      showToast('خطا در پاکسازی پایگاه داده: ' + (err.message || 'نامشخص'), 'error');
+      return {
+        success: false,
+        deletedCount,
+        message: err.message || 'خطا در ارتباط با سرور Firebase',
+      };
     }
   };
 
@@ -2101,6 +2240,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setPartners((prev) => [newPartner, ...prev]);
+    syncPartnerToFirestore(newPartner);
     setCurrentPartnerId(newPartner.id);
     setRole('partner');
     setActiveTab('partner');
@@ -2157,6 +2297,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setPartners((prev) => [newPartner, ...prev]);
+    syncPartnerToFirestore(newPartner);
 
     addAdminNotification({
       type: 'partner_registered',
@@ -2187,9 +2328,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const plan = partnerPlans.find((p) => p.id === planId) || DEFAULT_PARTNER_PLANS[0];
 
+    let targetUpdatedPartner: PartnerAccount | undefined;
     const updatedPartners = partners.map((p) => {
       if (p.id === currentPartner.id) {
-        return {
+        const updated = {
           ...p,
           subscriptionStatus: 'pending_approval' as PartnerSubscriptionStatus,
           planId: plan.id,
@@ -2202,11 +2344,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           paymentPayerName: paymentPayerName || currentPartner.fullName,
           paymentDate: new Date().toISOString().split('T')[0],
         };
+        targetUpdatedPartner = updated;
+        return updated;
       }
       return p;
     });
 
     setPartners(updatedPartners);
+    if (targetUpdatedPartner) {
+      syncPartnerToFirestore(targetUpdatedPartner);
+    }
 
     addAdminNotification({
       type: 'partner_payment',
@@ -2219,6 +2366,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approvePartnerSubscription = (partnerId: string, note?: string) => {
+    let approvedPartner: PartnerAccount | undefined;
     setPartners((prev) =>
       prev.map((p) => {
         if (p.id === partnerId) {
@@ -2228,7 +2376,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const expireDate = new Date();
           expireDate.setDate(expireDate.getDate() + durationDays);
 
-          return {
+          const updated = {
             ...p,
             subscriptionStatus: 'active' as PartnerSubscriptionStatus,
             subscriptionStartDate: startDate.toISOString(),
@@ -2236,27 +2384,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             daysRemaining: durationDays,
             adminApprovalNote: note || 'اشتراک توسط مدیریت تایید و فعال شد.',
           };
+          approvedPartner = updated;
+          return updated;
         }
         return p;
       })
     );
+
+    if (approvedPartner) {
+      syncPartnerToFirestore(approvedPartner);
+    }
 
     showToast('اشتراک همکار با موفقیت فعال شد و دسترسی ثبت کارجو باز گردید.', 'success');
   };
 
   const rejectPartnerSubscription = (partnerId: string, reason: string) => {
+    let rejectedPartner: PartnerAccount | undefined;
     setPartners((prev) =>
       prev.map((p) => {
         if (p.id === partnerId) {
-          return {
+          const updated = {
             ...p,
             subscriptionStatus: 'unpaid' as PartnerSubscriptionStatus,
             adminApprovalNote: reason || 'فیش پرداخت توسط مدیریت رد شد.',
           };
+          rejectedPartner = updated;
+          return updated;
         }
         return p;
       })
     );
+
+    if (rejectedPartner) {
+      syncPartnerToFirestore(rejectedPartner);
+    }
 
     showToast('درخواست اشتراک همکار رد شد.', 'info');
   };
@@ -2768,6 +2929,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         sendLiveChatMessage,
         markChatRead,
         resetSeekerChat,
+        purgeFirebaseDatabase,
+        syncPartnerToFirestore,
       }}
     >
       {children}

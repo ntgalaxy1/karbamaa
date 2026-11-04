@@ -8,14 +8,14 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 const packageJsonPath = path.join(rootDir, 'package.json');
-const headerPath = path.join(rootDir, 'src', 'components', 'Header.tsx');
-const apkModalPath = path.join(rootDir, 'src', 'components', 'ApkDownloadModal.tsx');
+const versionTsPath = path.join(rootDir, 'src', 'version.ts');
+const generateApkPath = path.join(rootDir, 'scripts', 'generate-apk.py');
 
 try {
   const pkgData = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-  const oldVersion = pkgData.version || '10.0.0.1';
+  const oldVersion = pkgData.version || '10.0.0.19';
 
-  // Parse version numbers (e.g. 10.0.0.3)
+  // Parse version numbers (e.g. 10.0.0.19)
   const parts = oldVersion.split('.').map((p) => parseInt(p, 10));
   
   if (parts.some((n) => isNaN(n))) {
@@ -26,44 +26,43 @@ try {
   // Increment last number
   parts[parts.length - 1] += 1;
   const newVersion = parts.join('.');
+  const newVersionCode = parts[0] * 10000 + parts[parts.length - 1];
 
   // 1. Update package.json
   pkgData.version = newVersion;
   fs.writeFileSync(packageJsonPath, JSON.stringify(pkgData, null, 2) + '\n', 'utf8');
 
-  // 2. Update Header.tsx version badge if present
-  if (fs.existsSync(headerPath)) {
-    let headerContent = fs.readFileSync(headerPath, 'utf8');
-    headerContent = headerContent.replace(/v10\.0\.0\.\d+/g, `v${newVersion}`);
-    fs.writeFileSync(headerPath, headerContent, 'utf8');
-  }
+  // 2. Update src/version.ts
+  const versionTsContent = `export const APP_VERSION = '${newVersion}';
+export const APP_VERSION_CODE = ${newVersionCode};
+export const APP_PACKAGE_NAME = 'app.karbama.twa';
+`;
+  fs.writeFileSync(versionTsPath, versionTsContent, 'utf8');
 
-  // 3. Update ApkDownloadModal.tsx version references
-  if (fs.existsSync(apkModalPath)) {
-    let apkContent = fs.readFileSync(apkModalPath, 'utf8');
-    apkContent = apkContent.replace(/10\.0\.0\.\d+/g, newVersion);
-    fs.writeFileSync(apkModalPath, apkContent, 'utf8');
+  // 3. Update default fallback in scripts/generate-apk.py if present
+  if (fs.existsSync(generateApkPath)) {
+    let apkGen = fs.readFileSync(generateApkPath, 'utf8');
+    apkGen = apkGen.replace(/return data\.get\("version", "[^"]+"\)/g, `return data.get("version", "${newVersion}")`);
+    apkGen = apkGen.replace(/return "10\.0\.0\.\d+"/g, `return "${newVersion}"`);
+    fs.writeFileSync(generateApkPath, apkGen, 'utf8');
   }
 
   console.log(`\n=======================================================`);
-  console.log(`🚀 KARBAMA VERSION BUMP SUCCESSFUL: v${oldVersion} ➔ v${newVersion}`);
+  console.log(`🚀 KARBAMA VERSION BUMP SUCCESSFUL: v${oldVersion} ➔ v${newVersion} (Code: ${newVersionCode})`);
   console.log(`=======================================================\n`);
 
-  // Attempt git commit, tag, and push to GitHub
+  // Attempt git commit, tag, and push if git is initialized
   try {
-    execSync('git add .', { cwd: rootDir, stdio: 'inherit' });
-    execSync(`git commit -m "bump: release v${newVersion}"`, { cwd: rootDir, stdio: 'inherit' });
-    execSync(`git tag -a "v${newVersion}" -m "Release v${newVersion}"`, { cwd: rootDir, stdio: 'inherit' });
-    console.log(`\n🎉 Git commit & tag created: v${newVersion}`);
-
-    try {
-      execSync('git push origin main --tags', { cwd: rootDir, stdio: 'inherit' });
-      console.log(`\n🌐 Pushed release tag v${newVersion} to GitHub successfully!`);
-    } catch (pushErr) {
-      console.log(`Note: Local tag v${newVersion} created. Run 'git push origin main --tags' to publish to GitHub Releases.`);
+    execSync('git --version', { stdio: 'ignore' });
+    const isGit = fs.existsSync(path.join(rootDir, '.git'));
+    if (isGit) {
+      execSync('git add package.json src/version.ts scripts/generate-apk.py', { cwd: rootDir, stdio: 'inherit' });
+      execSync(`git commit -m "chore(release): bump version to v${newVersion}"`, { cwd: rootDir, stdio: 'inherit' });
+      execSync(`git tag -a "v${newVersion}" -m "Release v${newVersion}"`, { cwd: rootDir, stdio: 'inherit' });
+      console.log(`\n🎉 Git commit & tag created: v${newVersion}`);
     }
   } catch (gitErr) {
-    console.log(`Note: Git operations complete or awaiting remote sync (${gitErr.message})`);
+    console.log(`Note: Git commit/tag skipped (${gitErr.message || 'not in git repo'})`);
   }
 } catch (err) {
   console.error('Error bumping version:', err);

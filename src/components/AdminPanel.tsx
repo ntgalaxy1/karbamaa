@@ -4,6 +4,7 @@ import { JobVacancy, JobCategory, TurkishLevel, ApplicationStatus, AddressCatego
 import { MapLocationPicker } from './MapLocationPicker';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 import { ALL_TURKEY_CITIES_FA } from '../data/turkeyCities';
+import { APP_VERSION, APP_VERSION_CODE } from '../version';
 import {
   ShieldCheck,
   Briefcase,
@@ -49,6 +50,9 @@ import {
   Building2,
   X,
   Download,
+  Database,
+  RefreshCw,
+  Flame,
 } from 'lucide-react';
 
 export const AdminPanel: React.FC = () => {
@@ -90,6 +94,7 @@ export const AdminPanel: React.FC = () => {
     rejectSeekerAccount,
     deleteSeekerRecord,
     clearAllSeekers,
+    purgeFirebaseDatabase,
     // Partner system
     partners,
     partnerPlans,
@@ -106,6 +111,10 @@ export const AdminPanel: React.FC = () => {
     setAdminJobModalOpen,
     setActiveTab,
   } = useApp();
+
+  // Firebase Database Purge State
+  const [isPurgingDb, setIsPurgingDb] = useState(false);
+  const [showPurgeConfirmModal, setShowPurgeConfirmModal] = useState<null | 'demo' | 'full'>(null);
 
   // Admin login credentials state (if not logged in)
   const [adminUsername, setAdminUsername] = useState('');
@@ -567,7 +576,15 @@ export const AdminPanel: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <button
+            onClick={() => setShowAddPartnerModal(true)}
+            className="px-3.5 py-2 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
+          >
+            <UserPlus className="w-4 h-4 text-indigo-400" />
+            ثبت همکار جدید
+          </button>
+
           <button
             onClick={() => setShowAddHotelModal(true)}
             className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
@@ -601,7 +618,7 @@ export const AdminPanel: React.FC = () => {
             <Download className="w-4 h-4 text-emerald-400" />
             <span>فایل‌های رسمی ویژه آپلود در پیشخوان کافه‌بازار (APK و App Bundle)</span>
             <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono text-[11px]">
-              v10.0.0.19 | Code: 100019
+              v{APP_VERSION} | Code: {APP_VERSION_CODE}
             </span>
           </div>
           <p className="text-xs text-slate-300">
@@ -610,24 +627,24 @@ export const AdminPanel: React.FC = () => {
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <a
-            href="/downloads/karbama-v10.0.0.19.apk"
-            download="karbama-v10.0.0.19.apk"
+            href={`/downloads/karbama-v${APP_VERSION}.apk`}
+            download={`karbama-v${APP_VERSION}.apk`}
             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5"
           >
             <Download className="w-4 h-4" />
-            <span>دانلود فایل APK (v10.0.0.19)</span>
+            <span>دانلود فایل APK (v{APP_VERSION})</span>
           </a>
           <a
-            href="/downloads/karbama-v10.0.0.19.aab"
-            download="karbama-v10.0.0.19.aab"
+            href={`/downloads/karbama-v${APP_VERSION}.aab`}
+            download={`karbama-v${APP_VERSION}.aab`}
             className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5"
           >
             <Download className="w-4 h-4" />
             <span>دانلود App Bundle (فایل .aab)</span>
           </a>
           <a
-            href="/downloads/karbama-cafebazaar-v10.0.0.19.zip"
-            download="karbama-cafebazaar-v10.0.0.19.zip"
+            href={`/downloads/karbama-cafebazaar-v${APP_VERSION}.zip`}
+            download={`karbama-cafebazaar-v${APP_VERSION}.zip`}
             className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5"
           >
             <Download className="w-4 h-4" />
@@ -635,7 +652,7 @@ export const AdminPanel: React.FC = () => {
           </a>
           <a
             href="/downloads/karbama-dist.zip"
-            download="karbama-dist-v10.0.0.19.zip"
+            download={`karbama-dist-v${APP_VERSION}.zip`}
             className="px-3.5 py-2 bg-sky-700 hover:bg-sky-600 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5"
           >
             <Download className="w-4 h-4" />
@@ -2325,6 +2342,55 @@ export const AdminPanel: React.FC = () => {
       {/* 4. REGISTERED JOB SEEKERS (With Father Name & National ID) */}
       {adminTab === 'seekers' && (
         <div className="space-y-4">
+          {/* FIREBASE DATABASE PURGE BANNER (پاکسازی دیتابیس Firebase و آماده‌سازی نهایی) */}
+          <div className="bg-gradient-to-r from-slate-900 via-red-950/30 to-slate-900 border border-red-500/30 rounded-3xl p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0 mt-0.5">
+                <Database className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="font-extrabold text-white text-sm">
+                    پاکسازی پایگاه داده Firebase و آماده‌سازی برای استفاده نهایی
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
+                    محیط ابری (neat-craft-p01dl)
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
+                  با این دکمه تمامی کارجویان پیش‌فرض و آزمایشی (مانند علی رضایی، محمد کریمی و کدهای seeker-1 تا seeker-5)، اعلان‌های تستی و چت‌های نمونه به صورت مستقیم از سرور Firebase Firestore پاکسازی شده تا سامانه ۱۰۰٪ آماده ثبت‌نام متقاضیان و همکاران واقعی گردد.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <button
+                type="button"
+                disabled={isPurgingDb}
+                onClick={() => setShowPurgeConfirmModal('demo')}
+                className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-red-700/30 disabled:opacity-50"
+              >
+                {isPurgingDb ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                <span>پاکسازی کارجویان پیش‌فرض و تستی</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isPurgingDb}
+                onClick={() => setShowPurgeConfirmModal('full')}
+                className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-red-300 border border-slate-700 rounded-xl text-xs font-medium transition flex items-center gap-1.5 disabled:opacity-50"
+                title="پاکسازی کامل تمامی رکوردهای کارجویان از Firebase"
+              >
+                <Flame className="w-3.5 h-3.5 text-amber-400" />
+                <span>ریست کامل</span>
+              </button>
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
@@ -4535,6 +4601,61 @@ export const AdminPanel: React.FC = () => {
                 className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg transition"
               >
                 تایید رد آگهی
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Purge Firebase DB Confirmation Modal */}
+      {showPurgeConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md bg-slate-900 border border-red-500/50 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-red-400 border-b border-slate-800 pb-3">
+              <AlertCircle className="w-6 h-6 shrink-0" />
+              <h4 className="font-bold text-white text-base">
+                {showPurgeConfirmModal === 'full'
+                  ? 'تایید ریست کامل کارجویان در Firebase'
+                  : 'تایید پاکسازی داده‌های آزمایشی و پیش‌فرض'}
+              </h4>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {showPurgeConfirmModal === 'full'
+                ? 'آیا از حذف کامل کلیه پرونده‌های کارجویان از پایگاه داده ابری Firebase و حافظه محلی اطمینان دارید؟ این عملیات غیرقابل بازگشت است.'
+                : 'این عملیات کلیه کارجویان نمونه (مانند علی رضایی، محمد کریمی، seeker-1 و ...)، اعلان‌های تستی و چت‌های نمونه را از دیتابیس Firebase و حافظه محلی حذف خواهد کرد تا سامانه برای کار واقعی آماده باشد. کارجویان واقعی ثبت‌شده حفظ خواهند شد.'}
+            </p>
+
+            <div className="flex items-center gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={isPurgingDb}
+                onClick={async () => {
+                  setIsPurgingDb(true);
+                  const isFull = showPurgeConfirmModal === 'full';
+                  setShowPurgeConfirmModal(null);
+                  try {
+                    await purgeFirebaseDatabase(isFull);
+                  } finally {
+                    setIsPurgingDb(false);
+                  }
+                }}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-red-700/30 disabled:opacity-50"
+              >
+                {isPurgingDb ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                <span>بله، پاکسازی انجام شود</span>
+              </button>
+              <button
+                type="button"
+                disabled={isPurgingDb}
+                onClick={() => setShowPurgeConfirmModal(null)}
+                className="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition"
+              >
+                انصراف
               </button>
             </div>
           </div>
