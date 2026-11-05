@@ -317,7 +317,7 @@ export const CommitmentModal: React.FC<CommitmentModalProps> = ({
           <div className="space-y-2">
             <h4 className="text-xs font-bold text-white print:text-slate-900 flex items-center gap-2">
               <Camera className="w-4 h-4 text-red-400" />
-              محل الصاق و یا اسکن کارت شناسایی / پاسپورت و مدارک هویتی متقاضی:
+              مدارک هویتی متقاضی (عکس پرسنلی تمام قد و صفحه اول پاسپورت با چهارگوش مشخص):
             </h4>
 
             <div className={`grid ${nationalCardPhotoUrl ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
