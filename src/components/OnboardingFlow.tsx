@@ -185,11 +185,11 @@ export const OnboardingFlow: React.FC = () => {
 
   const validateStep1 = (): boolean => {
     if (!firstName.trim() || !lastName.trim() || !fatherName.trim() || !nationalId.trim()) {
-      showToast('لطفاً مشخصات فردی (نام، نام خانوادگی، نام پدر و کد ملی) را تکمیل فرمایید.', 'error');
+      showToast('لطفاً مشخصات فردی (نام، نام خانوادگی، نام پدر، کد ملی یا شماره پاسپورت) را تکمیل فرمایید.', 'error');
       return false;
     }
-    if (nationalId.replace(/\s/g, '').length < 10) {
-      showToast('کد ملی وارد شده باید ۱۰ رقم کامل باشد.', 'error');
+    if (nationalId.replace(/\s/g, '').length < 6) {
+      showToast('کد ملی یا شماره پاسپورت باید حداقل ۶ کاراکتر باشد.', 'error');
       return false;
     }
     if (!phoneNumber.trim()) {
@@ -228,8 +228,8 @@ export const OnboardingFlow: React.FC = () => {
       showToast('بارگذاری عکس تمام قد / پرسنلی الزامی است.', 'error');
       return false;
     }
-    if (!nationalCardPhotoUrl && !passportPhotoUrl) {
-      showToast('بارگذاری حداقل یکی از مدارک هویتی (کارت ملی یا پاسپورت) الزامی است.', 'error');
+    if (!passportPhotoUrl) {
+      showToast('بارگذاری عکس پاسپورت الزامی است (چهار گوشه پاسپورت باید کاملاً مشخص باشد).', 'error');
       return false;
     }
     if (selectedCommonJobs.length === 0 && !customWrittenSkills.trim()) {
@@ -574,10 +574,10 @@ export const OnboardingFlow: React.FC = () => {
                       <input
                         type="text"
                         required
-                        maxLength={10}
+                        maxLength={15}
                         placeholder={t('nationalIdPlaceholderText', appLanguage)}
                         value={nationalId}
-                        onChange={(e) => setNationalId(e.target.value.replace(/\D/g, ''))}
+                        onChange={(e) => setNationalId(e.target.value.trim())}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono focus:outline-hidden focus:border-red-500"
                       />
                     </div>
@@ -864,7 +864,7 @@ export const OnboardingFlow: React.FC = () => {
                       <span>{t('part1DocsTitle', appLanguage)}</span>
                     </h3>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                       {/* 1. Full Body / Personal Photo (REQUIRED) */}
                       <div className="p-3.5 bg-slate-950 border-2 border-red-500/40 rounded-2xl space-y-2.5 flex flex-col justify-between">
                         <div>
@@ -883,7 +883,7 @@ export const OnboardingFlow: React.FC = () => {
 
                         {fullBodyPhotoUrl ? (
                           <div className="space-y-1.5">
-                            <div className="relative rounded-xl overflow-hidden border-2 border-emerald-500/60 h-28 bg-slate-900 shadow-md">
+                            <div className="relative rounded-xl overflow-hidden border-2 border-emerald-500/60 h-32 bg-slate-900 shadow-md">
                               <img src={fullBodyPhotoUrl} alt="عکس تمام قد" className="w-full h-full object-cover" />
                               <span className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-emerald-600 text-white text-[9px] rounded font-bold">
                                 بارگذاری شد ✓
@@ -906,7 +906,7 @@ export const OnboardingFlow: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => fullBodyInputRef.current?.click()}
-                              className="w-full border-2 border-dashed border-red-500/50 hover:border-red-400 hover:bg-red-950/20 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/80 gap-1"
+                              className="w-full border-2 border-dashed border-red-500/50 hover:border-red-400 hover:bg-red-950/20 rounded-xl p-3.5 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/80 gap-1"
                             >
                               <Camera className="w-6 h-6 text-red-400 mb-0.5" />
                               <span className="text-[11px] font-black text-white">انتخاب عکس یا دوربین</span>
@@ -923,82 +923,38 @@ export const OnboardingFlow: React.FC = () => {
                         )}
                       </div>
 
-                      {/* 2. National ID / Birth Certificate (REQUIRED) */}
-                      <div className="p-3.5 bg-slate-950 border-2 border-red-500/40 rounded-2xl space-y-2.5 flex flex-col justify-between">
+                      {/* 2. Passport Photo (MANDATORY - WITH FOUR CORNERS VISIBLE) */}
+                      <div className="p-3.5 bg-slate-950 border-2 border-amber-500/40 rounded-2xl space-y-2.5 flex flex-col justify-between relative">
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <span className="font-extrabold text-white text-xs">کارت ملی / شناسنامه</span>
+                            <span className="font-extrabold text-white text-xs flex items-center gap-1">
+                              <span>عکس صفحه اول پاسپورت</span>
+                            </span>
                             <span className="px-2 py-0.5 rounded-full bg-red-600/30 border border-red-500/60 text-red-300 text-[10px] font-black">
-                              الزامی *
+                              الزامی * (چهارگوش مشخص)
                             </span>
                           </div>
-                          <p className="text-[10px] text-slate-400 leading-snug">
-                            تصویر واضح و خوانا از روی کارت ملی هوشمند یا صفحه اول شناسنامه متقاضی.
-                          </p>
-                        </div>
-
-                        {nationalCardPhotoUrl ? (
-                          <div className="space-y-1.5">
-                            <div className="relative rounded-xl overflow-hidden border-2 border-emerald-500/60 h-28 bg-slate-900 shadow-md">
-                              <img src={nationalCardPhotoUrl} alt="کارت ملی" className="w-full h-full object-cover" />
-                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-emerald-600 text-white text-[9px] rounded font-bold">
-                                بارگذاری شد ✓
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNationalCardPhotoUrl('');
-                                if (nationalCardInputRef.current) nationalCardInputRef.current.value = '';
-                              }}
-                              className="w-full py-1.5 bg-slate-800 hover:bg-red-950/60 text-red-400 hover:text-red-300 rounded-lg text-[10.5px] font-bold border border-slate-700 transition flex items-center justify-center gap-1"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                              <span>حذف و انتخاب مجدد</span>
-                            </button>
+                          <div className="p-2 bg-amber-950/40 border border-amber-500/30 rounded-xl text-[10px] text-amber-200 space-y-0.5">
+                            <strong className="block text-amber-300 font-bold">شرط الزامی: چهارگوش پاسپورت مشخص باشد:</strong>
+                            <div>• هر ۴ گوشه برگه پاسپورت باید کاملاً داخل کادر دیده شوند</div>
+                            <div>• بدون بریدگی لبه‌ها، عکس پرسنلی یا کدهای پایینی پاسپورت</div>
+                            <div>• بدون انعکاس نور فلاش، روی سطحی کاملاً صاف و خوانا</div>
                           </div>
-                        ) : (
-                          <div>
-                            <button
-                              type="button"
-                              onClick={() => nationalCardInputRef.current?.click()}
-                              className="w-full border-2 border-dashed border-red-500/50 hover:border-red-400 hover:bg-red-950/20 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/80 gap-1"
-                            >
-                              <IdCard className="w-6 h-6 text-red-400 mb-0.5" />
-                              <span className="text-[11px] font-black text-white">انتخاب کارت ملی / دوربین</span>
-                              <span className="text-[9.5px] text-slate-400">عکس رو به رو با وضوح بالا</span>
-                            </button>
-                            <input
-                              ref={nationalCardInputRef}
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => handleFileUpload(e, setNationalCardPhotoUrl)}
-                              className="hidden"
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* 3. Passport Photo (Optional or if available) */}
-                      <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-2xl space-y-2.5 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-extrabold text-white text-xs">صفحه اول پاسپورت</span>
-                            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-bold border border-slate-700">
-                              در صورت داشتن
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-slate-400 leading-snug">
-                            تصویر صفحه اول پاسپورت معتبر (جهت تسریع در اخذ ویزا و امور اقامت).
-                          </p>
                         </div>
 
                         {passportPhotoUrl ? (
                           <div className="space-y-1.5">
-                            <div className="relative rounded-xl overflow-hidden border-2 border-emerald-500/60 h-28 bg-slate-900 shadow-md">
-                              <img src={passportPhotoUrl} alt="پاسپورت" className="w-full h-full object-cover" />
-                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-emerald-600 text-white text-[9px] rounded font-bold">
-                                بارگذاری شد ✓
+                            <div className="relative rounded-xl overflow-hidden border-2 border-emerald-500/80 h-32 bg-slate-900 shadow-md group">
+                              <img src={passportPhotoUrl} alt="پاسپورت با چهارگوش مشخص" className="w-full h-full object-cover" />
+                              {/* 4 Corner Markers */}
+                              <div className="absolute top-2 right-2 w-3.5 h-3.5 border-t-2 border-r-2 border-emerald-400 rounded-tr pointer-events-none" />
+                              <div className="absolute top-2 left-2 w-3.5 h-3.5 border-t-2 border-l-2 border-emerald-400 rounded-tl pointer-events-none" />
+                              <div className="absolute bottom-2 right-2 w-3.5 h-3.5 border-b-2 border-r-2 border-emerald-400 rounded-br pointer-events-none" />
+                              <div className="absolute bottom-2 left-2 w-3.5 h-3.5 border-b-2 border-l-2 border-emerald-400 rounded-bl pointer-events-none" />
+
+                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-emerald-600 text-white text-[9px] rounded font-bold shadow-sm flex items-center gap-1">
+                                <Check className="w-3 h-3" />
+                                چهارگوشه پاسپورت تایید شد ✓
                               </span>
                             </div>
                             <button
@@ -1018,11 +974,17 @@ export const OnboardingFlow: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => passportInputRef.current?.click()}
-                              className="w-full border-2 border-dashed border-slate-700 hover:border-amber-500 hover:bg-slate-900 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/60 gap-1"
+                              className="relative w-full border-2 border-dashed border-amber-500/60 hover:border-amber-400 hover:bg-amber-950/20 rounded-xl p-3.5 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/80 gap-1 group"
                             >
-                              <Upload className="w-6 h-6 text-amber-400 mb-0.5" />
-                              <span className="text-[11px] font-bold text-white">انتخاب عکس پاسپورت</span>
-                              <span className="text-[9.5px] text-slate-400">اختیاری / در صورت وجود</span>
+                              {/* Corner Guides */}
+                              <div className="absolute top-2 right-2 w-3 h-3 border-t-2 border-r-2 border-amber-400/80 rounded-tr pointer-events-none" />
+                              <div className="absolute top-2 left-2 w-3 h-3 border-t-2 border-l-2 border-amber-400/80 rounded-tl pointer-events-none" />
+                              <div className="absolute bottom-2 right-2 w-3 h-3 border-b-2 border-r-2 border-amber-400/80 rounded-br pointer-events-none" />
+                              <div className="absolute bottom-2 left-2 w-3 h-3 border-b-2 border-l-2 border-amber-400/80 rounded-bl pointer-events-none" />
+
+                              <Upload className="w-6 h-6 text-amber-400 group-hover:scale-110 mb-0.5 transition-transform" />
+                              <span className="text-[11px] font-black text-white">انتخاب عکس پاسپورت (۴ گوشه مشخص)</span>
+                              <span className="text-[9.5px] text-amber-300/80">تصویر صفحه اول پاسپورت با کادربندی کامل</span>
                             </button>
                             <input
                               ref={passportInputRef}

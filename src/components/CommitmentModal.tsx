@@ -305,9 +305,9 @@ export const CommitmentModal: React.FC<CommitmentModalProps> = ({
               محل الصاق و یا اسکن کارت شناسایی / پاسپورت و مدارک هویتی متقاضی:
             </h4>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className={`grid ${nationalCardPhotoUrl ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
               <div className="p-2 bg-slate-950 print:bg-slate-100 rounded-xl border border-slate-800 print:border-slate-300 text-center">
-                <span className="text-[10px] text-slate-400 print:text-slate-700 block mb-1">عکس تمام قد</span>
+                <span className="text-[10px] text-slate-400 print:text-slate-700 block mb-1">عکس تمام قد (الزامی)</span>
                 {fullBodyPhotoUrl ? (
                   <img src={fullBodyPhotoUrl} alt="عکس تمام قد" className="h-20 w-full object-cover rounded-lg" />
                 ) : (
@@ -317,10 +317,13 @@ export const CommitmentModal: React.FC<CommitmentModalProps> = ({
                 )}
               </div>
 
-              <div className="p-2 bg-slate-950 print:bg-slate-100 rounded-xl border border-slate-800 print:border-slate-300 text-center">
-                <span className="text-[10px] text-slate-400 print:text-slate-700 block mb-1">صفحه اول پاسپورت</span>
+              <div className="p-2 bg-slate-950 print:bg-slate-100 rounded-xl border border-amber-500/50 print:border-slate-300 text-center relative">
+                <span className="text-[10px] text-amber-300 print:text-slate-700 font-bold block mb-1">صفحه اول پاسپورت (۴ گوشه مشخص)</span>
                 {passportPhotoUrl ? (
-                  <img src={passportPhotoUrl} alt="پاسپورت" className="h-20 w-full object-cover rounded-lg" />
+                  <div className="relative rounded-lg overflow-hidden">
+                    <img src={passportPhotoUrl} alt="پاسپورت" className="h-20 w-full object-cover rounded-lg" />
+                    <span className="absolute bottom-1 right-1 px-1 bg-emerald-600 text-[8px] text-white rounded font-bold">تایید ۴ گوشه ✓</span>
+                  </div>
                 ) : (
                   <div className="h-20 bg-slate-900 print:bg-slate-200 rounded-lg flex items-center justify-center text-[10px] text-slate-500">
                     الصاق نشده
@@ -328,16 +331,12 @@ export const CommitmentModal: React.FC<CommitmentModalProps> = ({
                 )}
               </div>
 
-              <div className="p-2 bg-slate-950 print:bg-slate-100 rounded-xl border border-slate-800 print:border-slate-300 text-center">
-                <span className="text-[10px] text-slate-400 print:text-slate-700 block mb-1">کارت شناسایی / ملی</span>
-                {nationalCardPhotoUrl ? (
+              {nationalCardPhotoUrl && (
+                <div className="p-2 bg-slate-950 print:bg-slate-100 rounded-xl border border-slate-800 print:border-slate-300 text-center">
+                  <span className="text-[10px] text-slate-400 print:text-slate-700 block mb-1">کارت شناسایی / ملی</span>
                   <img src={nationalCardPhotoUrl} alt="کارت ملی" className="h-20 w-full object-cover rounded-lg" />
-                ) : (
-                  <div className="h-20 bg-slate-900 print:bg-slate-200 rounded-lg flex items-center justify-center text-[10px] text-slate-500">
-                    الصاق نشده
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
 

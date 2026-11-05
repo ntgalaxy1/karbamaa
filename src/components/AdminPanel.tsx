@@ -4345,10 +4345,10 @@ export const AdminPanel: React.FC = () => {
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {/* Passport Photo */}
-                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2 text-center">
-                    <span className="font-bold text-white text-xs block">عکس پاسپورت</span>
-                    <span className="text-[10px] text-slate-400 block">صفحه اصلی کامل و خوانا</span>
+                  {/* Passport Photo (Mandatory) */}
+                  <div className="bg-slate-900 p-3 rounded-xl border border-amber-500/40 space-y-2 text-center">
+                    <span className="font-bold text-amber-300 text-xs block">عکس پاسپورت (ضروری)</span>
+                    <span className="text-[10px] text-emerald-400 block font-bold">با ۴ گوشه کامل و مشخص</span>
                     {selectedSeekerDossier.passportPhotoUrl ? (
                       <div className="rounded-xl overflow-hidden aspect-4/3 bg-slate-950 border border-slate-700">
                         <img
