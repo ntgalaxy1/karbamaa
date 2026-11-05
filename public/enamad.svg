@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <!-- Background subtle gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f8fafc"/>
+    </linearGradient>
+    <!-- Blue enamad circular gradient -->
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e40af"/>
+      <stop offset="50%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.1"/>
+    </filter>
+  </defs>
+
+  <!-- Card / Plate -->
+  <rect x="4" y="4" width="112" height="112" rx="18" fill="url(#bgGrad)" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow)"/>
+
+  <!-- Inner border ring -->
+  <circle cx="60" cy="52" r="36" fill="none" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+  <!-- Enamad Iconic Blue Spiral / Swoosh ('e' logo) -->
+  <circle cx="60" cy="52" r="30" fill="url(#blueGrad)"/>
+  
+  <!-- Stylized white 'e' curve & dot inside -->
+  <!-- Outer cutout / crescent -->
+  <path d="M 60 27 C 73.8 27 85 38.2 85 52 C 85 65.8 73.8 77 60 77 C 46.2 77 35 65.8 35 52 C 35 44 38.8 36.8 44.8 32.2 C 45.8 31.4 47.3 31.7 48 32.8 C 48.7 33.8 48.4 35.3 47.4 36.1 C 42.6 39.8 39.6 45.6 39.6 52 C 39.6 63.3 48.7 72.4 60 72.4 C 71.3 72.4 80.4 63.3 80.4 52 C 80.4 40.7 71.3 31.6 60 31.6 C 56.5 31.6 53.2 32.5 50.4 34.1 C 49.2 34.8 47.7 34.4 47 33.2 C 46.3 32 46.7 30.5 47.9 29.8 C 51.5 27.9 55.6 27 60 27 Z" fill="#ffffff" opacity="0.95"/>
+
+  <!-- Inner central eye / node -->
+  <path d="M 52 46 C 52 41.6 55.6 38 60 38 C 64.4 38 68 41.6 68 46 C 68 50.4 64.4 54 60 54 L 46 54 C 44.9 54 44 53.1 44 52 C 44 50.9 44.9 50 46 50 L 60 50 C 62.2 50 64 48.2 64 46 C 64 43.8 62.2 42 60 42 C 57.8 42 56 43.8 56 46 C 56 48 57.5 49.5 59.5 49.8" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="60" cy="46" r="3.5" fill="#f59e0b"/>
+
+  <!-- Star 1 (Gold Star on top) -->
+  <path d="M 60 9 L 61.8 14.5 L 67.6 14.5 L 62.9 17.9 L 64.7 23.4 L 60 20 L 55.3 23.4 L 57.1 17.9 L 52.4 14.5 L 58.2 14.5 Z" fill="#f59e0b" stroke="#d97706" stroke-width="0.5"/>
+
+  <!-- Trust text banner at bottom -->
+  <rect x="14" y="91" width="92" height="18" rx="6" fill="#1e293b"/>
+  <text x="60" y="103.5" font-family="Vazirmatn, Tahoma, Arial, sans-serif" font-size="8.5" font-weight="bold" fill="#f8fafc" text-anchor="middle" direction="rtl">
+    نماد اعتماد الکترونیکی
+  </text>
+</svg>

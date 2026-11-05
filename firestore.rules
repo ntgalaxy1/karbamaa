@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default Deny All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128;
+    }
+
+    // Users Collection (Job Seekers)
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(userId);
+    }
+
+    // Partners Collection
+    match /partners/{partnerId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(partnerId);
+    }
+
+    // Notifications Collection
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(notificationId);
+    }
+
+    // Jobs Collection
+    match /jobs/{jobId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(jobId);
+    }
+
+    // Live Chats Collection
+    match /chats/{chatId} {
+      allow read: if true;
+      allow create, update, delete: if isValidId(chatId);
+    }
+
+    // Diagnostics and Test Collection
+    match /test/{testId} {
+      allow read, write: if isValidId(testId);
+    }
+  }
+}

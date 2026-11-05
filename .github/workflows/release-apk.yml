@@ -1,0 +1,137 @@
+name: Build & Publish Karbama Android APK & AAB (Auto Release)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      custom_version:
+        description: 'Specific version to release (e.g. 10.0.0.20), leave empty for auto'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  release-apk:
+    name: Build Signed APK + AAB & Publish to GitHub Releases
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ⚙️ Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 🐍 Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🔍 Resolve Version & Auto-Bump if Tag Exists
+        id: version_step
+        run: |
+          CUSTOM_INPUT="${{ github.event.inputs.custom_version }}"
+          
+          if [ -n "$CUSTOM_INPUT" ]; then
+            VERSION="$CUSTOM_INPUT"
+            echo "Using manual input version: $VERSION"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            RAW_TAG="${{ github.ref_name }}"
+            VERSION="${RAW_TAG#v}"
+            echo "Using pushed tag version: $VERSION"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+            echo "Initial version from package.json: $VERSION"
+            
+            # Check if git tag v$VERSION already exists
+            if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+              echo "Tag v$VERSION already exists! Auto-bumping patch version for new release..."
+              node scripts/bump-version.js
+              VERSION=$(node -p "require('./package.json').version")
+              echo "New auto-bumped version: $VERSION"
+              
+              # Push the version bump commit back to repository
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git add package.json src/version.ts scripts/generate-apk.py
+              git commit -m "chore(release): auto-bump version to v$VERSION [skip ci]" || true
+              git push origin HEAD:${{ github.ref_name }} || true
+            fi
+          fi
+
+          TAG="v$VERSION"
+          PARTS=(${VERSION//./ })
+          VERSION_CODE=$(( ${PARTS[0]} * 10000 + ${PARTS[3]:-${PARTS[2]}} ))
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: 📦 Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: 🏗️ Build Web App & Generate Signed APK + AAB
+        run: |
+          npm run build
+          python3 scripts/generate-apk.py --version ${{ steps.version_step.outputs.version }}
+          python3 scripts/zip-dist.py
+
+      - name: 📤 Upload APK & AAB to GitHub Actions Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: karbama-android-${{ steps.version_step.outputs.tag }}
+          path: |
+            karbama-latest.apk
+            karbama-latest.aab
+            public/karbama-v*.apk
+            public/karbama-v*.aab
+            public/karbama-cafebazaar-package.zip
+            public/karbama-dist.zip
+          retention-days: 90
+
+      - name: 🚀 Publish APK, AAB & Build ZIP to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version_step.outputs.tag }}
+          name: "کارباما نسخه رسمی اندروید (${{ steps.version_step.outputs.tag }})"
+          body: |
+            ## 📱 نسخه رسمی اندروید کارباما (${{ steps.version_step.outputs.tag }}) ویژه کافه‌بازار و نصب مستقیم
+
+            فایل نصبی مستقیم اندروید (**APK**)، باندل استاندارد پیشخوان کافه‌بازار (**AAB**) و بسته کامل هاست (**dist.zip**) آماده دانلود است:
+
+            ### 📋 مشخصات فنی نسخه:
+            - **نام بسته (Package Name):** `app.karbama.twa`
+            - **نسخه (Version Name):** `${{ steps.version_step.outputs.version }}`
+            - **کد نسخه (Version Code):** `${{ steps.version_step.outputs.version_code }}`
+            - **امضای دیجیتال:** `V1 (JAR) + V2 (APK Signature Scheme v2) + V3`
+            - **پشتیبانی:** اندروید ۵.۰ به بالا (API 21+)
+            - **آیکون برنامه:** دارای فایل‌های آیکون استاندارد و تطبیق‌یافته در تمام لانچرهای اندروید
+
+            ### 📥 فایل‌های پیوست‌شده در پایین این صفحه (بخش Assets):
+            1. **`karbama-v${{ steps.version_step.outputs.version }}.apk`** و **`karbama-latest.apk`**: فایل نصبی اندروید مناسب نصب مستقیم روی موبایل و بارگذاری در بخش APK کافه‌بازار
+            2. **`karbama-v${{ steps.version_step.outputs.version }}.aab`** و **`karbama-latest.aab`**: فایل App Bundle مناسب آپلود در پیشخوان کافه‌بازار (بخش AAB) و گوگل‌پلی
+            3. **`karbama-cafebazaar-package.zip`**: پکیج فشرده شامل کلیه فایل‌های نصبی و مستندات انتشار
+            4. **`karbama-dist.zip`**: فایل زیپ آماده آپلود در `public_html` هاست شخصی (cPanel / DirectAdmin)
+          files: |
+            karbama-latest.apk
+            karbama-latest.aab
+            public/karbama-v*.apk
+            public/karbama-v*.aab
+            public/karbama-cafebazaar-package.zip
+            public/karbama-dist.zip
+          make_latest: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

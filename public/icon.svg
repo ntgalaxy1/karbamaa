@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E30A17" />
+      <stop offset="100%" stop-color="#9B000B" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- Background with rounded squircle -->
+  <rect width="512" height="512" rx="128" fill="url(#bg)"/>
+  
+  <!-- Subtle circular rings -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="4"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="2"/>
+
+  <!-- Briefcase Silhouette -->
+  <g filter="url(#shadow)">
+    <!-- Briefcase handle -->
+    <path d="M206 170 C206 142 228 120 256 120 C284 120 306 142 306 170" fill="none" stroke="#ffffff" stroke-width="20" stroke-linecap="round"/>
+    
+    <!-- Briefcase body -->
+    <rect x="116" y="170" width="280" height="200" rx="36" fill="#ffffff"/>
+    
+    <!-- Briefcase flap highlight -->
+    <path d="M116 220 L240 265 C250 268 262 268 272 265 L396 220" fill="none" stroke="#E2E8F0" stroke-width="8" stroke-linecap="round"/>
+
+    <!-- Crescent and Star of Turkey on the center clasp -->
+    <circle cx="256" cy="275" r="46" fill="url(#bg)"/>
+    <circle cx="256" cy="275" r="32" fill="#E30A17"/>
+    <circle cx="264" cy="272" r="26" fill="#ffffff"/>
+    <circle cx="270" cy="271" r="22" fill="#E30A17"/>
+    <!-- Small star -->
+    <path d="M282 271 L285 278 L293 278 L287 283 L289 290 L282 286 L275 290 L277 283 L271 278 L279 278 Z" fill="#ffffff"/>
+    
+    <!-- Search / Work Badge in Gold -->
+    <g transform="translate(320, 290)">
+      <circle cx="40" cy="40" r="36" fill="url(#gold)"/>
+      <circle cx="36" cy="36" r="14" fill="none" stroke="#1E293B" stroke-width="4.5"/>
+      <line x1="47" y1="47" x2="58" y2="58" stroke="#1E293B" stroke-width="5" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- Typography subtitle inside icon -->
+  <text x="256" y="440" font-family="system-ui, sans-serif" font-size="34" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="2">İŞ &amp; KAR</text>
+</svg>
