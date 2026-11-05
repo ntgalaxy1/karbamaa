@@ -121,7 +121,7 @@ interface AppContextType {
   setThemeModalOpen: (open: boolean) => void;
 
   // Auth methods
-  registerSeeker: (input: RegisterSeekerInput) => { success: boolean; error?: string };
+  registerSeeker: (input: RegisterSeekerInput) => { success: boolean; error?: string; seeker?: JobSeeker };
   loginSeeker: (username: string, password: string) => { success: boolean; error?: string };
   loginAdmin: (username: string, password: string) => { success: boolean; error?: string };
   logoutSeeker: () => void;
@@ -1359,7 +1359,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 4000);
   };
 
-  const registerSeeker = (input: RegisterSeekerInput): { success: boolean; error?: string } => {
+  const registerSeeker = (input: RegisterSeekerInput): { success: boolean; error?: string; seeker?: JobSeeker } => {
     // 1. Personal & Account Credentials Validation
     if (!input.firstName?.trim() || !input.lastName?.trim() || !input.fatherName?.trim() || !input.nationalId?.trim()) {
       return { success: false, error: 'لطفاً مشخصات فردی (نام، نام خانوادگی، نام پدر و کد ملی) را به طور کامل وارد کنید.' };
@@ -1386,8 +1386,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: pwdCheck.error };
     }
 
-    if (input.nationalId.replace(/\s/g, '').length < 10) {
-      return { success: false, error: 'کد ملی وارد شده باید ۱۰ رقم کامل باشد.' };
+    const cleanNatId = input.nationalId.trim();
+    if (cleanNatId.replace(/\s/g, '').length < 6) {
+      return { success: false, error: 'کد ملی یا شماره پاسپورت باید حداقل ۶ کاراکتر باشد.' };
     }
 
     // 2. Iran Residence & Target Country Validation
@@ -1400,36 +1401,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const cleanUsername = input.username.trim().toLowerCase();
+    const cleanEmail = input.email.trim().toLowerCase();
+    const fullName = `${input.firstName.trim()} ${input.lastName.trim()}`.trim();
+    const formattedPhone = input.phone || `${input.phoneCountryCode} ${input.phoneNumber.trim()}`;
+
+    // Check if matching current seeker or updating own dossier
+    const existingIndex = jobSeekers.findIndex(
+      (s) =>
+        (currentSeekerId && s.id === currentSeekerId) ||
+        (cleanNatId && s.nationalId === cleanNatId) ||
+        (cleanUsername && s.username.toLowerCase() === cleanUsername)
+    );
+
+    if (existingIndex >= 0) {
+      // Seamlessly update existing seeker dossier!
+      const targetSeeker = jobSeekers[existingIndex];
+      const updatedSeeker: JobSeeker = {
+        ...targetSeeker,
+        firstName: input.firstName.trim() || targetSeeker.firstName,
+        lastName: input.lastName.trim() || targetSeeker.lastName,
+        fullName: fullName || targetSeeker.fullName,
+        fatherName: input.fatherName.trim() || targetSeeker.fatherName,
+        nationalId: cleanNatId || targetSeeker.nationalId,
+        gender: input.gender || targetSeeker.gender,
+        phoneCountryCode: input.phoneCountryCode || targetSeeker.phoneCountryCode,
+        phoneNumber: input.phoneNumber.trim() || targetSeeker.phoneNumber,
+        phone: formattedPhone || targetSeeker.phone,
+        email: cleanEmail || targetSeeker.email,
+        username: cleanUsername || targetSeeker.username,
+        password: input.password || targetSeeker.password,
+        iranProvince: input.iranProvince.trim() || targetSeeker.iranProvince,
+        iranCity: input.iranCity.trim() || targetSeeker.iranCity,
+        iranAddress: input.iranAddress.trim() || targetSeeker.iranAddress,
+        targetCountry: input.targetCountry || targetSeeker.targetCountry,
+        targetCity: input.targetCity || targetSeeker.targetCity,
+        turkishLevel: input.turkishLevel || targetSeeker.turkishLevel,
+        skills: input.skills && input.skills.length > 0 ? input.skills : targetSeeker.skills,
+        selectedJobs: input.selectedJobs || targetSeeker.selectedJobs,
+        customProfession: input.customProfession?.trim() || targetSeeker.customProfession,
+        passportPhotoUrl: input.passportPhotoUrl || targetSeeker.passportPhotoUrl,
+        fullBodyPhotoUrl: input.fullBodyPhotoUrl || targetSeeker.fullBodyPhotoUrl,
+        contractDateShamsi: input.contractDateShamsi || targetSeeker.contractDateShamsi,
+        contractDateMiladi: input.contractDateMiladi || targetSeeker.contractDateMiladi,
+        contractAmount: input.contractAmount || targetSeeker.contractAmount,
+        payerCardNumber: input.payerCardNumber?.trim() || targetSeeker.payerCardNumber,
+        brokerCardNumber: input.brokerCardNumber || targetSeeker.brokerCardNumber,
+        signatureDataUrl: input.signatureDataUrl || targetSeeker.signatureDataUrl,
+        contractAccepted: true,
+      };
+
+      setJobSeekers((prev) => {
+        const next = [...prev];
+        next[existingIndex] = updatedSeeker;
+        return next;
+      });
+      syncUserToFirestore(updatedSeeker);
+      setCurrentSeekerId(updatedSeeker.id);
+      setRole('jobseeker');
+      setActiveTab('jobs');
+
+      addAdminNotification({
+        type: 'seeker_registered',
+        title: '👤 تکمیل و ثبت پرونده کارجو',
+        message: `کارجو «${updatedSeeker.fullName}» پرونده استخدامی و امضای رسمی خود را با موفقیت در سامانه ثبت نمود.`,
+        data: { seekerId: updatedSeeker.id },
+      });
+
+      showToast(`پرونده و تعهدنامه شما با موفقیت ثبت شد. خوش آمدید ${updatedSeeker.fullName}!`, 'success');
+      return { success: true, seeker: updatedSeeker };
+    }
+
+    // Duplicate username check for new user
     const existingUser = jobSeekers.find((s) => s.username.toLowerCase() === cleanUsername);
     if (existingUser) {
       return { success: false, error: 'این نام کاربری قبلاً ثبت شده است. لطفاً نام کاربری دیگری انتخاب کنید.' };
     }
-
-    const cleanEmail = input.email.trim().toLowerCase();
-    const existingEmail = jobSeekers.find((s) => s.email && s.email.toLowerCase() === cleanEmail);
-    if (existingEmail) {
-      return { success: false, error: 'با این آدرس ایمیل قبلاً حسابی در سیستم ثبت شده است.' };
-    }
-
-    const cleanNatId = input.nationalId.trim();
-    const existingNatId = jobSeekers.find((s) => s.nationalId === cleanNatId);
-    if (existingNatId) {
-      return { success: false, error: 'با این کد ملی قبلاً حسابی در سیستم ثبت شده است.' };
-    }
-
-    const cleanRawPhone = (input.phoneNumber || input.phone || '').replace(/\D/g, '');
-    if (cleanRawPhone.length >= 7) {
-      const existingPhone = jobSeekers.find((s) => {
-        const sPhone = (s.phoneNumber || s.phone || '').replace(/\D/g, '');
-        return sPhone && sPhone.endsWith(cleanRawPhone.slice(-8));
-      });
-      if (existingPhone) {
-        return { success: false, error: 'با این شماره تلفن/واتساپ قبلاً حسابی در سیستم ثبت شده است.' };
-      }
-    }
-
-    const fullName = `${input.firstName.trim()} ${input.lastName.trim()}`.trim();
-    const formattedPhone = input.phone || `${input.phoneCountryCode} ${input.phoneNumber.trim()}`;
 
     const newSeeker: JobSeeker = {
       id: 'seeker-' + Date.now(),
@@ -1482,12 +1528,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAdminNotification({
       type: 'seeker_registered',
       title: '👤 ثبت‌نام کارجو جدید',
-      message: `کارجو جدید «${newSeeker.fullName}» با کد ملی ${newSeeker.nationalId} در سامانه کارباما ثبت‌نام نمود.`,
+      message: `کارجو جدید «${newSeeker.fullName}» با کد/شناسه ${newSeeker.nationalId} در سامانه کارباما ثبت‌نام نمود.`,
       data: { seekerId: newSeeker.id },
     });
 
     showToast(`ثبت‌نام با موفقیت انجام شد. خوش آمدید ${newSeeker.fullName}!`, 'success');
-    return { success: true };
+    return { success: true, seeker: newSeeker };
   };
 
   const loginSeeker = (username: string, password: string): { success: boolean; error?: string } => {

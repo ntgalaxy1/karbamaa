@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { TurkishLevel, ResidenceStatus, TargetCountry, Gender } from '../types';
+import { TurkishLevel, ResidenceStatus, TargetCountry, Gender, JobSeeker } from '../types';
 import { CommitmentModal } from './CommitmentModal';
 import { checkPasswordStrength, isValidEmail } from '../utils/validators';
 import { getDistrictsForCity } from '../data/turkeyData';
@@ -20,6 +20,7 @@ import {
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
+  CheckCircle,
   Building2,
   Eye,
   EyeOff,
@@ -42,6 +43,8 @@ import {
   Languages,
   Mail,
   KeyRound,
+  PenTool,
+  Palette,
 } from 'lucide-react';
 
 interface AuthModalProps {
@@ -229,8 +232,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
 
   const [mode, setMode] = useState<'login' | 'register' | 'admin'>(defaultMode);
 
-  // 4-step wizard step
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  // 5-step wizard step (1: Info, 2: Destination, 3: Jobs & Langs, 4: Documents & Signature, 5: Official Dossier Issued)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [registeredSeeker, setRegisteredSeeker] = useState<JobSeeker | null>(null);
 
   // 1. مشخصات فردی و حساب ورود (ضروری)
   const [firstName, setFirstName] = useState('');
@@ -280,11 +284,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
   const fullBodyInputRef = useRef<HTMLInputElement | null>(null);
   const nationalCardInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Canvas Signature state
+  // Canvas Signature state & styles
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string>('');
   const [hasDrawnSignature, setHasDrawnSignature] = useState(false);
+  const [signatureColor, setSignatureColor] = useState<string>('#1d4ed8'); // Default Navy blue ink
+  const [signatureWidth, setSignatureWidth] = useState<number>(3.8); // Default 3.8px
 
   // Date constants
   const contractDateShamsi = getShamsiDateString();
@@ -344,26 +350,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     return true;
   };
 
-  // Initialize canvas when entering Step 4
+  // Initialize canvas when entering Step 4 or changing signature styling
   useEffect(() => {
     if (step === 4 && canvasRef.current) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        ctx.strokeStyle = '#dc2626';
-        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = signatureColor;
+        ctx.lineWidth = signatureWidth;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
       }
     }
-  }, [step]);
+  }, [step, signatureColor, signatureWidth]);
 
   if (!isOpen) return null;
 
-  // Signature pad methods
+  // Signature pad methods with 1:1 responsive touch scaling
   const getCoordinates = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
-    const rect = canvasRef.current.getBoundingClientRect();
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
     let clientX = 0;
     let clientY = 0;
     if ('touches' in e && e.touches.length > 0) {
@@ -373,9 +380,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
       clientX = e.clientX;
       clientY = e.clientY;
     }
+    const scaleX = canvas.width / (rect.width || 1);
+    const scaleY = canvas.height / (rect.height || 1);
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
     };
   };
 
@@ -387,6 +396,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    ctx.strokeStyle = signatureColor;
+    ctx.lineWidth = signatureWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     const { x, y } = getCoordinates(e);
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -418,6 +431,62 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     }
     setSignatureDataUrl('');
     setHasDrawnSignature(false);
+  };
+
+  // One-click authentic calligraphic signature generator
+  const generateOfficialCalligraphicSignature = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const applicantName = `${firstName.trim()} ${lastName.trim()}`.trim() || 'امضای رسمی متقاضی';
+
+    ctx.save();
+    ctx.strokeStyle = signatureColor || '#1d4ed8';
+    ctx.fillStyle = signatureColor || '#1d4ed8';
+    ctx.lineWidth = signatureWidth || 3.8;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Calligraphic top flourish loop
+    ctx.beginPath();
+    ctx.moveTo(110, 160);
+    ctx.bezierCurveTo(160, 70, 240, 50, 330, 105);
+    ctx.bezierCurveTo(420, 160, 500, 125, 580, 80);
+    ctx.bezierCurveTo(640, 45, 680, 110, 710, 170);
+    ctx.stroke();
+
+    // Calligraphic bottom loop
+    ctx.beginPath();
+    ctx.moveTo(250, 155);
+    ctx.bezierCurveTo(320, 210, 480, 200, 610, 150);
+    ctx.bezierCurveTo(660, 130, 685, 95, 650, 75);
+    ctx.bezierCurveTo(610, 55, 520, 95, 470, 140);
+    ctx.stroke();
+
+    // Persian calligraphic name text
+    ctx.font = 'bold 36px "Vazirmatn", "Shabnam", Tahoma, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(applicantName, 400, 115);
+
+    // Official digital stamp text
+    ctx.font = '14px "Vazirmatn", Tahoma, sans-serif';
+    ctx.fillText(`امضای تایید شده الکترونیکی • ${contractDateShamsi}`, 400, 185);
+
+    // Swoosh flourish under name
+    ctx.beginPath();
+    ctx.moveTo(190, 142);
+    ctx.quadraticCurveTo(400, 168, 610, 142);
+    ctx.stroke();
+
+    ctx.restore();
+
+    const dataUrl = canvas.toDataURL('image/png');
+    setSignatureDataUrl(dataUrl);
+    setHasDrawnSignature(true);
   };
 
   // Image Upload Handlers
@@ -538,7 +607,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
   const handlePrevStep = () => {
     setError(null);
     if (step > 1) {
-      setStep((prev) => (prev - 1) as 1 | 2 | 3 | 4);
+      setStep((prev) => (prev - 1) as 1 | 2 | 3 | 4 | 5);
     }
   };
 
@@ -610,7 +679,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     });
 
     if (res.success) {
-      onClose();
+      setRegisteredSeeker(res.seeker || null);
+      setStep(5);
     } else {
       setError(res.error || 'خطایی در ثبت‌نام رخ داد');
     }
@@ -727,12 +797,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
             <div>
               {/* Wizard Steps Progress Indicator */}
               <div className="mb-6">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   {[
                     { s: 1, title: '۱. مشخصات فردی', desc: 'هویت و رمز ورود', icon: User },
                     { s: 2, title: '۲. سکونت و مقصد', desc: 'ایران و ۴ کشور', icon: MapPin },
-                    { s: 3, title: '۳. شغل و زبان‌ها', desc: 'جستجو، تخصص و زبان', icon: Briefcase },
-                    { s: 4, title: '۴. مدارک و تعهدنامه', desc: 'عکس، تسویه و امضا', icon: FileCheck },
+                    { s: 3, title: '۳. شغل و زبان‌ها', desc: 'تخصص و زبان‌ها', icon: Briefcase },
+                    { s: 4, title: '۴. مدارک و امضا', desc: 'پاسپورت و امضا', icon: FileCheck },
+                    { s: 5, title: '۵. پرونده رسمی', desc: 'صدور و تایید نهایی', icon: Award },
                   ].map((item) => {
                     const isDone = step > item.s;
                     const isCurrent = step === item.s;
@@ -742,9 +813,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                         key={item.s}
                         type="button"
                         onClick={() => {
-                          if (item.s < step) setStep(item.s as 1 | 2 | 3 | 4);
+                          if (item.s < step && step !== 5) setStep(item.s as 1 | 2 | 3 | 4 | 5);
                         }}
-                        className={`text-right p-2.5 rounded-2xl border transition relative ${
+                        className={`text-right p-2 rounded-2xl border transition relative ${
                           isCurrent
                             ? 'bg-red-600/20 border-red-500 text-white ring-1 ring-red-500/50'
                             : isDone
@@ -1701,25 +1772,85 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                       </div>
                     </div>
 
-                    {/* محل امضاء متقاضی (ایجاد امضای الکترونیکی) */}
-                    <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl space-y-2">
-                      <div className="flex items-center justify-between">
+                    {/* محل امضاء متقاضی (ایجاد امضای الکترونیکی پیشرفته) */}
+                    <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <label className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <FileText className="w-4 h-4 text-red-500" />
+                          <PenTool className="w-4 h-4 text-amber-400" />
                           <span>محل امضاء متقاضی (ایجاد امضای الکترونیکی رسمی)</span>
                           <span className="text-red-400">*</span>
                         </label>
-                        <button
-                          type="button"
-                          onClick={clearSignature}
-                          className="text-[11px] text-slate-400 hover:text-red-400 flex items-center gap-1 transition px-2 py-1 rounded-lg hover:bg-slate-800"
-                        >
-                          <Eraser className="w-3.5 h-3.5" />
-                          <span>پاک کردن امضا</span>
-                        </button>
+
+                        {/* Signature Tools Toolbar */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {/* Color palette */}
+                          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                            {[
+                              { label: 'سرمه‌ای رسمی', color: '#1d4ed8' },
+                              { label: 'مشکی اداری', color: '#0f172a' },
+                              { label: 'زرشکی سازمانی', color: '#dc2626' },
+                            ].map((c) => (
+                              <button
+                                key={c.color}
+                                type="button"
+                                title={c.label}
+                                onClick={() => setSignatureColor(c.color)}
+                                className={`w-5 h-5 rounded-full border transition ${
+                                  signatureColor === c.color
+                                    ? 'ring-2 ring-amber-400 scale-110 border-white'
+                                    : 'border-slate-700 opacity-70 hover:opacity-100'
+                                }`}
+                                style={{ backgroundColor: c.color }}
+                              />
+                            ))}
+                          </div>
+
+                          {/* Pen thickness */}
+                          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-[10px] text-slate-300">
+                            {[
+                              { label: 'نازک', w: 2.5 },
+                              { label: 'متوسط', w: 3.8 },
+                              { label: 'پررنگ', w: 5.5 },
+                            ].map((item) => (
+                              <button
+                                key={item.w}
+                                type="button"
+                                onClick={() => setSignatureWidth(item.w)}
+                                className={`px-2 py-0.5 rounded-lg transition font-medium ${
+                                  signatureWidth === item.w
+                                    ? 'bg-amber-500 text-slate-950 font-bold'
+                                    : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                {item.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Quick Auto-Signature Button */}
+                          <button
+                            type="button"
+                            onClick={generateOfficialCalligraphicSignature}
+                            className="px-2.5 py-1 bg-gradient-to-r from-amber-500/20 to-amber-600/30 hover:from-amber-500/30 hover:to-amber-600/40 text-amber-300 border border-amber-500/50 rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition shadow-sm"
+                            title="ایجاد خودکار امضای رسمی با نام شما و تاریخ قرارداد"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                            <span>✍️ ساخت خودکار امضای شکیل با نام</span>
+                          </button>
+
+                          {/* Clear Button */}
+                          <button
+                            type="button"
+                            onClick={clearSignature}
+                            className="text-[11px] text-slate-400 hover:text-red-400 flex items-center gap-1 transition px-2 py-1 rounded-xl hover:bg-slate-800 border border-slate-800"
+                          >
+                            <Eraser className="w-3.5 h-3.5" />
+                            <span>پاک کردن</span>
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Canvas Pad (Enlarged) */}
+                      {/* Canvas Pad (Large Responsive Touch Area with 1:1 Scaling) */}
                       <div className="relative border-2 border-dashed border-red-500/50 rounded-2xl bg-white/5 p-1 touch-none">
                         <canvas
                           ref={canvasRef}
@@ -1732,34 +1863,39 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                           onTouchStart={startDrawing}
                           onTouchMove={draw}
                           onTouchEnd={stopDrawing}
-                          className="w-full h-48 sm:h-56 bg-slate-950 rounded-xl cursor-crosshair"
+                          className="w-full h-48 sm:h-56 bg-slate-950 rounded-xl cursor-crosshair shadow-inner"
                         />
 
                         {/* Visual Signing Baseline */}
-                        <div className="absolute bottom-8 left-6 right-6 border-b border-dashed border-slate-700/60 pointer-events-none flex items-center justify-between text-[10px] text-slate-600">
+                        <div className="absolute bottom-8 left-6 right-6 border-b border-dashed border-slate-700/60 pointer-events-none flex items-center justify-between text-[10px] text-slate-500">
                           <span>خط تراز امضای متقاضی</span>
                           <span className="font-mono">X ..............................................</span>
                         </div>
 
                         {!hasDrawnSignature && !signatureDataUrl && (
                           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-slate-400 text-xs gap-1.5 bg-black/10">
-                            <span className="text-sm">✍️</span>
-                            <span className="font-bold text-slate-300">با انگشت یا قلم در این کادر بزرگ امضا نمایید</span>
-                            <span className="text-[10px] text-slate-500">صفحه را لمس کنید و امضای خود را ترسیم نمایید</span>
+                            <span className="text-xl">✍️</span>
+                            <span className="font-bold text-slate-200">با انگشت یا قلم در این کادر بزرگ امضا نمایید</span>
+                            <span className="text-[10px] text-slate-400">یا دکمه «ساخت خودکار امضای شکیل با نام» در بالا را لمس نمایید</span>
                           </div>
                         )}
                       </div>
 
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-400">
-                          وضعیت امضا:{' '}
+                        <span className="text-slate-400 flex items-center gap-1.5">
+                          <span>وضعیت امضا:</span>
                           {hasDrawnSignature || signatureDataUrl ? (
-                            <strong className="text-emerald-400">امضا ثبت گردید ✓</strong>
+                            <strong className="text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" />
+                              امضای رسمی ثبت گردید ✓
+                            </strong>
                           ) : (
-                            <strong className="text-amber-400">در انتظار امضا</strong>
+                            <strong className="text-amber-400 bg-amber-950/60 border border-amber-500/40 px-2 py-0.5 rounded-lg">
+                              در انتظار امضا (الزامی)
+                            </strong>
                           )}
                         </span>
-                        <span className="text-slate-500">امضای دیجیتال دارای اثر قانونی است</span>
+                        <span className="text-slate-500 text-[10px]">امضای الکترونیکی دارای اثر قانونی رسمی است</span>
                       </div>
                     </div>
 
@@ -1791,10 +1927,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                         className="mt-0.5 rounded border-slate-700 text-red-600 focus:ring-red-500 h-4 w-4"
                       />
                       <span className="leading-relaxed">
-                        اینجانب با آگاهی کامل و رضایت، صحت کلیه مدارک ارسالی (پاسپورت، عکس تمام قد و کارت شناسایی) و مفاد تعهدنامه تسویه حساب کارگزار را اقرار و تایید می‌نمایم و امضای الکترونیکی فوق متعلق به اینجانب می‌باشد.
+                        اینجانب با آگاهی کامل و رضایت، صحت کلیه مدارک ارسالی (پاسپورت با ۴ گوشه مشخص، عکس تمام قد و کارت شناسایی) و مفاد تعهدنامه تسویه حساب کارگزار را اقرار و تایید می‌نمایم و امضای الکترونیکی فوق متعلق به اینجانب می‌باشد.
                       </span>
                     </label>
                   </div>
+
+                  {/* Inline Error Banner (visible directly above submit button) */}
+                  {error && (
+                    <div className="p-3.5 bg-red-950/95 border-2 border-red-500 rounded-2xl text-red-100 text-xs flex items-center gap-2.5 shadow-xl animate-shake">
+                      <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+                      <span className="font-bold leading-relaxed">{error}</span>
+                    </div>
+                  )}
 
                   {/* Submission Buttons */}
                   <div className="pt-2 flex items-center justify-between gap-3">
@@ -1809,13 +1953,211 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
 
                     <button
                       type="submit"
-                      className="flex-1 py-3.5 bg-gradient-to-r from-red-600 via-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black rounded-xl shadow-xl shadow-red-700/40 transition flex items-center justify-center gap-2 text-sm sm:text-base"
+                      className="flex-1 py-3.5 bg-gradient-to-r from-red-600 via-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black rounded-xl shadow-xl shadow-red-700/40 transition flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer"
                     >
                       <UserPlus className="w-5 h-5" />
-                      <span>ثبت نهایی، صدور پرونده کارجو و ورود مستقیم به کارباما</span>
+                      <span>ثبت نهایی، صدور پرونده رسمی و ورود به مرحله تایید</span>
                     </button>
                   </div>
                 </form>
+              )}
+
+              {/* STEP 5: پرونده رسمی کارجو صادر شد (مرحله نهایی با مدارک تایید شده و امضا) */}
+              {step === 5 && (
+                <div className="space-y-6 animate-fadeIn py-2">
+                  {/* Top Success Celebration Banner */}
+                  <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-emerald-950/80 border-2 border-emerald-500/80 rounded-3xl p-6 text-center shadow-2xl relative overflow-hidden">
+                    <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none" />
+                    <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-amber-500/20 rounded-full blur-2xl pointer-events-none" />
+                    
+                    <div className="w-16 h-16 bg-emerald-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-500/40 animate-bounce">
+                      <CheckCircle2 className="w-10 h-10" />
+                    </div>
+
+                    <h2 className="text-xl sm:text-2xl font-black text-white">
+                      🎉 پرونده رسمی کارجو با موفقیت صادر گردید!
+                    </h2>
+                    <p className="text-xs sm:text-sm text-emerald-300 font-semibold mt-1.5 max-w-xl mx-auto leading-relaxed">
+                      حساب کاربری شما فعال شد و تمامی مدارک (پاسپورت با ۴ گوشه مشخص، عکس پرسنلی و امضای دیجیتال رسمی) در پرونده مرکزی کارباما ثبت و ذخیره گردید.
+                    </p>
+
+                    <div className="inline-flex items-center gap-2 mt-3 px-3.5 py-1.5 bg-emerald-900/60 border border-emerald-500/40 rounded-full text-xs text-emerald-200 font-bold">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                      <span>کد رهگیری پرونده: <strong className="font-mono text-white text-sm" dir="ltr">{registeredSeeker?.id || `KB-${Date.now().toString().slice(-6)}`}</strong></span>
+                    </div>
+                  </div>
+
+                  {/* کارت پرونده جامع الکترونیک کارجو */}
+                  <div className="bg-slate-950 border-2 border-slate-700/80 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5">
+                    {/* Header of Dossier */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src="/logo.png"
+                          alt="کارباما"
+                          className="w-12 h-12 rounded-full border-2 border-amber-400 shadow-md object-cover"
+                        />
+                        <div>
+                          <h3 className="text-base font-black text-white flex items-center gap-1.5">
+                            <span>کارت پرونده رسمی کارجو</span>
+                            <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-bold">
+                              معتبر و تایید شده
+                            </span>
+                          </h3>
+                          <p className="text-[11px] text-slate-400">سامانه کاریابی و اعزام نیروی کار کارباما</p>
+                        </div>
+                      </div>
+
+                      <div className="text-left bg-slate-900 px-3.5 py-2 rounded-xl border border-slate-800 text-xs font-mono" dir="ltr">
+                        <div className="text-amber-300 font-bold">تاریخ صدور پرونده:</div>
+                        <div className="text-slate-300 text-[11px] mt-0.5">{contractDateShamsi} / {contractDateMiladi}</div>
+                      </div>
+                    </div>
+
+                    {/* Document Photos Grid (Passport & Full-Body) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Full-Body Photo */}
+                      <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                          <span className="flex items-center gap-1.5">
+                            <Camera className="w-4 h-4 text-emerald-400" />
+                            <span>عکس پرسنلی تمام قد</span>
+                          </span>
+                          <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                            تایید شده ✓
+                          </span>
+                        </div>
+                        <div className="h-44 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center">
+                          {fullBodyPhotoUrl ? (
+                            <img
+                              src={fullBodyPhotoUrl}
+                              alt="عکس تمام قد کارجو"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="text-xs text-slate-500">تصویر ثبت شده</div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Passport Photo (4 corners verified) */}
+                      <div className="bg-slate-900 p-3 rounded-2xl border border-emerald-500/40 space-y-2">
+                        <div className="flex items-center justify-between text-xs font-bold text-amber-300">
+                          <span className="flex items-center gap-1.5">
+                            <FileText className="w-4 h-4 text-amber-400" />
+                            <span>عکس پاسپورت (۴ گوشه مشخص)</span>
+                          </span>
+                          <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <Check className="w-3 h-3" />
+                            چهارگوشه احراز شد ✓
+                          </span>
+                        </div>
+                        <div className="relative h-44 rounded-xl overflow-hidden bg-slate-950 border border-emerald-500/30 flex items-center justify-center">
+                          {/* Corner Markers */}
+                          <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-emerald-400 rounded-tr pointer-events-none z-10" />
+                          <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-emerald-400 rounded-tl pointer-events-none z-10" />
+                          <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-emerald-400 rounded-br pointer-events-none z-10" />
+                          <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-emerald-400 rounded-bl pointer-events-none z-10" />
+
+                          {passportPhotoUrl ? (
+                            <img
+                              src={passportPhotoUrl}
+                              alt="عکس پاسپورت با چهارگوش مشخص"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="text-xs text-slate-500">تصویر پاسپورت</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Identity and Destination Details Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">نام و نام خانوادگی:</span>
+                        <strong className="text-white text-sm font-black">{firstName} {lastName}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">نام پدر:</span>
+                        <strong className="text-white">{fatherName}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">کد ملی / شماره پاسپورت:</span>
+                        <strong className="text-amber-300 font-mono" dir="ltr">{nationalId}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">شماره تماس:</span>
+                        <strong className="text-emerald-300 font-mono" dir="ltr">{phoneCountryCode} {phoneNumber}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">کشور مقصد:</span>
+                        <strong className="text-white">{targetCountry} ({targetCity})</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">شغل‌های درخواستی:</span>
+                        <strong className="text-white truncate block">{selectedJobs.join('، ') || customProfession || 'عمومی'}</strong>
+                      </div>
+                      <div className="col-span-2 sm:col-span-3 pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
+                        <span className="text-slate-400">
+                          آدرس سکونت: <strong className="text-slate-200">استان {iranProvince}، شهرستان {iranCity}، {iranAddress}</strong>
+                        </span>
+                        <span className="text-emerald-400 font-bold">
+                          تسویه حساب کارگزار: {brokerSettings.brokerServiceFee} (کارت: {payerCardNumber || 'ثبت شده'}) ✓
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Official Electronic Signature Card */}
+                    <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-emerald-400" />
+                          <span>امضای الکترونیکی ثبت شده متقاضی</span>
+                        </span>
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold">
+                          امضای دیجیتال رسمی دارای اثر قانونی لازم‌الاجرا
+                        </span>
+                      </div>
+
+                      <div className="bg-slate-950 p-2 rounded-xl border border-slate-800/80 flex flex-col items-center justify-center">
+                        {signatureDataUrl ? (
+                          <img
+                            src={signatureDataUrl}
+                            alt="امضای رسمی متقاضی"
+                            className="max-h-24 w-auto object-contain filter drop-shadow-md"
+                          />
+                        ) : (
+                          <div className="text-xs text-slate-500 py-4">امضای الکترونیکی ثبت شده در پرونده</div>
+                        )}
+                        <div className="text-[10px] text-slate-500 font-mono mt-1">
+                          تایید شده توسط {firstName} {lastName} • {contractDateShamsi}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions to enter Karbama or view contract */}
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsCommitmentModalOpen(true)}
+                      className="w-full sm:w-auto px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2"
+                    >
+                      <FileText className="w-4 h-4 text-amber-400" />
+                      <span>مشاهده و چاپ تعهدنامه حقوقی با امضا</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="w-full sm:flex-1 py-3.5 px-6 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl shadow-xl shadow-emerald-600/30 transition flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer"
+                    >
+                      <CheckCircle className="w-5 h-5" />
+                      <span>ورود به سامانه کارباما و مشاهده آگهی‌های شغلی</span>
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           ) : (
