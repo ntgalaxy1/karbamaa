@@ -79,8 +79,8 @@ if (typeof window !== 'undefined') {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (refreshing) return;
       try {
-        if (!sessionStorage.getItem('karbama_sw_v28_reloaded')) {
-          sessionStorage.setItem('karbama_sw_v28_reloaded', '1');
+        if (!sessionStorage.getItem('karbama_sw_v30_reloaded')) {
+          sessionStorage.setItem('karbama_sw_v30_reloaded', '1');
           refreshing = true;
           window.location.reload();
         }
