@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { AppLanguage, TargetCountry, Gender } from '../types';
+import { AppLanguage, TargetCountry, Gender, JobSeeker } from '../types';
 import { t } from '../utils/translations';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 import { IRAN_PROVINCES, IRAN_CITIES_BY_PROVINCE } from '../data/iranCities';
@@ -38,6 +38,8 @@ import {
   Eye,
   EyeOff,
   Mail,
+  Award,
+  CheckCircle2,
 } from 'lucide-react';
 
 const DESTINATION_COUNTRIES: { id: TargetCountry; nameKey: string; flag: string; descKey: string }[] = [
@@ -64,8 +66,9 @@ export const OnboardingFlow: React.FC = () => {
   // Mode: 'language' | 'register' | 'login'
   const [viewMode, setViewMode] = useState<'language' | 'register' | 'login'>('language');
 
-  // 4-step wizard step
-  const [regStep, setRegStep] = useState<1 | 2 | 3 | 4>(1);
+  // 5-step wizard step (1: Info, 2: Destination & Address, 3: Docs & Skills, 4: Commitment & Signature, 5: Official Dossier Issued)
+  const [regStep, setRegStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [registeredSeeker, setRegisteredSeeker] = useState<JobSeeker | null>(null);
 
   // STEP 1: مشخصات فردی، اکانت، کارت واریزکننده و کشور مقصد
   const [firstName, setFirstName] = useState('');
@@ -318,8 +321,9 @@ export const OnboardingFlow: React.FC = () => {
 
     if (res.success) {
       setIsCommitmentModalOpen(false);
-      setHasCompletedOnboarding(true);
-      showToast('ثبت‌نام رسمی شما انجام گردید. پرونده جهت بررسی و فعال‌سازی ارجاع داده شد.', 'success');
+      setRegisteredSeeker(res.seeker || null);
+      setRegStep(5);
+      showToast('🎉 ثبت‌نام با موفقیت انجام شد و پرونده رسمی کارجو صادر گردید.', 'success');
     } else {
       showToast(res.error || 'خطا در ثبت‌نام. لطفاً ورودی‌های خود را بررسی نمایید.', 'error');
     }
@@ -499,17 +503,22 @@ export const OnboardingFlow: React.FC = () => {
                 <div className="flex items-center justify-between text-xs mb-2 font-bold">
                   <span className="text-white flex items-center gap-1.5">
                     <UserCheck className="w-4 h-4 text-emerald-400" />
-                    <span>{t('regStepOfFour', appLanguage)} {regStep} {t('regStepOfFourSuffix', appLanguage)}</span>
+                    <span>
+                      {regStep === 5
+                        ? 'مرحله نهایی: صدور پرونده رسمی کارجو'
+                        : `${t('regStepOfFour', appLanguage)} ${regStep} ${t('regStepOfFourSuffix', appLanguage)}`}
+                    </span>
                   </span>
                   <span className="text-amber-400">
                     {regStep === 1 && t('regStep1Title', appLanguage)}
                     {regStep === 2 && t('regStep2Title', appLanguage)}
                     {regStep === 3 && t('regStep3Title', appLanguage)}
                     {regStep === 4 && t('regStep4Title', appLanguage)}
+                    {regStep === 5 && 'تاییدیه و پرونده صادر شده ✓'}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-4 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-[10px] text-center font-bold">
+                <div className="grid grid-cols-5 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-[10px] text-center font-bold">
                   <div className={`py-1.5 rounded-lg transition ${regStep === 1 ? 'bg-red-600 text-white' : regStep > 1 ? 'bg-emerald-600/30 text-emerald-300' : 'text-slate-500'}`}>
                     {t('step1Short', appLanguage)}
                   </div>
@@ -519,8 +528,11 @@ export const OnboardingFlow: React.FC = () => {
                   <div className={`py-1.5 rounded-lg transition ${regStep === 3 ? 'bg-red-600 text-white' : regStep > 3 ? 'bg-emerald-600/30 text-emerald-300' : 'text-slate-500'}`}>
                     {t('step3Short', appLanguage)}
                   </div>
-                  <div className={`py-1.5 rounded-lg transition ${regStep === 4 ? 'bg-red-600 text-white' : 'text-slate-500'}`}>
+                  <div className={`py-1.5 rounded-lg transition ${regStep === 4 ? 'bg-red-600 text-white' : regStep > 4 ? 'bg-emerald-600/30 text-emerald-300' : 'text-slate-500'}`}>
                     {t('step4Short', appLanguage)}
+                  </div>
+                  <div className={`py-1.5 rounded-lg transition ${regStep === 5 ? 'bg-emerald-600 text-white' : 'text-slate-500'}`}>
+                    ۵. پرونده رسمی
                   </div>
                 </div>
               </div>
@@ -1204,6 +1216,180 @@ export const OnboardingFlow: React.FC = () => {
                     >
                       <CheckCircle className="w-4 h-4" />
                       <span>{t('completeRegistrationBtn', appLanguage)}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 5: تاییدیه نهایی و پرونده رسمی کارجو */}
+              {regStep === 5 && (
+                <div className="space-y-6 animate-in fade-in duration-200 py-2">
+                  {/* Top Success Banner */}
+                  <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-emerald-950/80 border-2 border-emerald-500/80 rounded-3xl p-5 sm:p-6 text-center shadow-2xl relative overflow-hidden">
+                    <div className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-500/40">
+                      <CheckCircle2 className="w-9 h-9" />
+                    </div>
+
+                    <h2 className="text-lg sm:text-xl font-black text-white">
+                      🎉 پرونده رسمی کارجو با موفقیت صادر گردید!
+                    </h2>
+                    <p className="text-xs text-emerald-300 font-semibold mt-1.5 max-w-lg mx-auto leading-relaxed">
+                      حساب کاربری شما فعال شد و تمامی مدارک (پاسپورت با ۴ گوشه مشخص، عکس پرسنلی و امضای دیجیتال رسمی) در پرونده مرکزی کارباما ثبت و ذخیره گردید.
+                    </p>
+
+                    <div className="inline-flex items-center gap-2 mt-3 px-3.5 py-1.5 bg-emerald-900/60 border border-emerald-500/40 rounded-full text-xs text-emerald-200 font-bold">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                      <span>کد پرونده الکترونیک: <strong className="font-mono text-white text-sm" dir="ltr">{registeredSeeker?.id || `KB-${Date.now().toString().slice(-6)}`}</strong></span>
+                    </div>
+                  </div>
+
+                  {/* کارت پرونده جامع الکترونیک کارجو */}
+                  <div className="bg-slate-950 border-2 border-slate-700/80 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src="/logo.png"
+                          alt="کارباما"
+                          className="w-10 h-10 rounded-full border border-amber-400 shadow-md object-cover"
+                        />
+                        <div>
+                          <h3 className="text-sm font-black text-white flex items-center gap-1.5">
+                            <span>کارت پرونده رسمی کارجو</span>
+                            <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-bold">
+                              معتبر و تایید شده
+                            </span>
+                          </h3>
+                          <p className="text-[10px] text-slate-400">سامانه کاریابی و اعزام نیروی کار کارباما</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Document Photos Grid (Passport & Full-Body) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Full-Body Photo */}
+                      <div className="bg-slate-900 p-2.5 rounded-2xl border border-slate-800 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                          <span className="flex items-center gap-1.5">
+                            <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>عکس پرسنلی تمام قد</span>
+                          </span>
+                          <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                            تایید شده ✓
+                          </span>
+                        </div>
+                        <div className="h-40 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center">
+                          {fullBodyPhotoUrl ? (
+                            <img
+                              src={fullBodyPhotoUrl}
+                              alt="عکس تمام قد کارجو"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="text-xs text-slate-500">تصویر ثبت شده</div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Passport Photo */}
+                      <div className="bg-slate-900 p-2.5 rounded-2xl border border-emerald-500/40 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs font-bold text-amber-300">
+                          <span className="flex items-center gap-1.5">
+                            <FileText className="w-3.5 h-3.5 text-amber-400" />
+                            <span>عکس پاسپورت (۴ گوشه مشخص)</span>
+                          </span>
+                          <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <Check className="w-3 h-3" />
+                            چهارگوشه احراز شد ✓
+                          </span>
+                        </div>
+                        <div className="relative h-40 rounded-xl overflow-hidden bg-slate-950 border border-emerald-500/30 flex items-center justify-center">
+                          <div className="absolute top-2 right-2 w-3.5 h-3.5 border-t-2 border-r-2 border-emerald-400 rounded-tr pointer-events-none z-10" />
+                          <div className="absolute top-2 left-2 w-3.5 h-3.5 border-t-2 border-l-2 border-emerald-400 rounded-tl pointer-events-none z-10" />
+                          <div className="absolute bottom-2 right-2 w-3.5 h-3.5 border-b-2 border-r-2 border-emerald-400 rounded-br pointer-events-none z-10" />
+                          <div className="absolute bottom-2 left-2 w-3.5 h-3.5 border-b-2 border-l-2 border-emerald-400 rounded-bl pointer-events-none z-10" />
+
+                          {passportPhotoUrl ? (
+                            <img
+                              src={passportPhotoUrl}
+                              alt="عکس پاسپورت با چهارگوش مشخص"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="text-xs text-slate-500">تصویر پاسپورت</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Identity Details */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs bg-slate-900/80 p-3 rounded-2xl border border-slate-800">
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">نام و نام خانوادگی:</span>
+                        <strong className="text-white text-xs sm:text-sm font-black">{firstName} {lastName}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">نام پدر:</span>
+                        <strong className="text-white">{fatherName}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">کد ملی / پاسپورت:</span>
+                        <strong className="text-amber-300 font-mono" dir="ltr">{nationalId}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">شماره تماس:</span>
+                        <strong className="text-emerald-300 font-mono" dir="ltr">{phoneCountryCode} {phoneNumber}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">کشور مقصد:</span>
+                        <strong className="text-white">{targetCountry} ({targetCity})</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[10px]">شغل‌های درخواستی:</span>
+                        <strong className="text-white truncate block">{selectedCommonJobs.join('، ') || customWrittenSkills || 'عمومی'}</strong>
+                      </div>
+                    </div>
+
+                    {/* Signature Preview */}
+                    {signatureDataUrl && (
+                      <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>امضای الکترونیکی ثبت شده متقاضی</span>
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
+                            دارای اعتبار حقوقی
+                          </span>
+                        </div>
+                        <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex justify-center">
+                          <img
+                            src={signatureDataUrl}
+                            alt="امضای رسمی متقاضی"
+                            className="max-h-20 w-auto object-contain filter drop-shadow-md"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions to enter Karbama or view contract */}
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsCommitmentModalOpen(true)}
+                      className="w-full sm:w-auto px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2"
+                    >
+                      <FileText className="w-4 h-4 text-amber-400" />
+                      <span>مشاهده و چاپ تعهدنامه حقوقی با امضا</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setHasCompletedOnboarding(true)}
+                      className="w-full sm:flex-1 py-3.5 px-6 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl shadow-xl shadow-emerald-600/30 transition flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer"
+                    >
+                      <CheckCircle className="w-5 h-5" />
+                      <span>ورود به سامانه کارباما و مشاهده آگهی‌های شغلی</span>
                     </button>
                   </div>
                 </div>

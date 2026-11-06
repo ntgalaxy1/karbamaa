@@ -558,37 +558,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Safe load data with fallback to empty array (strictly filtering out all legacy/default sample seekers)
+  // Safe load data with fallback to empty array (strictly filtering out legacy default sample seeds)
   const isSampleOrLegacySeeker = (s?: Partial<JobSeeker> | null): boolean => {
     if (!s || !s.id) return true;
     const idLower = s.id.toLowerCase();
-    if (
-      idLower.startsWith('seeker-1') ||
-      idLower.startsWith('seeker-2') ||
-      idLower.startsWith('seeker-3') ||
-      idLower.startsWith('seeker-4') ||
-      idLower.startsWith('seeker-5') ||
-      idLower.includes('demo') ||
-      idLower.includes('sample') ||
-      idLower.includes('test') ||
-      idLower.includes('mock')
-    ) {
-      return true;
-    }
-    const name = s.fullName ? s.fullName.trim() : '';
-    if (
-      ['علی رضایی', 'محمد کریمی', 'سارا احمدی', 'رضا محمدی', 'امیر حسینی', 'مهدی حسینی', 'کارجو نمونه', 'کارجو تست'].includes(name) ||
-      name.includes('نمونه') ||
-      name.includes('تست')
-    ) {
+    // Only match exact hardcoded demo/seed IDs (NEVER timestamp IDs like seeker-1762...)
+    const exactLegacyIds = [
+      'seeker-1',
+      'seeker-2',
+      'seeker-3',
+      'seeker-4',
+      'seeker-5',
+      'seeker-demo',
+      'seeker-test',
+      'demo',
+      'sample',
+      'mock',
+    ];
+    if (exactLegacyIds.includes(idLower)) {
       return true;
     }
     const username = s.username ? s.username.toLowerCase() : '';
-    if (
-      ['ali_rezaei', 'mohammad_k', 'sara_ahmadi', 'seeker1', 'seeker2', 'seeker3', 'seeker4', 'seeker5', 'seeker_demo', 'demo_seeker'].includes(username) ||
-      username.includes('demo') ||
-      username.includes('sample')
-    ) {
+    const exactLegacyUsernames = [
+      'seeker1',
+      'seeker2',
+      'seeker3',
+      'seeker4',
+      'seeker5',
+      'seeker_demo',
+      'demo_seeker',
+    ];
+    if (exactLegacyUsernames.includes(username)) {
       return true;
     }
     return false;
