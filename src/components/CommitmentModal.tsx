@@ -469,17 +469,25 @@ export const CommitmentModal: React.FC<CommitmentModalProps> = ({
 
             {onAcceptAndSubmit && (
               <button
+                type="button"
                 onClick={() => {
-                  if (!hasDrawn && !currentSignature) {
+                  let finalSig = currentSignature;
+                  if (!finalSig && canvasRef.current && hasDrawn) {
+                    finalSig = canvasRef.current.toDataURL('image/png');
+                  }
+                  if (!finalSig) {
                     alert('لطفاً ابتدا کادر امضا را لمس نموده و امضای دیجیتال خود را رسم فرمایید.');
                     return;
                   }
+                  if (onSaveSignature) {
+                    onSaveSignature(finalSig);
+                  }
                   onAcceptAndSubmit();
                 }}
-                className="w-full sm:w-auto px-7 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black shadow-lg shadow-red-700/30 transition flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-7 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-700/30 transition flex items-center justify-center gap-2"
               >
                 <CheckCircle className="w-4 h-4" />
-                <span>تایید و امضای نهایی تعهدنامه</span>
+                <span>تایید و ذخیره امضای دیجیتال</span>
               </button>
             )}
           </div>

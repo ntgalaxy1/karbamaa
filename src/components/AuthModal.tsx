@@ -3,6 +3,12 @@ import { useApp } from '../context/AppContext';
 import { TurkishLevel, ResidenceStatus, TargetCountry, Gender, JobSeeker } from '../types';
 import { CommitmentModal } from './CommitmentModal';
 import { checkPasswordStrength, isValidEmail } from '../utils/validators';
+import {
+  toEnglishDigits,
+  sanitizeNumericOnly,
+  sanitizeCardNumber,
+  sanitizeNationalIdOrPassport,
+} from '../utils/inputUtils';
 import { getDistrictsForCity } from '../data/turkeyData';
 import {
   X,
@@ -34,6 +40,7 @@ import {
   Eraser,
   CreditCard,
   AlertTriangle,
+  AlertCircle,
   Calendar,
   Sparkles,
   Info,
@@ -224,13 +231,35 @@ const getMiladiDateString = (): string => {
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 'login' }) => {
   const {
     registerSeeker,
+    checkDuplicateSeekerField,
     loginSeeker,
     loginAdmin,
     recoverPassword,
     brokerSettings,
+    appLanguage,
   } = useApp();
 
   const [mode, setMode] = useState<'login' | 'register' | 'admin'>(defaultMode);
+
+  // Duplicate validation state
+  const [duplicateErrors, setDuplicateErrors] = useState<{
+    email?: string;
+    phoneNumber?: string;
+    nationalId?: string;
+    payerCardNumber?: string;
+  }>({});
+
+  const checkFieldDuplicate = (
+    field: 'email' | 'phoneNumber' | 'nationalId' | 'payerCardNumber',
+    val: string
+  ) => {
+    const res = checkDuplicateSeekerField(field, val);
+    setDuplicateErrors((prev) => ({
+      ...prev,
+      [field]: res.isDuplicate ? res.message : undefined,
+    }));
+    return res;
+  };
 
   // 5-step wizard step (1: Info, 2: Destination, 3: Jobs & Langs, 4: Documents & Signature, 5: Official Dossier Issued)
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -347,6 +376,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
       setError(passCheck.error || 'رمز عبور باید حداقل ۸ کاراکتر و شامل حروف بزرگ، کوچک و اعداد باشد.');
       return false;
     }
+
+    // Instant Duplicate validation
+    const dupNatId = checkFieldDuplicate('nationalId', nationalId);
+    if (dupNatId.isDuplicate) {
+      setError(dupNatId.message || 'این کد ملی یا شماره پاسپورت قبلاً در سامانه ثبت گردیده است.');
+      return false;
+    }
+    const dupPhone = checkFieldDuplicate('phoneNumber', phoneNumber);
+    if (dupPhone.isDuplicate) {
+      setError(dupPhone.message || 'این شماره تلفن قبلاً در سامانه ثبت گردیده است.');
+      return false;
+    }
+    const dupEmail = checkFieldDuplicate('email', email);
+    if (dupEmail.isDuplicate) {
+      setError(dupEmail.message || 'این آدرس ایمیل قبلاً در سامانه ثبت گردیده است.');
+      return false;
+    }
+
     return true;
   };
 
@@ -577,6 +624,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     const cleanPayerCard = payerCardNumber.replace(/\D/g, '');
     if (!cleanPayerCard || cleanPayerCard.length < 16) {
       setError('لطفاً شماره کارت ۱۶ رقمی واریز کننده وجه را به درستی وارد نمایید.');
+      return false;
+    }
+    const dupCard = checkFieldDuplicate('payerCardNumber', payerCardNumber);
+    if (dupCard.isDuplicate) {
+      setError(dupCard.message || 'این شماره کارت بانکی قبلاً در سامانه ثبت گردیده است.');
       return false;
     }
     if (!hasDrawnSignature && !signatureDataUrl) {
@@ -904,8 +956,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        کد ملی یا شماره پاسپورت <span className="text-red-400">*</span>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                        <span>کد ملی یا شماره پاسپورت <span className="text-red-400">*</span></span>
+                        <span className="text-[10px] text-slate-400 font-mono">0-9 انگلیسی</span>
                       </label>
                       <div className="relative">
                         <IdCard className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
@@ -913,20 +966,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                           type="text"
                           required
                           maxLength={15}
-                          placeholder="کد ملی یا شماره پاسپورت..."
+                          lang="en"
                           dir="ltr"
+                          inputMode="text"
+                          placeholder="کد ملی یا شماره پاسپورت..."
                           value={nationalId}
-                          onChange={(e) => setNationalId(e.target.value.trim())}
-                          className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 text-left font-mono"
+                          onChange={(e) => {
+                            const sanitized = sanitizeNationalIdOrPassport(e.target.value);
+                            setNationalId(sanitized);
+                            checkFieldDuplicate('nationalId', sanitized);
+                          }}
+                          onBlur={() => checkFieldDuplicate('nationalId', nationalId)}
+                          className={`w-full bg-slate-800/90 border rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden text-left font-mono ${
+                            duplicateErrors.nationalId ? 'border-red-500 ring-1 ring-red-500/50' : 'border-slate-700 focus:border-red-500'
+                          }`}
                         />
                       </div>
+                      {duplicateErrors.nationalId && (
+                        <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                          <span>{duplicateErrors.nationalId}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Phone Number with Country Code */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      شماره تلفن همراه (با تعیین پیش‌شماره کشور) <span className="text-red-400">*</span>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                      <span>شماره تلفن همراه (با تعیین پیش‌شماره کشور) <span className="text-red-400">*</span></span>
+                      <span className="text-[10px] text-slate-400 font-mono">0-9 انگلیسی</span>
                     </label>
                     <div className="flex gap-2" dir="ltr">
                       <select
@@ -946,13 +1015,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                         <input
                           type="tel"
                           required
+                          lang="en"
+                          dir="ltr"
+                          inputMode="numeric"
                           placeholder="912 345 6789"
                           value={phoneNumber}
-                          onChange={(e) => setPhoneNumber(e.target.value)}
-                          className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 font-mono"
+                          onChange={(e) => {
+                            const sanitized = sanitizeNumericOnly(e.target.value, 11);
+                            setPhoneNumber(sanitized);
+                            checkFieldDuplicate('phoneNumber', sanitized);
+                          }}
+                          onBlur={() => checkFieldDuplicate('phoneNumber', phoneNumber)}
+                          className={`w-full bg-slate-800/90 border rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden font-mono ${
+                            duplicateErrors.phoneNumber ? 'border-red-500 ring-1 ring-red-500/50' : 'border-slate-700 focus:border-red-500'
+                          }`}
                         />
                       </div>
                     </div>
+                    {duplicateErrors.phoneNumber && (
+                      <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                        <span>{duplicateErrors.phoneNumber}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Email Input Field */}
@@ -965,13 +1050,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                       <input
                         type="email"
                         required
+                        lang="en"
                         dir="ltr"
+                        inputMode="email"
                         placeholder="example@gmail.com"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 text-left font-mono"
+                        onChange={(e) => {
+                          const val = e.target.value.trim();
+                          setEmail(val);
+                          checkFieldDuplicate('email', val);
+                        }}
+                        onBlur={() => checkFieldDuplicate('email', email)}
+                        className={`w-full bg-slate-800/90 border rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden text-left font-mono ${
+                          duplicateErrors.email ? 'border-red-500 ring-1 ring-red-500/50' : 'border-slate-700 focus:border-red-500'
+                        }`}
                       />
                     </div>
+                    {duplicateErrors.email && (
+                      <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                        <span>{duplicateErrors.email}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Gender Selection */}
@@ -1027,10 +1127,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                           <input
                             type="text"
                             required
+                            lang="en"
                             dir="ltr"
                             placeholder="ali_reza"
                             value={username}
-                            onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                            onChange={(e) => setUsername(toEnglishDigits(e.target.value).replace(/[^a-zA-Z0-9_.-]/g, '').toLowerCase())}
                             className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 text-left font-mono"
                           />
                         </div>
@@ -1045,10 +1146,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                           <input
                             type={showPassword ? 'text' : 'password'}
                             required
+                            lang="en"
                             dir="ltr"
                             placeholder="Abc12345"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={(e) => setPassword(toEnglishDigits(e.target.value))}
                             className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-9 py-2 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 text-left font-mono"
                           />
                           <button
@@ -1733,18 +1835,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                             type="text"
                             required
                             maxLength={19}
+                            lang="en"
                             dir="ltr"
+                            inputMode="numeric"
                             placeholder="6037-9975-XXXX-XXXX"
                             value={payerCardNumber}
                             onChange={(e) => {
-                              // format with dashes
-                              const clean = e.target.value.replace(/\D/g, '').slice(0, 16);
-                              const formatted = clean.match(/.{1,4}/g)?.join('-') || clean;
-                              setPayerCardNumber(formatted);
+                              const sanitized = sanitizeCardNumber(e.target.value);
+                              setPayerCardNumber(sanitized);
+                              checkFieldDuplicate('payerCardNumber', sanitized);
                             }}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-500 text-left font-mono font-bold"
+                            onBlur={() => checkFieldDuplicate('payerCardNumber', payerCardNumber)}
+                            className={`w-full bg-slate-800 border rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden text-left font-mono font-bold ${
+                              duplicateErrors.payerCardNumber ? 'border-red-500 ring-1 ring-red-500/50' : 'border-slate-700 focus:border-amber-500'
+                            }`}
                           />
                         </div>
+                        {duplicateErrors.payerCardNumber && (
+                          <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
+                            <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                            <span>{duplicateErrors.payerCardNumber}</span>
+                          </div>
+                        )}
                         <p className="text-[10px] text-slate-400">
                           شماره کارت ۱۶ رقمی که هزینه کارگزار از آن پرداخت گردیده است.
                         </p>
@@ -2343,7 +2455,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
         }}
         onAcceptAndSubmit={() => {
           setIsCommitmentModalOpen(false);
-          handleRegisterSubmit();
+          setStep(4);
         }}
       />
     </div>

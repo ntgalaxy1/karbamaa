@@ -6,6 +6,12 @@ import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 import { IRAN_PROVINCES, IRAN_CITIES_BY_PROVINCE } from '../data/iranCities';
 import { CITY_DISTRICTS_MAP, getDistrictsForCity } from '../data/turkeyData';
 import { checkPasswordStrength, isValidEmail } from '../utils/validators';
+import {
+  toEnglishDigits,
+  sanitizeNumericOnly,
+  sanitizeCardNumber,
+  sanitizeNationalIdOrPassport,
+} from '../utils/inputUtils';
 import { CommitmentModal } from './CommitmentModal';
 import {
   Globe,
@@ -55,6 +61,7 @@ export const OnboardingFlow: React.FC = () => {
     setAppLanguage,
     setHasCompletedOnboarding,
     registerSeeker,
+    checkDuplicateSeekerField,
     loginSeeker,
     loginAdmin,
     loginPartner,
@@ -65,6 +72,32 @@ export const OnboardingFlow: React.FC = () => {
 
   // Mode: 'language' | 'register' | 'login'
   const [viewMode, setViewMode] = useState<'language' | 'register' | 'login'>('language');
+
+  // Duplicate field validation errors
+  const [duplicateErrors, setDuplicateErrors] = useState<{
+    email?: string;
+    phoneNumber?: string;
+    nationalId?: string;
+    payerCardNumber?: string;
+  }>({});
+
+  const checkFieldDuplicate = (
+    field: 'email' | 'phoneNumber' | 'nationalId' | 'payerCardNumber',
+    val: string
+  ) => {
+    const res = checkDuplicateSeekerField(field, val);
+    setDuplicateErrors((prev) => ({
+      ...prev,
+      [field]: res.isDuplicate ? res.message : undefined,
+    }));
+    return res;
+  };
+
+  const changeAppLanguage = (code: AppLanguage) => {
+    setAppLanguage(code);
+    document.documentElement.lang = code;
+    document.documentElement.dir = (code === 'en' || code === 'tr') ? 'ltr' : 'rtl';
+  };
 
   // 5-step wizard step (1: Info, 2: Destination & Address, 3: Docs & Skills, 4: Commitment & Signature, 5: Official Dossier Issued)
   const [regStep, setRegStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -215,6 +248,29 @@ export const OnboardingFlow: React.FC = () => {
       showToast(passCheck.error || 'رمز عبور باید حداقل ۸ کاراکتر و شامل حروف بزرگ، کوچک و اعداد انگلیسی باشد.', 'error');
       return false;
     }
+
+    // Instant duplicate validation
+    const dupNatId = checkFieldDuplicate('nationalId', nationalId);
+    if (dupNatId.isDuplicate) {
+      showToast(dupNatId.message || 'این کد ملی یا شماره پاسپورت قبلاً در سامانه ثبت شده است.', 'error');
+      return false;
+    }
+    const dupPhone = checkFieldDuplicate('phoneNumber', phoneNumber);
+    if (dupPhone.isDuplicate) {
+      showToast(dupPhone.message || 'این شماره تلفن قبلاً در سامانه ثبت شده است.', 'error');
+      return false;
+    }
+    const dupCard = checkFieldDuplicate('payerCardNumber', payerCardNumber);
+    if (dupCard.isDuplicate) {
+      showToast(dupCard.message || 'این شماره کارت بانکی قبلاً در سامانه ثبت شده است.', 'error');
+      return false;
+    }
+    const dupEmail = checkFieldDuplicate('email', email);
+    if (dupEmail.isDuplicate) {
+      showToast(dupEmail.message || 'این آدرس ایمیل قبلاً در سامانه ثبت شده است.', 'error');
+      return false;
+    }
+
     return true;
   };
 
@@ -274,6 +330,12 @@ export const OnboardingFlow: React.FC = () => {
       return;
     }
 
+    if (!signatureDataUrl) {
+      showToast('لطفاً ابتدا تعهدنامه را باز کرده و امضای دیجیتال خود را ثبت نمایید.', 'error');
+      setIsCommitmentModalOpen(true);
+      return;
+    }
+
     if (!acceptTerms) {
       showToast('لطفاً قوانین و ضوابط کاریابی را تایید نمایید.', 'error');
       return;
@@ -322,8 +384,8 @@ export const OnboardingFlow: React.FC = () => {
     if (res.success) {
       setIsCommitmentModalOpen(false);
       setRegisteredSeeker(res.seeker || null);
-      setRegStep(5);
-      showToast('🎉 ثبت‌نام با موفقیت انجام شد و پرونده رسمی کارجو صادر گردید.', 'success');
+      showToast('🎉 ثبت‌نام شما با موفقیت انجام شد! به سامانه کاریابی کارباما خوش آمدید.', 'success');
+      setHasCompletedOnboarding(true);
     } else {
       showToast(res.error || 'خطا در ثبت‌نام. لطفاً ورودی‌های خود را بررسی نمایید.', 'error');
     }
@@ -449,7 +511,7 @@ export const OnboardingFlow: React.FC = () => {
                         <button
                           key={l.code}
                           type="button"
-                          onClick={() => setAppLanguage(l.code)}
+                          onClick={() => changeAppLanguage(l.code)}
                           className={`p-3 rounded-2xl border text-right transition flex items-center justify-between gap-2 sm:gap-3 ${
                             isSelected
                               ? 'bg-amber-500/20 border-amber-500 text-amber-200 font-bold shadow-lg scale-[1.02]'
@@ -550,6 +612,8 @@ export const OnboardingFlow: React.FC = () => {
                       <input
                         type="text"
                         required
+                        lang={appLanguage}
+                        dir={appLanguage === 'en' || appLanguage === 'tr' ? 'ltr' : 'rtl'}
                         placeholder={t('firstNamePlaceholderText', appLanguage)}
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
@@ -562,6 +626,8 @@ export const OnboardingFlow: React.FC = () => {
                       <input
                         type="text"
                         required
+                        lang={appLanguage}
+                        dir={appLanguage === 'en' || appLanguage === 'tr' ? 'ltr' : 'rtl'}
                         placeholder={t('lastNamePlaceholderText', appLanguage)}
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
@@ -574,6 +640,8 @@ export const OnboardingFlow: React.FC = () => {
                       <input
                         type="text"
                         required
+                        lang={appLanguage}
+                        dir={appLanguage === 'en' || appLanguage === 'tr' ? 'ltr' : 'rtl'}
                         placeholder={t('fatherNamePlaceholderText', appLanguage)}
                         value={fatherName}
                         onChange={(e) => setFatherName(e.target.value)}
@@ -582,20 +650,42 @@ export const OnboardingFlow: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-slate-300 font-medium">{t('nationalIdInputLabel', appLanguage)}</label>
+                      <label className="text-slate-300 font-medium flex items-center justify-between">
+                        <span>{t('nationalIdInputLabel', appLanguage)}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">اعداد انگلیسی 0-9</span>
+                      </label>
                       <input
                         type="text"
                         required
+                        lang="en"
+                        dir="ltr"
+                        inputMode="text"
                         maxLength={15}
                         placeholder={t('nationalIdPlaceholderText', appLanguage)}
                         value={nationalId}
-                        onChange={(e) => setNationalId(e.target.value.trim())}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono focus:outline-hidden focus:border-red-500"
+                        onChange={(e) => {
+                          const sanitized = sanitizeNationalIdOrPassport(e.target.value);
+                          setNationalId(sanitized);
+                          checkFieldDuplicate('nationalId', sanitized);
+                        }}
+                        onBlur={() => checkFieldDuplicate('nationalId', nationalId)}
+                        className={`w-full bg-slate-800 border rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden ${
+                          duplicateErrors.nationalId ? 'border-red-500 ring-1 ring-red-500/50' : 'border-slate-700 focus:border-red-500'
+                        }`}
                       />
+                      {duplicateErrors.nationalId && (
+                        <div className="p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                          <span>{duplicateErrors.nationalId}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-slate-300 font-medium">{t('mobileWhatsAppInputLabel', appLanguage)}</label>
+                      <label className="text-slate-300 font-medium flex items-center justify-between">
+                        <span>{t('mobileWhatsAppInputLabel', appLanguage)}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">اعداد انگلیسی 0-9</span>
+                      </label>
                       <div className="flex gap-1.5" dir="ltr">
                         <select
                           value={phoneCountryCode}
@@ -611,30 +701,60 @@ export const OnboardingFlow: React.FC = () => {
                         <input
                           type="text"
                           required
+                          lang="en"
+                          dir="ltr"
+                          inputMode="numeric"
                           placeholder="9123456789"
                           value={phoneNumber}
-                          onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
+                          onChange={(e) => {
+                            const sanitized = sanitizeNumericOnly(e.target.value, 11);
+                            setPhoneNumber(sanitized);
+                            checkFieldDuplicate('phoneNumber', sanitized);
+                          }}
+                          onBlur={() => checkFieldDuplicate('phoneNumber', phoneNumber)}
+                          className={`w-full bg-slate-800 border rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden ${
+                            duplicateErrors.phoneNumber ? 'border-red-500 ring-1 ring-red-500/50' : 'border-slate-700 focus:border-red-500'
+                          }`}
                         />
                       </div>
+                      {duplicateErrors.phoneNumber && (
+                        <div className="p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                          <span>{duplicateErrors.phoneNumber}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-slate-300 font-medium text-amber-300">{t('payerCardNumberInputLabel', appLanguage)}</label>
+                      <label className="text-slate-300 font-medium text-amber-300 flex items-center justify-between">
+                        <span>{t('payerCardNumberInputLabel', appLanguage)}</span>
+                        <span className="text-[10px] text-amber-400/80 font-mono">۱۶ رقم انگلیسی</span>
+                      </label>
                       <input
                         type="text"
                         required
                         maxLength={19}
+                        lang="en"
                         dir="ltr"
+                        inputMode="numeric"
                         placeholder="6037-9975-XXXX-XXXX"
                         value={payerCardNumber}
                         onChange={(e) => {
-                          const clean = e.target.value.replace(/\D/g, '').slice(0, 16);
-                          const formatted = clean.match(/.{1,4}/g)?.join('-') || clean;
-                          setPayerCardNumber(formatted);
+                          const sanitized = sanitizeCardNumber(e.target.value);
+                          setPayerCardNumber(sanitized);
+                          checkFieldDuplicate('payerCardNumber', sanitized);
                         }}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono font-bold text-left focus:outline-hidden focus:border-amber-500"
+                        onBlur={() => checkFieldDuplicate('payerCardNumber', payerCardNumber)}
+                        className={`w-full bg-slate-800 border rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono font-bold text-left focus:outline-hidden ${
+                          duplicateErrors.payerCardNumber ? 'border-red-500 ring-1 ring-red-500/50' : 'border-slate-700 focus:border-amber-500'
+                        }`}
                       />
+                      {duplicateErrors.payerCardNumber && (
+                        <div className="p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                          <span>{duplicateErrors.payerCardNumber}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-1 sm:col-span-2">
@@ -645,12 +765,27 @@ export const OnboardingFlow: React.FC = () => {
                       <input
                         type="email"
                         required
+                        lang="en"
                         dir="ltr"
+                        inputMode="email"
                         placeholder="example@gmail.com"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
+                        onChange={(e) => {
+                          const val = e.target.value.trim();
+                          setEmail(val);
+                          checkFieldDuplicate('email', val);
+                        }}
+                        onBlur={() => checkFieldDuplicate('email', email)}
+                        className={`w-full bg-slate-800 border rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden ${
+                          duplicateErrors.email ? 'border-red-500 ring-1 ring-red-500/50' : 'border-slate-700 focus:border-red-500'
+                        }`}
                       />
+                      {duplicateErrors.email && (
+                        <div className="p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                          <span>{duplicateErrors.email}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-1">
@@ -658,10 +793,11 @@ export const OnboardingFlow: React.FC = () => {
                       <input
                         type="text"
                         required
+                        lang="en"
                         dir="ltr"
                         placeholder={t('usernamePlaceholderText', appLanguage)}
                         value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        onChange={(e) => setUsername(toEnglishDigits(e.target.value).replace(/[^a-zA-Z0-9_.-]/g, '').toLowerCase())}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
                       />
                     </div>
@@ -672,10 +808,11 @@ export const OnboardingFlow: React.FC = () => {
                         <input
                           type={showPassword ? 'text' : 'password'}
                           required
+                          lang="en"
                           dir="ltr"
                           placeholder="Abc12345"
                           value={password}
-                          onChange={(e) => setPassword(e.target.value)}
+                          onChange={(e) => setPassword(toEnglishDigits(e.target.value))}
                           className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-red-500"
                         />
                         <button
@@ -1170,20 +1307,34 @@ export const OnboardingFlow: React.FC = () => {
                       {t('commitmentCardDescText', appLanguage)}
                     </p>
 
-                    <button
-                      type="button"
-                      onClick={() => setIsCommitmentModalOpen(true)}
-                      className="w-full py-3 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2"
-                    >
-                      <FileText className="w-4 h-4" />
-                      <span>{t('openCommitmentModalBtn', appLanguage)}</span>
-                    </button>
-
-                    {signatureDataUrl && (
-                      <div className="p-2 bg-emerald-950/40 border border-emerald-500/40 rounded-xl flex items-center gap-2 text-xs text-emerald-300">
-                        <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span>{t('signatureSuccessText', appLanguage)}</span>
+                    {signatureDataUrl ? (
+                      <div className="p-3 bg-emerald-950/40 border border-emerald-500/50 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="flex items-center gap-1.5 text-emerald-300 font-bold">
+                            <CheckCircle className="w-4 h-4 text-emerald-400" />
+                            <span>امضای الکترونیکی رسمی متقاضی ثبت شد ✓</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsCommitmentModalOpen(true)}
+                            className="text-[11px] text-amber-400 hover:text-amber-300 font-bold underline"
+                          >
+                            مشاهده و ویرایش امضا
+                          </button>
+                        </div>
+                        <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-center">
+                          <img src={signatureDataUrl} alt="امضای دیجیتال متقاضی" className="max-h-16 object-contain" />
+                        </div>
                       </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsCommitmentModalOpen(true)}
+                        className="w-full py-3 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        <span>{t('openCommitmentModalBtn', appLanguage)}</span>
+                      </button>
                     )}
                   </div>
 
@@ -1212,10 +1363,10 @@ export const OnboardingFlow: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleRegisterFinalSubmit()}
-                      className="px-8 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs sm:text-sm font-black shadow-lg shadow-red-700/30 transition flex items-center justify-center gap-2"
+                      className="px-8 py-3 bg-gradient-to-r from-red-600 to-emerald-600 hover:from-red-500 hover:to-emerald-500 text-white rounded-xl text-xs sm:text-sm font-black shadow-lg shadow-emerald-700/30 transition flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <CheckCircle className="w-4 h-4" />
-                      <span>{t('completeRegistrationBtn', appLanguage)}</span>
+                      <span>ثبت نهایی و ورود به سامانه کارباما</span>
                     </button>
                   </div>
                 </div>
@@ -1622,7 +1773,8 @@ export const OnboardingFlow: React.FC = () => {
         onSaveSignature={(sigUrl) => setSignatureDataUrl(sigUrl)}
         onAcceptAndSubmit={() => {
           setIsCommitmentModalOpen(false);
-          handleRegisterFinalSubmit();
+          setRegStep(4);
+          showToast('امضای دیجیتال با موفقیت ثبت شد. لطفاً تاییدیه نهایی را بررسی و دکمه ثبت نهایی را بزنید.', 'success');
         }}
       />
     </div>

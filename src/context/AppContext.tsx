@@ -58,6 +58,12 @@ import {
 import { collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../services/firebase';
 import { checkPasswordStrength, isValidEmail } from '../utils/validators';
+import {
+  normalizeEmailForComparison,
+  normalizePhoneForComparison,
+  normalizeNationalIdForComparison,
+  normalizeCardForComparison,
+} from '../utils/inputUtils';
 
 
 export type ActiveTab =
@@ -120,8 +126,11 @@ interface AppContextType {
   themeModalOpen: boolean;
   setThemeModalOpen: (open: boolean) => void;
 
-  // Auth methods
   registerSeeker: (input: RegisterSeekerInput) => { success: boolean; error?: string; seeker?: JobSeeker };
+  checkDuplicateSeekerField: (
+    field: 'email' | 'phoneNumber' | 'nationalId' | 'payerCardNumber',
+    value: string
+  ) => { isDuplicate: boolean; message?: string };
   loginSeeker: (username: string, password: string) => { success: boolean; error?: string };
   loginAdmin: (username: string, password: string) => { success: boolean; error?: string };
   logoutSeeker: () => void;
@@ -1359,6 +1368,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 4000);
   };
 
+  const checkDuplicateSeekerField = (
+    field: 'email' | 'phoneNumber' | 'nationalId' | 'payerCardNumber',
+    value: string
+  ): { isDuplicate: boolean; message?: string } => {
+    if (!value || !value.trim()) return { isDuplicate: false };
+
+    if (field === 'email') {
+      const clean = normalizeEmailForComparison(value);
+      if (clean.length > 5 && isValidEmail(clean)) {
+        const found = jobSeekers.some(
+          (s) => (!currentSeekerId || s.id !== currentSeekerId) && normalizeEmailForComparison(s.email || '') === clean
+        );
+        if (found) {
+          return { isDuplicate: true, message: 'این آدرس ایمیل قبلاً در سامانه ثبت گردیده است.' };
+        }
+      }
+    } else if (field === 'phoneNumber') {
+      const clean = normalizePhoneForComparison(value);
+      if (clean.length >= 10) {
+        const found = jobSeekers.some(
+          (s) => (!currentSeekerId || s.id !== currentSeekerId) && normalizePhoneForComparison(s.phoneNumber || s.phone || '') === clean
+        );
+        if (found) {
+          return { isDuplicate: true, message: 'این شماره تماس قبلاً در سامانه ثبت گردیده است.' };
+        }
+      }
+    } else if (field === 'nationalId') {
+      const clean = normalizeNationalIdForComparison(value);
+      if (clean.length >= 6) {
+        const found = jobSeekers.some(
+          (s) => (!currentSeekerId || s.id !== currentSeekerId) && normalizeNationalIdForComparison(s.nationalId) === clean
+        );
+        if (found) {
+          return { isDuplicate: true, message: 'این کد ملی یا شماره پاسپورت قبلاً در سامانه ثبت گردیده است.' };
+        }
+      }
+    } else if (field === 'payerCardNumber') {
+      const clean = normalizeCardForComparison(value);
+      if (clean.length === 16) {
+        const found = jobSeekers.some(
+          (s) => (!currentSeekerId || s.id !== currentSeekerId) && normalizeCardForComparison(s.payerCardNumber || '') === clean
+        );
+        if (found) {
+          return { isDuplicate: true, message: 'این شماره کارت بانکی قبلاً در سامانه ثبت گردیده است.' };
+        }
+      }
+    }
+
+    return { isDuplicate: false };
+  };
+
   const registerSeeker = (input: RegisterSeekerInput): { success: boolean; error?: string; seeker?: JobSeeker } => {
     // 1. Personal & Account Credentials Validation
     if (!input.firstName?.trim() || !input.lastName?.trim() || !input.fatherName?.trim() || !input.nationalId?.trim()) {
@@ -1405,13 +1465,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const fullName = `${input.firstName.trim()} ${input.lastName.trim()}`.trim();
     const formattedPhone = input.phone || `${input.phoneCountryCode} ${input.phoneNumber.trim()}`;
 
-    // Check if matching current seeker or updating own dossier
-    const existingIndex = jobSeekers.findIndex(
-      (s) =>
-        (currentSeekerId && s.id === currentSeekerId) ||
-        (cleanNatId && s.nationalId === cleanNatId) ||
-        (cleanUsername && s.username.toLowerCase() === cleanUsername)
-    );
+    // Strict Duplicate Checks for new registration (ایمیل، تلفن، کد ملی، شماره کارت، نام کاربری)
+    if (!currentSeekerId) {
+      const cleanPhoneComp = normalizePhoneForComparison(input.phoneNumber || input.phone || '');
+      const cleanCardComp = normalizeCardForComparison(input.payerCardNumber || '');
+      const cleanNatIdComp = normalizeNationalIdForComparison(cleanNatId);
+
+      for (const s of jobSeekers) {
+        if (cleanEmail && normalizeEmailForComparison(s.email || '') === cleanEmail) {
+          return { success: false, error: 'این آدرس ایمیل قبلاً در سامانه ثبت شده است و تکراری می‌باشد.' };
+        }
+        if (cleanPhoneComp && normalizePhoneForComparison(s.phoneNumber || s.phone || '') === cleanPhoneComp) {
+          return { success: false, error: 'این شماره تلفن قبلاً در سامانه ثبت شده است و تکراری می‌باشد.' };
+        }
+        if (cleanNatIdComp && normalizeNationalIdForComparison(s.nationalId) === cleanNatIdComp) {
+          return { success: false, error: 'این کد ملی یا شماره پاسپورت قبلاً در سامانه ثبت شده است و تکراری می‌باشد.' };
+        }
+        if (cleanCardComp && cleanCardComp.length === 16 && normalizeCardForComparison(s.payerCardNumber || '') === cleanCardComp) {
+          return { success: false, error: 'این شماره کارت بانکی قبلاً در سامانه ثبت شده است و تکراری می‌باشد.' };
+        }
+        if (cleanUsername && s.username.toLowerCase() === cleanUsername) {
+          return { success: false, error: 'این نام کاربری قبلاً در سامانه ثبت شده است، لطفاً نام کاربری دیگری انتخاب فرمایید.' };
+        }
+      }
+    }
+
+    // Check if updating own dossier while logged in
+    const existingIndex = currentSeekerId ? jobSeekers.findIndex((s) => s.id === currentSeekerId) : -1;
 
     if (existingIndex >= 0) {
       // Seamlessly update existing seeker dossier!
@@ -2881,6 +2961,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         themeModalOpen,
         setThemeModalOpen,
         registerSeeker,
+        checkDuplicateSeekerField,
         loginSeeker,
         loginAdmin,
         logoutSeeker,
