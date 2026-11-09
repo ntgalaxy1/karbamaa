@@ -32,10 +32,10 @@ export const TRANSLATIONS: TranslationDictionary = {
     ar: 'فرص العمل',
   },
   postJob: {
-    fa: 'ثبت آگهی استخدام (۵۰۰ لیر)',
-    tr: 'İş İlanı Yayınla (500 TL)',
-    en: 'Post a Job (500 TL)',
-    ar: 'نشر إعلان وظيفة (500 ليرة)',
+    fa: 'ثبت آگهی استخدام',
+    tr: 'İş İlanı Yayınla',
+    en: 'Post a Job',
+    ar: 'نشر إعلان وظيفة',
   },
   partnerSection: {
     fa: 'بخش همکاران',
@@ -176,10 +176,10 @@ export const TRANSLATIONS: TranslationDictionary = {
     ar: 'منصة التوظيف والإقامة الذكية كارناما',
   },
   postEmployerJobBtn: {
-    fa: 'ثبت آگهی استخدام کارفرما (۵۰۰ لیر)',
-    tr: 'İşveren İlanı Yayınla (500 TL)',
-    en: 'Post Employer Job (500 TL)',
-    ar: 'نشر إعلان وظيفي (500 ليرة)',
+    fa: 'ثبت آگهی استخدام کارفرما',
+    tr: 'İşveren İlanı Yayınla',
+    en: 'Post Employer Job',
+    ar: 'نشر إعلان وظيفي',
   },
   jobAlertTitle: {
     fa: 'هشدار استخدام (Job Alert)',
@@ -260,10 +260,10 @@ export const TRANSLATIONS: TranslationDictionary = {
     ar: '.',
   },
   awaitingVerificationBadge: {
-    fa: 'در انتظار تایید مدیریت و واریز ۵۰۰ لیر ⏳',
-    tr: 'Yönetici onayı ve 500 TL ödeme bekleniyor ⏳',
-    en: 'Awaiting admin verification & 500 TL payment ⏳',
-    ar: 'في انتظار موافقة الإدارة وإيداع 500 ليرة ⏳',
+    fa: 'در انتظار تایید مدیریت و تسویه حساب ریالی ⏳',
+    tr: 'Yönetici onayı ve ödeme bekleniyor ⏳',
+    en: 'Awaiting admin verification & payment ⏳',
+    ar: 'في انتظار موافقة الإدارة والدفع ⏳',
   },
 
   // Search & Filter Placeholders

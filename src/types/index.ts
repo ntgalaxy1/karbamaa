@@ -104,6 +104,7 @@ export interface JobSeeker {
 
   // بخش ۳: شغل‌ها، تخصص‌ها و زبان‌ها
   selectedJobs?: string[];      // شغل‌ها و تخصص‌های انتخابی کارجو از لیست
+  favoriteCategories?: string[];// دسته‌بندی‌های شغلی مورد علاقه جهت دریافت نوتیفیکیشن خودکار
   customProfession?: string;    // حرفه یا تخصص کارجو به دست خود
   targetLanguageLevel?: string; // میزان تسلط به زبان کشور انتخابی
   knownLanguages?: string[];    // زبان‌هایی که بلد هستم

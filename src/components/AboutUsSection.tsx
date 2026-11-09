@@ -19,7 +19,9 @@ import {
 import { useApp } from '../context/AppContext';
 
 export const AboutUsSection: React.FC = () => {
-  const { setActiveTab, currentSeeker, isAdminLoggedIn } = useApp();
+  const { setActiveTab, currentSeeker, isAdminLoggedIn, paymentSettings } = useApp();
+  const feeToman = (paymentSettings?.feeTL || 500) * (paymentSettings?.exchangeRateToman || 5460);
+  const feeRial = feeToman * 10;
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
   const handleCopy = (text: string, key: string) => {
@@ -316,13 +318,13 @@ export const AboutUsSection: React.FC = () => {
         <div className="p-6 bg-slate-900/90 border border-slate-800 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <h4 className="font-bold text-white text-sm">کارفرما هستید و می‌خواهید آگهی استخدام ثبت کنید؟</h4>
-            <p className="text-xs text-slate-400 mt-1">تعرفه ثبت آگهی ۵۰۰ لیر ثابت با امکان پرداخت از درگاه زرین‌پال، حساب ترکیه یا کارت به کارت ایران</p>
+            <p className="text-xs text-slate-400 mt-1">تعرفه ثبت آگهی معادل {feeRial.toLocaleString('fa-IR')} ریال ({feeToman.toLocaleString('fa-IR')} تومان) با بروزرسانی روزانه و امکان پرداخت از درگاه سپ / سپال، زرین‌پال یا کارت به کارت</p>
           </div>
           <button
             onClick={() => setActiveTab('post-job')}
             className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg transition shrink-0"
           >
-            ثبت آگهی استخدام (۵۰۰ لیر)
+            ثبت آگهی استخدام ({feeToman.toLocaleString('fa-IR')} تومان)
           </button>
         </div>
       )}

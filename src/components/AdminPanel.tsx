@@ -1160,7 +1160,7 @@ export const AdminPanel: React.FC = () => {
                 <span>اعلان‌های زنده و گزارشات لحظه‌ای مدیر کارباما</span>
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                گزارش‌های فوری شامل ثبت‌نام کارجویان، واریزی‌های ۵۰۰ لیر، ارسال رزومه‌ها و رزروهای هتل در این نوار ذخیره می‌شوند.
+                گزارش‌های فوری شامل ثبت‌نام کارجویان، واریزی‌های کاربران، ارسال رزومه‌ها و رزروهای هتل در این نوار ذخیره می‌شوند.
               </p>
             </div>
 
@@ -1218,10 +1218,10 @@ export const AdminPanel: React.FC = () => {
             <div>
               <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-amber-400" />
-                <span>بررسی تراکنش‌های پرداختی، فیش‌ها و فعال‌سازی قفل حساب کاربران (۵۰۰ لیر)</span>
+                <span>بررسی تراکنش‌های پرداختی، فیش‌ها و فعال‌سازی قفل حساب کاربران</span>
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                مطابق دستورالعمل سیستم: دسترسی کاربران و قفل حساب پس از پرداخت ۵۰۰ لیر مستلزم بررسی و تایید مدیریت است.
+                مطابق دستورالعمل سیستم: دسترسی کاربران و قفل حساب پس از پرداخت هزینه خدمات مستلزم بررسی و تایید مدیریت است.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1279,7 +1279,7 @@ export const AdminPanel: React.FC = () => {
                     <CheckCircle className="w-8 h-8" />
                   </div>
                   <h4 className="font-bold text-white text-sm">هیچ کارجویی در صف تایید واریزی یا بازگشایی قفل وجود ندارد.</h4>
-                  <p className="text-xs text-slate-400">تمام کارجویانی که هزینه ۵۰۰ لیر را پرداخت کرده‌اند، بررسی و فعال شده‌اند.</p>
+                  <p className="text-xs text-slate-400">تمام کارجویانی که هزینه خدمات را پرداخت کرده‌اند، بررسی و فعال شده‌اند.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -1331,11 +1331,13 @@ export const AdminPanel: React.FC = () => {
                         {/* Payment & Receipt Details Box */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-950/80 border border-slate-800 p-4 rounded-2xl">
                           <div className="space-y-1">
-                            <span className="text-[11px] text-slate-400 block">مبلغ پرداختی تعهد شده:</span>
+                            <span className="text-[11px] text-slate-400 block">مبلغ پرداختی (به‌روزرسانی روزانه):</span>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-base font-extrabold text-amber-400 font-mono">۵۰۰ لیر</span>
+                              <span className="text-base font-extrabold text-amber-400 font-mono">
+                                {Number((paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460)).toLocaleString('fa-IR')} تومان
+                              </span>
                               <span className="text-xs text-slate-400">
-                                ({Number(500 * (paymentSettings.exchangeRateToman || 2300)).toLocaleString('fa-IR')} تومان)
+                                ({Number((paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460) * 10).toLocaleString('fa-IR')} ریال)
                               </span>
                             </div>
                             <span className="text-[11px] text-emerald-400 block pt-0.5">
@@ -1431,12 +1433,12 @@ export const AdminPanel: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => {
-                                approveSeekerAccount(seeker.id, 'پرداخت ۵۰۰ لیر توسط مدیریت تایید و قفل سامانه باز شد');
+                                approveSeekerAccount(seeker.id, 'پرداخت هزینه خدمات توسط مدیریت تایید و قفل سامانه باز شد');
                               }}
                               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg transition flex items-center gap-2"
                             >
                               <ShieldCheck className="w-4 h-4" />
-                              <span>تایید پرداخت ۵۰۰ لیر و فعال‌سازی قفل حساب (دسترسی فوری کارجو)</span>
+                              <span>تایید پرداخت و فعال‌سازی قفل حساب (دسترسی فوری کارجو)</span>
                             </button>
                           </div>
                         </div>
@@ -1485,7 +1487,7 @@ export const AdminPanel: React.FC = () => {
                           </span>
                           <span className="text-xs font-mono text-slate-400">کد: {job.id}</span>
                           <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-bold font-mono">
-                            تعرفه: ۵۰۰ لیر
+                            تعرفه: {Number((paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460)).toLocaleString('fa-IR')} تومان
                           </span>
                         </div>
                         <h4 className="text-base font-extrabold text-white mt-1.5">{job.title}</h4>
@@ -1581,7 +1583,7 @@ export const AdminPanel: React.FC = () => {
                         className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg transition flex items-center gap-2"
                       >
                         <CheckCircle className="w-4 h-4" />
-                        <span>تایید پرداخت ۵۰۰ لیر و انتشار فوری در سایت</span>
+                        <span>تایید پرداخت تعرفه و انتشار فوری در سایت</span>
                       </button>
                     </div>
 
@@ -1623,20 +1625,20 @@ export const AdminPanel: React.FC = () => {
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-mono"
               />
               <p className="text-[11px] text-slate-400">
-                مبلغ ۵۰۰ لیر ثابت با این نرخ معادل <strong>{(500 * Number(exchangeRateInput)).toLocaleString('fa-IR')} تومان</strong> محاسبه خواهد شد.
+                مبلغ معادل ریالی با این نرخ روزانه معادل <strong>{(Number(feeTLInput || 500) * Number(exchangeRateInput)).toLocaleString('fa-IR')} تومان ({(Number(feeTLInput || 500) * Number(exchangeRateInput) * 10).toLocaleString('fa-IR')} ریال)</strong> به صورت خودکار محاسبه و نمایش داده می‌شود.
               </p>
             </div>
 
-            {/* Fixed Fee in TL */}
+            {/* Base Factor */}
             <div className="p-5 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
-              <label className="text-xs font-bold text-amber-300 block">تعرفه ثابت ثبت هر آگهی (به لیر ترکیه)</label>
+              <label className="text-xs font-bold text-amber-300 block">ضریب پایه محاسبه خودکار معادل ریالی روزانه</label>
               <input
                 type="number"
                 value={feeTLInput}
                 onChange={(e) => setFeeTLInput(Number(e.target.value))}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-mono"
               />
-              <p className="text-[11px] text-slate-400">پیش‌فرض طبق درخواست شما: ۵۰۰ لیر ثابت ترکیه</p>
+              <p className="text-[11px] text-slate-400">به‌روزرسانی خودکار روزانه بر اساس نرخ لحظه‌ای بازار آزاد فعال است</p>
             </div>
 
           </div>
@@ -1765,10 +1767,11 @@ export const AdminPanel: React.FC = () => {
             <div className="p-3 bg-teal-950/30 border border-teal-500/20 rounded-xl text-[11px] text-teal-200/90 leading-relaxed space-y-1">
               <p className="font-bold flex items-center gap-1 text-teal-300">
                 <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
-                سرویس‌های یکپارچه‌شده سپال در کارباما:
+                ساختار PHP + MySQL درگاه پرداخت شاپرک (SEP و سپال) روی هاست karbama34.ir:
               </p>
-              <p>۱. <strong>استعلام هوشمند کارت و شبا:</strong> تشخیص نام بانک، نام صاحب حساب و تبدیل کارت به شبا هنگام ثبت‌نام کارجویان.</p>
-              <p>۲. <strong>درگاه شاپرک سپال‌پی:</strong> پرداخت آنلاین ۵۰۰ لیر تعرفه آگهی کارفرما و فعال‌سازی فوری حساب کارجو با کلیه کارت‌های شتاب.</p>
+              <p>• <code>api/sep/request.php</code> : ایجاد درخواست پرداخت و دریافت توکن از SEP</p>
+              <p>• <code>api/sep/callback.php</code> : دریافت پاسخ درگاه پس از پرداخت (<code>https://karbama34.ir/api/sep/callback.php</code>)</p>
+              <p>• <code>api/sep/verify.php</code> : تأیید تراکنش از سرور SEP و ثبت نتیجه در سفارش</p>
             </div>
           </div>
 
@@ -4743,7 +4746,7 @@ export const AdminPanel: React.FC = () => {
 
                   {/* Payment Receipt Photo */}
                   <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2 text-center">
-                    <span className="font-bold text-amber-300 text-xs block">عکس فیش واریزی ۵۰۰ لیر</span>
+                    <span className="font-bold text-amber-300 text-xs block">عکس فیش واریزی کارجو</span>
                     <span className="text-[10px] text-slate-400 block">رسید پرداختی کارجو</span>
                     {selectedSeekerDossier.paymentReceiptPhotoUrl ? (
                       <div
@@ -4854,7 +4857,7 @@ export const AdminPanel: React.FC = () => {
             <div className="flex items-center justify-between px-6 py-4 bg-slate-950 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <FileCheck2 className="w-5 h-5 text-amber-400" />
-                <h3 className="font-extrabold text-white text-sm">مشاهده دقیق فیش واریزی ۵۰۰ لیر</h3>
+                <h3 className="font-extrabold text-white text-sm">مشاهده دقیق فیش واریزی</h3>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -4971,7 +4974,7 @@ export const AdminPanel: React.FC = () => {
               <h3 className="font-extrabold text-white text-sm">رد فیش و عدم تایید آگهی</h3>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
-              علت عدم تایید فیش را بنویسید (مانند: شماره ارجاع نامعتبر، عدم تطابق واریزی ۵۰۰ لیر، فیش ناخوانا یا جعلی):
+              علت عدم تایید فیش را بنویسید (مانند: شماره ارجاع نامعتبر، عدم تطابق مبلغ واریزی، فیش ناخوانا یا جعلی):
             </p>
             <textarea
               rows={3}
@@ -5022,7 +5025,7 @@ export const AdminPanel: React.FC = () => {
               rows={3}
               value={rejectReasonInput}
               onChange={(e) => setRejectReasonInput(e.target.value)}
-              placeholder="مثال: شماره پیگیری نامعتبر است / مبلغ ۵۰۰ لیر کامل واریز نشده / فیش ارسالی ناخوانا است..."
+              placeholder="مثال: شماره پیگیری نامعتبر است / مبلغ کامل واریز نشده / فیش ارسالی ناخوانا است..."
               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500"
             />
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -5039,7 +5042,7 @@ export const AdminPanel: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  rejectSeekerAccount(rejectModalSeekerId, rejectReasonInput || 'عدم تایید پرداخت ۵۰۰ لیر توسط مدیریت');
+                  rejectSeekerAccount(rejectModalSeekerId, rejectReasonInput || 'عدم تایید پرداخت توسط مدیریت');
                   setRejectModalSeekerId(null);
                   setRejectReasonInput('');
                 }}

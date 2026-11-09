@@ -33,7 +33,10 @@ export const ApplicationsSection: React.FC = () => {
     jobs,
     showToast,
     isAdminLoggedIn,
+    paymentSettings,
   } = useApp();
+  const feeToman = (paymentSettings?.feeTL || 500) * (paymentSettings?.exchangeRateToman || 5460);
+  const feeRial = feeToman * 10;
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | ApplicationStatus>('all');
@@ -173,7 +176,7 @@ export const ApplicationsSection: React.FC = () => {
           <div className="space-y-2 max-w-md mx-auto">
             <h3 className="text-lg font-black text-white">بخش پیگیری پرونده استخدامی قفل است</h3>
             <p className="text-xs text-slate-300 leading-relaxed">
-              تمامی اطلاعات پرونده‌ها و پیگیری درخواست‌های ارسالی به کارفرمایان ترکیه، نیازمند عضویت، تسویه ۵۰۰ لیر و تایید حساب توسط مدیریت می‌باشد.
+              تمامی اطلاعات پرونده‌ها و پیگیری درخواست‌های ارسالی به کارفرمایان ترکیه، نیازمند عضویت، تسویه معادل ریالی ({feeRial.toLocaleString('fa-IR')} ریال / {feeToman.toLocaleString('fa-IR')} تومان) و تایید حساب توسط مدیریت می‌باشد.
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -202,10 +205,10 @@ export const ApplicationsSection: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <h4 className="font-bold text-white text-sm">
-                  وضعیت پرونده شما: در انتظار تایید پرداخت ۵۰۰ لیر توسط مدیر ⏳
+                  وضعیت پرونده شما: در انتظار بررسی پرداخت ({feeRial.toLocaleString('fa-IR')} ریال) و تایید قفل توسط مدیر ⏳
                 </h4>
                 <p className="text-slate-300 leading-relaxed">
-                  حساب کاربری شما پس از بررسی فیش واریزی ۵۰۰ لیر فعال خواهد شد. به محض تایید مدیریت، درخواست‌های شما به کارفرمایان ارسال و وضعیت آن در این جدول نمایش داده می‌شود.
+                  حساب کاربری شما پس از بررسی تراکنش پرداختی ({feeToman.toLocaleString('fa-IR')} تومان) توسط مدیریت فعال خواهد شد. به محض تایید مدیریت و باز شدن قفل حساب، درخواست‌های شما به کارفرمایان ارسال و وضعیت آن در این جدول نمایش داده می‌شود.
                 </p>
               </div>
             </div>

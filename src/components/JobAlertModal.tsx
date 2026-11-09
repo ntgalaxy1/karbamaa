@@ -37,18 +37,13 @@ interface JobAlertModalProps {
 }
 
 import { CITIES_WITH_ALL } from '../data/turkeyCities';
+import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 
 const CITIES = CITIES_WITH_ALL;
 
 const CATEGORIES: { key: string; label: string }[] = [
   { key: 'all', label: 'همه دسته‌ها' },
-  { key: 'restaurant', label: 'رستوران و کافه' },
-  { key: 'textile', label: 'خیاطی و پوشاک' },
-  { key: 'hotel', label: 'هتل و گردشگری' },
-  { key: 'warehouse', label: 'انبار و بسته‌بندی' },
-  { key: 'technical', label: 'فنی و ساختمانی' },
-  { key: 'translator', label: 'مترجمی و درمانی' },
-  { key: 'sales', label: 'فروش و بازاریابی' },
+  ...JOB_CATEGORIES_DATA.map((c) => ({ key: c.key, label: c.label })),
 ];
 
 export const JobAlertModal: React.FC<JobAlertModalProps> = ({
@@ -58,6 +53,8 @@ export const JobAlertModal: React.FC<JobAlertModalProps> = ({
 }) => {
   const {
     jobAlerts,
+    favoriteJobCategories,
+    toggleFavoriteCategory,
     saveJobAlert,
     deleteJobAlert,
     toggleJobAlert,
@@ -212,6 +209,44 @@ export const JobAlertModal: React.FC<JobAlertModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-6 text-xs max-h-[70vh] overflow-y-auto space-y-5">
+          {/* Quick Favorite Categories Notification Subscription */}
+          <div className="p-4 bg-gradient-to-br from-amber-950/30 via-slate-900 to-slate-850 border border-amber-500/30 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <BellRing className="w-4 h-4 text-amber-400 animate-bounce" />
+                <span className="font-extrabold text-white text-xs">
+                  اعلان فوری برای دسته‌بندی‌های شغلی مورد علاقه شما
+                </span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
+                {favoriteJobCategories.length} دسته فعال
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              دسته‌بندی‌های مورد علاقه خود را انتخاب کنید تا به محض ثبت آگهی جدید در آن دسته، نوتیفیکیشن فوری دریافت نمایید:
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {JOB_CATEGORIES_DATA.map((cat) => {
+                const isFav = favoriteJobCategories.includes(cat.key);
+                return (
+                  <button
+                    key={cat.key}
+                    type="button"
+                    onClick={() => toggleFavoriteCategory(cat.key, cat.label)}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-[11px] transition flex items-center gap-1.5 border cursor-pointer ${
+                      isFav
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20'
+                        : 'bg-slate-800/80 text-slate-300 border-slate-700 hover:border-amber-500/50 hover:text-white'
+                    }`}
+                  >
+                    {isFav ? <CheckCircle className="w-3.5 h-3.5 text-slate-950" /> : <Bell className="w-3 h-3 text-slate-400" />}
+                    <span>{cat.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {activeTab === 'create' ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Alert Title */}

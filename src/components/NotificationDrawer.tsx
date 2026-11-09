@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 import {
   Bell,
   BellRing,
@@ -39,6 +40,8 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
     requestPushPermission,
     triggerTestJobAlert,
     jobAlerts,
+    favoriteJobCategories,
+    toggleFavoriteCategory,
   } = useApp();
 
   if (!isOpen) return null;
@@ -77,7 +80,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                 <p className="text-[11px] text-slate-400">
                   {unreadNotificationCount > 0
                     ? `${unreadNotificationCount} اعلان جدید خوانده‌نشده`
-                    : 'اعلان‌های مشاغل متناظر با هشدارهای شما'}
+                    : 'اعلان‌های مشاغل متناظر با دسته‌بندی‌های مورد علاقه شما'}
                 </p>
               </div>
             </div>
@@ -105,6 +108,37 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
               </button>
             </div>
           )}
+
+          {/* Favorite Categories Bar inside Drawer */}
+          <div className="px-5 py-3 bg-slate-900/60 border-b border-slate-800 space-y-2">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                <BellRing className="w-3.5 h-3.5 text-amber-400" />
+                دسته‌بندی‌های مورد علاقه (دریافت خودکار نوتیفیکیشن):
+              </span>
+              <span className="text-[10px] text-slate-400">{favoriteJobCategories.length} دسته</span>
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              {JOB_CATEGORIES_DATA.slice(0, 8).map((cat) => {
+                const isFav = favoriteJobCategories.includes(cat.key);
+                return (
+                  <button
+                    key={cat.key}
+                    type="button"
+                    onClick={() => toggleFavoriteCategory(cat.key, cat.label)}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold shrink-0 transition flex items-center gap-1 border cursor-pointer ${
+                      isFav
+                        ? 'bg-amber-500 text-slate-950 border-amber-400'
+                        : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                    }`}
+                  >
+                    {isFav && <Check className="w-2.5 h-2.5" />}
+                    <span>{cat.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Actions Bar */}
           <div className="px-5 py-2.5 bg-slate-850 border-b border-slate-800 flex items-center justify-between text-xs">

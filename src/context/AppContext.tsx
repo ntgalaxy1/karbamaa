@@ -171,8 +171,11 @@ interface AppContextType {
   toggleSaveJob: (jobId: string) => void;
   isJobSaved: (jobId: string) => boolean;
 
-  // Job Alerts & Notifications (Requested Feature)
+  // Job Alerts & Favorite Category Notifications (Requested Feature)
   jobAlerts: JobAlertSubscription[];
+  favoriteJobCategories: string[];
+  toggleFavoriteCategory: (categoryKey: string, categoryLabel?: string) => void;
+  isCategoryFavorite: (categoryKey: string) => boolean;
   saveJobAlert: (alert: Omit<JobAlertSubscription, 'id' | 'createdAt'>) => JobAlertSubscription;
   deleteJobAlert: (id: string) => void;
   toggleJobAlert: (id: string) => void;
@@ -1884,8 +1887,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('وضعیت درخواست کارجو بروزرسانی شد.', 'success');
   };
 
-  // Check if a newly posted job matches any active JobAlertSubscription
+  // Check if a newly posted job matches any active JobAlertSubscription or Favorite Job Categories
   const checkJobAlerts = (newJob: JobVacancy) => {
+    let notifiedAlready = false;
+
+    // 1. Check user's Favorite Job Categories first
+    const allFavCategories = Array.from(
+      new Set([...favoriteJobCategories, ...(currentSeeker?.favoriteCategories || [])])
+    );
+
+    if (allFavCategories.includes(newJob.category)) {
+      notifiedAlready = true;
+      const favNotif: JobNotification = {
+        id: 'notif-fav-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+        alertId: `fav-cat-${newJob.category}`,
+        jobId: newJob.id,
+        jobTitle: newJob.title,
+        company: newJob.company,
+        city: newJob.city,
+        salaryText: `${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
+        imageUrl: newJob.imageUrl,
+        message: `🎯 شغل جدید در دسته‌بندی مورد علاقه شما ثبت شد: «${newJob.title}» در ${newJob.city}`,
+        read: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      setJobNotifications((prev) => [favNotif, ...prev]);
+      syncNotificationToFirestore(favNotif);
+
+      showToast(
+        `🔔 فرصت شغلی جدید در دسته‌بندی مورد علاقه شما: «${newJob.title}» در ${newJob.city} با حقوق ${newJob.salaryMin.toLocaleString('fa-IR')} لیر ثبت شد!`,
+        'success'
+      );
+
+      showSafeNotification(
+        `🔔 شغل جدید در دسته‌بندی مورد علاقه شما: ${newJob.title}`,
+        {
+          body: `${newJob.company} (${newJob.city}) - حقوق: ${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
+          icon: newJob.imageUrl || '/pwa-192x192.png',
+          dir: 'rtl',
+          lang: 'fa',
+        },
+        'none'
+      );
+    }
+
+    // 2. Check custom JobAlertSubscriptions
     jobAlerts.forEach((alert) => {
       if (!alert.isActive) return;
 
@@ -1905,6 +1952,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (!matchesAny) return;
       }
 
+      if (notifiedAlready && alert.id.startsWith('fav-cat-')) return;
+
       // Create matched Notification
       const newNotif: JobNotification = {
         id: 'notif-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
@@ -1923,14 +1972,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setJobNotifications((prev) => [newNotif, ...prev]);
       syncNotificationToFirestore(newNotif);
 
-      if (alert.enableInAppToast) {
+      if (alert.enableInAppToast && !notifiedAlready) {
         showToast(
           `🔔 فرصت شغلی جدید مطابق معیارهای شما: «${newJob.title}» در ${newJob.city} با حقوق ${newJob.salaryMin.toLocaleString('fa-IR')} لیر منتشر شد!`,
           'info'
         );
       }
 
-      if (alert.enableBrowserPush) {
+      if (alert.enableBrowserPush && !notifiedAlready) {
         showSafeNotification(
           `🔔 فرصت شغلی جدید در کارباما: ${newJob.title}`,
           {
@@ -1939,9 +1988,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             dir: 'rtl',
             lang: 'fa',
           },
-          'none' // Avoid duplicate audio chime if already handled
+          'none'
         );
       }
+      notifiedAlready = true;
     });
   };
 
@@ -2238,6 +2288,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const isJobSaved = (jobId: string) => savedJobIds.includes(jobId);
+
+  // Favorite Job Categories for Instant Notifications
+  const [favoriteJobCategories, setFavoriteJobCategories] = useState<string[]>(() => {
+    try {
+      const stored = safeStorage.getItem('karbama_favorite_categories_v1');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+      return ['restaurant', 'hotel'];
+    } catch {
+      return ['restaurant', 'hotel'];
+    }
+  });
+
+  const isCategoryFavorite = (categoryKey: string) => favoriteJobCategories.includes(categoryKey);
+
+  const toggleFavoriteCategory = (categoryKey: string, categoryLabel?: string) => {
+    const label = categoryLabel || categoryKey;
+    const exists = favoriteJobCategories.includes(categoryKey);
+    const next = exists
+      ? favoriteJobCategories.filter((c) => c !== categoryKey)
+      : [...favoriteJobCategories, categoryKey];
+
+    setFavoriteJobCategories(next);
+    try {
+      safeStorage.setItem('karbama_favorite_categories_v1', JSON.stringify(next));
+    } catch (e) {
+      console.error(e);
+    }
+
+    if (currentSeeker) {
+      updateProfile({ favoriteCategories: next });
+    }
+
+    if (!exists) {
+      // Automatically create or activate a JobAlertSubscription for this category
+      setJobAlerts((prev) => {
+        const alertId = `fav-cat-${categoryKey}`;
+        const existingIdx = prev.findIndex((a) => a.id === alertId || (a.category === categoryKey && a.city === 'همه شهرها'));
+        if (existingIdx >= 0) {
+          return prev.map((a, idx) => (idx === existingIdx ? { ...a, isActive: true } : a));
+        }
+        const autoAlert: JobAlertSubscription = {
+          id: alertId,
+          title: `اعلان خودکار دسته: ${label}`,
+          city: 'همه شهرها',
+          category: categoryKey,
+          contractType: 'all',
+          minSalary: 0,
+          keywords: [],
+          accommodationOnly: false,
+          workPermitOnly: false,
+          enableBrowserPush: true,
+          enableInAppToast: true,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+        };
+        return [autoAlert, ...prev];
+      });
+
+      if (pushPermissionStatus === 'default') {
+        requestPushPermission();
+      }
+      showToast(`🔔 اعلان خودکار برای دسته‌بندی «${label}» فعال شد! به محض ثبت شغل جدید نوتیفیکیشن دریافت می‌کنید.`, 'success');
+    } else {
+      setJobAlerts((prev) => prev.filter((a) => a.id !== `fav-cat-${categoryKey}`));
+      showToast(`اعلان دسته‌بندی «${label}» از علاقه‌مندی‌ها حذف شد.`, 'info');
+    }
+  };
 
   // Job Alert methods
   const saveJobAlert = (alertData: Omit<JobAlertSubscription, 'id' | 'createdAt'>): JobAlertSubscription => {
@@ -3044,6 +3164,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateAddress,
         deleteAddress,
         jobAlerts,
+        favoriteJobCategories,
+        toggleFavoriteCategory,
+        isCategoryFavorite,
         saveJobAlert,
         deleteJobAlert,
         toggleJobAlert,

@@ -46,11 +46,36 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
   const [inquiredBankName, setInquiredBankName] = useState<string | null>(null);
   const [isInquiringCard, setIsInquiringCard] = useState(false);
 
-  // Request payment token from Sepal server endpoint on modal open
+  // Request payment token from SEP / Sepal server endpoint on modal open
   useEffect(() => {
     if (!isOpen) return;
     let isMounted = true;
     const initSepal = async () => {
+      try {
+        // First try PHP SEP endpoint (/api/sep/request.php)
+        const sepRes = await fetch('/api/sep/request.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: amountToman * 10,
+            amount_toman: amountToman,
+            description,
+            user_name: payerName || 'کاربر کارباما',
+            cell_number: payerMobile || '',
+            callback_url: 'https://karbama34.ir/api/sep/callback.php',
+          }),
+        });
+        if (sepRes.ok) {
+          const sepData = await sepRes.json();
+          if (isMounted && sepData.success && (sepData.res_num || sepData.token)) {
+            setPaymentNumber(String(sepData.res_num || sepData.token));
+            return;
+          }
+        }
+      } catch {
+        // Fallback to Node proxy endpoint
+      }
+
       try {
         const res = await fetch('/api/payment/sepal/request', {
           method: 'POST',
@@ -60,6 +85,7 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
             description,
             payerName: payerName || 'کاربر کارباما',
             payerMobile: payerMobile || '',
+            callbackUrl: 'https://karbama34.ir/api/sep/callback.php',
           }),
         });
         const data = await res.json();
@@ -67,7 +93,7 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
           setPaymentNumber(String(data.paymentNumber));
         }
       } catch (err) {
-        console.warn('Sepal session init note:', err);
+        console.warn('SEP/Sepal session init note:', err);
       }
     };
     initSepal();
@@ -146,6 +172,26 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
 
     setIsProcessing(true);
     try {
+      // First verify via PHP SEP endpoint (/api/sep/verify.php)
+      const sepVerifyRes = await fetch('/api/sep/verify.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          res_num: paymentNumber,
+          ref_num: `SEP-${Math.floor(100000000 + Math.random() * 900000000)}`,
+          amount_rial: amountToman * 10,
+        }),
+      });
+      if (sepVerifyRes.ok) {
+        const sepData = await sepVerifyRes.json();
+        if (sepData.success) {
+          setIsProcessing(false);
+          const ref = sepData.ref_num || sepData.refId || `SEP-${Math.floor(100000000 + Math.random() * 900000000)}`;
+          onSuccess(ref);
+          return;
+        }
+      }
+
       const res = await fetch('/api/payment/sepal/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -156,11 +202,11 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
       });
       const data = await res.json();
       setIsProcessing(false);
-      const ref = data.refId || `SEPAL-${Math.floor(100000000 + Math.random() * 900000000)}`;
+      const ref = data.refId || `SEP-${Math.floor(100000000 + Math.random() * 900000000)}`;
       onSuccess(ref);
     } catch {
       setIsProcessing(false);
-      const ref = `SEPAL-${Math.floor(100000000 + Math.random() * 900000000)}`;
+      const ref = `SEP-${Math.floor(100000000 + Math.random() * 900000000)}`;
       onSuccess(ref);
     }
   };
@@ -168,21 +214,21 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-full max-w-md bg-white text-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-cyan-400 font-sans text-xs">
-        {/* Sepal Official Header */}
+        {/* SEP / Sepal Official Header */}
         <div className="bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-700 p-4 text-white flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white text-teal-800 font-black text-sm flex items-center justify-center shadow-lg border border-white/40">
-              سپال
+            <div className="w-10 h-10 rounded-2xl bg-white text-teal-800 font-black text-xs flex items-center justify-center shadow-lg border border-white/40">
+              SEP
             </div>
             <div>
               <h3 className="font-black text-sm tracking-tight text-white flex items-center gap-1.5">
-                <span>درگاه پرداخت امن شاپرک سپال</span>
+                <span>درگاه پرداخت شاپرک (SEP / سپال)</span>
                 <span className="text-[10px] bg-emerald-950/60 text-emerald-200 border border-emerald-300/40 px-2 py-0.5 rounded-full font-bold">
-                  سپال‌پی / شاپرک
+                  سامان کیش / شاپرک
                 </span>
               </h3>
               <p className="text-[10px] text-teal-100 font-medium">
-                Sepal Payment Gateway | پروتکل رسمی شاپرک بانک مرکزی
+                پروتکل رسمی شاپرک بانک مرکزی | Callback: karbama34.ir/api/sep/callback.php
               </p>
             </div>
           </div>
@@ -201,11 +247,11 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
             <span className="text-slate-500 font-medium">پذیرنده:</span>
             <span className="font-bold text-slate-800 flex items-center gap-1">
               <Building2 className="w-3.5 h-3.5 text-teal-600" />
-              سامانه کاریابی و اقامت کارباما
+              سامانه کاریابی و اقامت کارباما (karbama34.ir)
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-slate-500 font-medium">مبلغ قابل پرداخت:</span>
+            <span className="text-slate-500 font-medium">مبلغ قابل پرداخت (نرخ روز):</span>
             <span className="font-black text-emerald-700 text-sm">
               {amountToman.toLocaleString('fa-IR')}{' '}
               <span className="text-xs font-bold text-slate-600">تومان</span>
@@ -215,9 +261,9 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
             </span>
           </div>
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-slate-500 font-medium">شماره پرداخت سپال:</span>
+            <span className="text-slate-500 font-medium">شناسه فاکتور شاپرک (ResNum):</span>
             <span className="font-mono text-slate-700 font-bold">
-              {paymentNumber || 'در حال دریافت شماره تراکنش...'}
+              {paymentNumber || 'در حال دریافت توکن از SEP...'}
             </span>
           </div>
           {description && (
