@@ -34,6 +34,7 @@ import { CurrencyExchangeSection } from './components/CurrencyExchangeSection';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { PrivacyPolicySection } from './components/PrivacyPolicySection';
+import { scanAndTranslateDOM } from './utils/autoDomTranslator';
 
 
 // Centered App Startup Splash Screen with Smooth Fade-out
@@ -93,6 +94,7 @@ const MainContent: React.FC = () => {
     toasts,
     currentSeeker,
     currentPartner,
+    appLanguage,
   } = useApp();
   const [adminLoginModalOpen, setAdminLoginModalOpen] = useState(false);
   const [aboutUsModalOpen, setAboutUsModalOpen] = useState(false);
@@ -106,6 +108,37 @@ const MainContent: React.FC = () => {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
   }, [activeTab]);
+
+  // 0-to-100% Full-Site Multi-Language DOM & Dynamic Content Translator
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const isLtr = appLanguage === 'en' || appLanguage === 'tr';
+    document.documentElement.dir = isLtr ? 'ltr' : 'rtl';
+    document.documentElement.lang = appLanguage;
+
+    // Immediate scan
+    scanAndTranslateDOM(document.body, appLanguage);
+
+    let rafId: number | null = null;
+    const observer = new MutationObserver(() => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        scanAndTranslateDOM(document.body, appLanguage);
+      });
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    return () => {
+      observer.disconnect();
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+    };
+  }, [appLanguage, activeTab, isUserAuthenticated]);
 
   return (
     <>

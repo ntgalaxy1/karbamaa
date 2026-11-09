@@ -2,7 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { TurkishLevel, ResidenceStatus, TargetCountry, Gender, JobSeeker } from '../types';
 import { CommitmentModal } from './CommitmentModal';
-import { checkPasswordStrength, isValidEmail } from '../utils/validators';
+import {
+  checkPasswordStrength,
+  isValidEmail,
+  validatePhoneNumber,
+  validateIranianBankCard,
+  validateNationalIdOrPassport,
+} from '../utils/validators';
 import {
   toEnglishDigits,
   sanitizeNumericOnly,
@@ -238,6 +244,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     recoverPassword,
     brokerSettings,
     appLanguage,
+    setActiveTab,
   } = useApp();
 
   const [mode, setMode] = useState<'login' | 'register' | 'admin'>(defaultMode);
@@ -307,6 +314,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
   const [nationalCardPhotoUrl, setNationalCardPhotoUrl] = useState<string>('');
   const [payerCardNumber, setPayerCardNumber] = useState<string>('');
   const [inquiredPayerBank, setInquiredPayerBank] = useState<string | null>(null);
+  const [payerCardValidationError, setPayerCardValidationError] = useState<string | null>(null);
   const [isInquiringPayerBank, setIsInquiringPayerBank] = useState(false);
   const [contractTermsAgreed, setContractTermsAgreed] = useState<boolean>(true);
   const [isCommitmentModalOpen, setIsCommitmentModalOpen] = useState<boolean>(false);
@@ -314,7 +322,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
   const inquireSepalBank = async (rawCard: string) => {
     if (rawCard.length !== 16) {
       setInquiredPayerBank(null);
+      setPayerCardValidationError(null);
       return;
+    }
+    const cardValidation = validateIranianBankCard(rawCard);
+    if (!cardValidation.isValid) {
+      setInquiredPayerBank(null);
+      setPayerCardValidationError(cardValidation.error || 'شماره کارت بانکی وارد شده واقعی نیست.');
+      return;
+    }
+    setPayerCardValidationError(null);
+    if (cardValidation.bankName) {
+      setInquiredPayerBank(cardValidation.bankName);
     }
     setIsInquiringPayerBank(true);
     try {
@@ -328,7 +347,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
         setInquiredPayerBank(data.data.bankName);
       }
     } catch {
-      // ignore
+      // fallback to local BIN bankName already set
     } finally {
       setIsInquiringPayerBank(false);
     }
@@ -376,14 +395,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
       setError('لطفاً نام پدر را وارد نمایید.');
       return false;
     }
-    const cleanNatId = nationalId.replace(/\s/g, '');
-    if (!cleanNatId || cleanNatId.length < 6) {
-      setError('لطفاً کد ملی یا شماره پاسپورت معتبر را وارد نمایید.');
+    const natIdValidation = validateNationalIdOrPassport(nationalId);
+    if (!natIdValidation.isValid) {
+      setError(natIdValidation.error || 'لطفاً کد ملی ۱۰ رقمی واقعی یا شماره پاسپورت معتبر را وارد نمایید.');
       return false;
     }
-    const cleanPhone = phoneNumber.replace(/\s/g, '');
-    if (!cleanPhone || cleanPhone.length < 7 || !/^\d+$/.test(cleanPhone)) {
-      setError('لطفاً شماره تلفن همراه معتبر را وارد کنید.');
+    const phoneValidation = validatePhoneNumber(phoneNumber, phoneCountryCode);
+    if (!phoneValidation.isValid) {
+      setError(phoneValidation.error || 'لطفاً شماره تلفن همراه واقعی و معتبر را وارد کنید.');
       return false;
     }
     if (!email.trim() || !isValidEmail(email)) {
@@ -562,23 +581,58 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     setHasDrawnSignature(true);
   };
 
-  // Image Upload Handlers
+  // Image Upload Handlers with client-side canvas compression for fast persistence
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
     setter: (val: string) => void
   ) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 8 * 1024 * 1024) {
-        setError('حجم تصویر نباید بیشتر از ۸ مگابایت باشد.');
+      if (file.size > 15 * 1024 * 1024) {
+        setError('حجم تصویر نباید بیشتر از ۱۵ مگابایت باشد.');
         return;
       }
       const reader = new FileReader();
       reader.onload = (event) => {
-        if (event.target?.result) {
-          setter(event.target.result as string);
+        const rawDataUrl = event.target?.result as string;
+        if (!rawDataUrl) return;
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const maxDim = 900;
+            let width = img.width;
+            let height = img.height;
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              const compressed = canvas.toDataURL('image/jpeg', 0.76);
+              setter(compressed);
+            } else {
+              setter(rawDataUrl);
+            }
+            setError(null);
+          } catch {
+            setter(rawDataUrl);
+            setError(null);
+          }
+        };
+        img.onerror = () => {
+          setter(rawDataUrl);
           setError(null);
-        }
+        };
+        img.src = rawDataUrl;
       };
       reader.readAsDataURL(file);
     }
@@ -647,9 +701,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
       setError('بارگذاری عکس صفحه اول پاسپورت الزامی است. لطفاً عکس واضح از پاسپورت خود به‌طوری که هر چهار گوشه پاسپورت کاملاً داخل کادر مشخص باشد بارگذاری فرمایید.');
       return false;
     }
-    const cleanPayerCard = payerCardNumber.replace(/\D/g, '');
-    if (!cleanPayerCard || cleanPayerCard.length < 16) {
-      setError('لطفاً شماره کارت ۱۶ رقمی واریز کننده وجه را به درستی وارد نمایید.');
+    const cardValidation = validateIranianBankCard(payerCardNumber);
+    if (!cardValidation.isValid) {
+      setError(cardValidation.error || 'شماره کارت ۱۶ رقمی وارد شده واقعی و معتبر نیست.');
       return false;
     }
     const dupCard = checkFieldDuplicate('payerCardNumber', payerCardNumber);
@@ -1847,27 +1901,47 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                                 inquireSepalBank(cleanDigits);
                               } else {
                                 setInquiredPayerBank(null);
+                                setPayerCardValidationError(null);
                               }
                             }}
-                            onBlur={() => checkFieldDuplicate('payerCardNumber', payerCardNumber)}
+                            onBlur={() => {
+                              checkFieldDuplicate('payerCardNumber', payerCardNumber);
+                              const cleanDigits = payerCardNumber.replace(/\D/g, '');
+                              if (cleanDigits.length > 0 && cleanDigits.length < 16) {
+                                setPayerCardValidationError('شماره کارت بانکی باید دقیقاً ۱۶ رقم باشد.');
+                              } else if (cleanDigits.length === 16) {
+                                const check = validateIranianBankCard(cleanDigits);
+                                setPayerCardValidationError(check.isValid ? null : check.error || 'شماره کارت معتبر نیست.');
+                              }
+                            }}
                             className={`w-full bg-slate-800 border rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden text-left font-mono font-bold ${
-                              duplicateErrors.payerCardNumber ? 'border-red-500 ring-1 ring-red-500/50' : 'border-slate-700 focus:border-amber-500'
+                              duplicateErrors.payerCardNumber || payerCardValidationError
+                                ? 'border-red-500 ring-1 ring-red-500/50'
+                                : 'border-slate-700 focus:border-amber-500'
                             }`}
                           />
                         </div>
 
+                        {/* Invalid Card Error Feedback */}
+                        {payerCardValidationError && (
+                          <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
+                            <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                            <span>{payerCardValidationError}</span>
+                          </div>
+                        )}
+
                         {/* Sepal Card Inquiry Feedback */}
-                        {isInquiringPayerBank && (
+                        {isInquiringPayerBank && !payerCardValidationError && (
                           <div className="flex items-center gap-1.5 text-[11px] text-teal-400 font-bold bg-teal-950/40 border border-teal-500/30 p-2 rounded-xl animate-in fade-in">
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             <span>در حال استعلام نام بانک از وب‌سرویس سپال‌یار...</span>
                           </div>
                         )}
 
-                        {!isInquiringPayerBank && inquiredPayerBank && (
+                        {!isInquiringPayerBank && inquiredPayerBank && !payerCardValidationError && (
                           <div className="flex items-center gap-1.5 text-[11px] text-emerald-300 font-bold bg-emerald-950/40 border border-emerald-500/40 p-2 rounded-xl animate-in fade-in">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                            <span>بانک صادرکننده: {inquiredPayerBank} (استعلام رسمی سپال)</span>
+                            <span>بانک صادرکننده: {inquiredPayerBank} (کارت بانکی معتبر شتاب ✓)</span>
                           </div>
                         )}
 
@@ -2269,7 +2343,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                     </div>
                   </div>
 
-                  {/* Actions to enter Karbama or view contract */}
+                  {/* Actions to enter Karbama User Panel or view contract */}
                   <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
                     <button
                       type="button"
@@ -2282,11 +2356,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
 
                     <button
                       type="button"
-                      onClick={onClose}
-                      className="w-full sm:flex-1 py-3.5 px-6 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl shadow-xl shadow-emerald-600/30 transition flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer"
+                      onClick={() => {
+                        setActiveTab('settings');
+                        onClose();
+                      }}
+                      className="w-full sm:flex-1 py-3.5 px-5 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl shadow-xl shadow-emerald-600/30 transition flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
                     >
-                      <CheckCircle className="w-5 h-5" />
-                      <span>ورود به سامانه کارباما و مشاهده آگهی‌های شغلی</span>
+                      <User className="w-4 h-4" />
+                      <span>ورود به پنل کاربری و پرونده من</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('jobs');
+                        onClose();
+                      }}
+                      className="w-full sm:w-auto py-3.5 px-5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black rounded-2xl shadow-lg shadow-red-600/30 transition flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
+                    >
+                      <Briefcase className="w-4 h-4" />
+                      <span>مشاهده آگهی‌های شغلی</span>
                     </button>
                   </div>
                 </div>

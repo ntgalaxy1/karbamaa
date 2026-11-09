@@ -11,6 +11,7 @@ import {
   ExternalLink,
   Loader2,
 } from 'lucide-react';
+import { validateIranianBankCard } from '../utils/validators';
 
 interface SepalGatewayModalProps {
   isOpen: boolean;
@@ -111,6 +112,16 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
     setCardNumber(parts.join(' - '));
 
     if (raw.length === 16) {
+      const cardValidation = validateIranianBankCard(raw);
+      if (!cardValidation.isValid) {
+        setInquiredBankName(null);
+        setErrorMsg(cardValidation.error || 'شماره کارت بانکی وارد شده واقعی و معتبر نیست.');
+        return;
+      }
+      setErrorMsg(null);
+      if (cardValidation.bankName) {
+        setInquiredBankName(cardValidation.bankName);
+      }
       setIsInquiringCard(true);
       try {
         const res = await fetch('/api/sepal/card-to-iban', {
@@ -134,8 +145,9 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
 
   const handleRequestOtp = () => {
     const clean = cardNumber.replace(/\D/g, '');
-    if (clean.length < 16) {
-      setErrorMsg('لطفاً ابتدا شماره کارت ۱۶ رقمی را کامل وارد نمایید.');
+    const cardValidation = validateIranianBankCard(clean);
+    if (!cardValidation.isValid) {
+      setErrorMsg(cardValidation.error || 'لطفاً ابتدا یک شماره کارت ۱۶ رقمی واقعی وارد نمایید.');
       return;
     }
     setErrorMsg(null);
@@ -151,8 +163,9 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
     setErrorMsg(null);
 
     const cleanCard = cardNumber.replace(/\D/g, '');
-    if (cleanCard.length < 16) {
-      setErrorMsg('شماره کارت باید ۱۶ رقم باشد.');
+    const cardValidation = validateIranianBankCard(cleanCard);
+    if (!cardValidation.isValid) {
+      setErrorMsg(cardValidation.error || 'شماره کارت بانکی وارد شده واقعی و معتبر نیست.');
       return;
     }
     if (!cvv2 || cvv2.length < 3) {

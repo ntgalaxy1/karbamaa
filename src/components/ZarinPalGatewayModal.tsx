@@ -10,6 +10,7 @@ import {
   RefreshCw,
   ArrowRight,
 } from 'lucide-react';
+import { validateIranianBankCard } from '../utils/validators';
 
 interface ZarinPalGatewayModalProps {
   isOpen: boolean;
@@ -42,11 +43,16 @@ export const ZarinPalGatewayModal: React.FC<ZarinPalGatewayModalProps> = ({
     const raw = value.replace(/\D/g, '').slice(0, 16);
     const parts = raw.match(/.{1,4}/g) || [];
     setCardNumber(parts.join(' - '));
+    if (raw.length === 16) {
+      const check = validateIranianBankCard(raw);
+      setErrorMsg(check.isValid ? null : check.error || 'شماره کارت بانکی وارد شده واقعی نیست.');
+    }
   };
 
   const handleRequestOtp = () => {
-    if (cardNumber.replace(/\D/g, '').length < 16) {
-      setErrorMsg('لطفاً ابتدا شماره کارت ۱۶ رقمی را کامل وارد نمایید.');
+    const check = validateIranianBankCard(cardNumber);
+    if (!check.isValid) {
+      setErrorMsg(check.error || 'لطفاً ابتدا یک شماره کارت ۱۶ رقمی واقعی وارد نمایید.');
       return;
     }
     setErrorMsg(null);
@@ -62,8 +68,9 @@ export const ZarinPalGatewayModal: React.FC<ZarinPalGatewayModalProps> = ({
     setErrorMsg(null);
 
     const cleanCard = cardNumber.replace(/\D/g, '');
-    if (cleanCard.length < 16) {
-      setErrorMsg('شماره کارت باید ۱۶ رقم باشد.');
+    const check = validateIranianBankCard(cleanCard);
+    if (!check.isValid) {
+      setErrorMsg(check.error || 'شماره کارت بانکی وارد شده واقعی و معتبر نیست.');
       return;
     }
     if (!cvv2 || cvv2.length < 3) {

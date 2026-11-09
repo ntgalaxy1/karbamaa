@@ -28,7 +28,10 @@ def zip_dist():
         print("dist directory does not exist. Run build first.")
         return
 
-    print(f"Creating karbama-dist.zip (v{version}) from dist/ contents...")
+    print(f"Creating karbama-dist.zip (v{version}) from dist/ contents (including updated APK & AAB)...")
+    apk_src = f"public/downloads/karbama-v{version}.apk"
+    aab_src = f"public/downloads/karbama-v{version}.aab"
+
     with zipfile.ZipFile(output_public, "w", zipfile.ZIP_DEFLATED) as zipf:
         for root, _, files in os.walk(dist_dir):
             rel_root = os.path.relpath(root, dist_dir)
@@ -44,11 +47,18 @@ def zip_dist():
                 full_path = os.path.join(root, file)
                 rel_path = os.path.relpath(full_path, dist_dir)
                 zipf.write(full_path, rel_path)
+        # Include the latest & versioned APK and AAB inside downloads/ so the site download links are always up-to-date
+        if os.path.exists(apk_src):
+            zipf.write(apk_src, f"downloads/karbama-v{version}.apk")
+            zipf.write(apk_src, "downloads/karbama-latest.apk")
+        if os.path.exists(aab_src):
+            zipf.write(aab_src, f"downloads/karbama-v{version}.aab")
+            zipf.write(aab_src, "downloads/karbama-latest.aab")
 
     shutil.copyfile(output_public, output_public_dl)
     shutil.copyfile(output_public, output_public_ver)
 
-    # Also build Cafe Bazaar Complete Bundle ZIP (containing both signed .apk + .aab + README)
+    # Also build Cafe Bazaar, Myket & Google Play Complete Bundle ZIP (containing both signed .apk + .aab + README)
     bazaar_zip_public = "public/karbama-cafebazaar-package.zip"
     bazaar_zip_dl = f"public/downloads/karbama-cafebazaar-v{version}.zip"
     apk_file = f"public/downloads/karbama-v{version}.apk"

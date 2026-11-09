@@ -30,6 +30,7 @@ import { TURKEY_PROVINCES_AND_DISTRICTS } from '../data/turkeyCities';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 import { getDistrictsForCity } from '../data/turkeyData';
 import { SepalGatewayModal } from './SepalGatewayModal';
+import { validatePhoneNumber } from '../utils/validators';
 
 export const PostJobSection: React.FC = () => {
   const { paymentSettings, submitJobWithPayment, setActiveTab, showToast } = useApp();
@@ -122,6 +123,20 @@ export const PostJobSection: React.FC = () => {
       showToast('حداقل یکی از شماره‌های تماس یا واتس‌اپ را وارد کنید.', 'error');
       return false;
     }
+    if (contactPhone.trim()) {
+      const check = validatePhoneNumber(contactPhone.trim());
+      if (!check.isValid) {
+        showToast(check.error || 'شماره تماس کارفرما واقعی و معتبر نیست.', 'error');
+        return false;
+      }
+    }
+    if (contactWhatsapp.trim()) {
+      const check = validatePhoneNumber(contactWhatsapp.trim());
+      if (!check.isValid) {
+        showToast(check.error || 'شماره واتس‌اپ کارفرما واقعی و معتبر نیست.', 'error');
+        return false;
+      }
+    }
     if (!description.trim()) {
       showToast('لطفاً شرح وظایف یا شرایط کاری را وارد کنید.', 'error');
       return false;
@@ -130,6 +145,13 @@ export const PostJobSection: React.FC = () => {
   };
 
   const handleSubmit = () => {
+    if (payerPhone.trim()) {
+      const check = validatePhoneNumber(payerPhone.trim());
+      if (!check.isValid) {
+        showToast(check.error || 'شماره موبایل پرداخت‌کننده واقعی و معتبر نیست.', 'error');
+        return;
+      }
+    }
     if (paymentMethod === 'sepal') {
       setIsSepalModalOpen(true);
       return;

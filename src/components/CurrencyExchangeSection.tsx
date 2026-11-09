@@ -32,21 +32,34 @@ interface CurrencyItem {
 export const CurrencyExchangeSection: React.FC = () => {
   const { paymentSettings, updatePaymentSettings, showToast } = useApp();
 
-  // Exact live market rates in Rials (IRR) as requested
-  // Dollar: 2,725,000 Rial (272,500 Toman) - change: 14,400 (0.53%)
-  // Euro: 3,051,800 Rial (305,180 Toman) - change: 32,800 (1.09%)
-  // AED: 746,610 Rial (74,661 Toman) - change: 3,720 (0.5%)
-  // GBP: 3,655,500 Rial (365,550 Toman) - change: 38,600 (1.07%)
-  // TRY: 54,600 Rial (5,460 Toman)
-  const [usdRial, setUsdRial] = useState<number>(2725000);
-  const [eurRial, setEurRial] = useState<number>(3051800);
-  const [aedRial, setAedRial] = useState<number>(746610);
-  const [gbpRial, setGbpRial] = useState<number>(3655500);
-  const [tryRial, setTryRial] = useState<number>(54600);
+  const loadStoredRates = () => {
+    try {
+      const raw = safeStorage.getItem('karbama_live_fx_rates_v35');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.usdRial > 100000) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  };
 
-  const [providerName, setProviderName] = useState<string>('نرخ‌های زنده بازار آزاد و صرافی');
+  const cached = loadStoredRates();
+
+  const [usdRial, setUsdRial] = useState<number>(cached?.usdRial || 1522000);
+  const [eurRial, setEurRial] = useState<number>(cached?.eurRial || 1788500);
+  const [aedRial, setAedRial] = useState<number>(cached?.aedRial || 414400);
+  const [gbpRial, setGbpRial] = useState<number>(cached?.gbpRial || 2051200);
+  const [tryRial, setTryRial] = useState<number>(cached?.tryRial || 34110);
+  const [changePct, setChangePct] = useState<number>(cached?.changePct ?? 0.45);
+
+  const [providerName, setProviderName] = useState<string>(
+    cached?.providerName || 'وب‌سرویس زنده بازار آزاد ایران (Wallex/Nobitex) + نرخ جهانی (OpenFX)'
+  );
   const [lastUpdated, setLastUpdated] = useState<string>(
-    new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    cached?.lastUpdated ||
+      new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -62,79 +75,199 @@ export const CurrencyExchangeSection: React.FC = () => {
   const [calcAmount, setCalcAmount] = useState<number>(500);
   const [calcCurrency, setCalcCurrency] = useState<'TRY' | 'USD' | 'EUR' | 'AED' | 'GBP'>('TRY');
 
+  const persistRates = (
+    u: number,
+    e: number,
+    a: number,
+    g: number,
+    t: number,
+    ch: number,
+    prov: string,
+    timeStr: string
+  ) => {
+    try {
+      safeStorage.setItem(
+        'karbama_live_fx_rates_v35',
+        JSON.stringify({
+          usdRial: u,
+          eurRial: e,
+          aedRial: a,
+          gbpRial: g,
+          tryRial: t,
+          changePct: ch,
+          providerName: prov,
+          lastUpdated: timeStr,
+        })
+      );
+    } catch {
+      // ignore
+    }
+  };
+
   // Keep paymentSettings in sync when TRY rate changes
   useEffect(() => {
     const currentToman = Math.round(tryRial / 10);
-    if (paymentSettings.exchangeRateToman && paymentSettings.exchangeRateToman !== currentToman) {
+    if (currentToman > 500 && paymentSettings.exchangeRateToman !== currentToman) {
       updatePaymentSettings({ exchangeRateToman: currentToman });
     }
   }, [tryRial]);
 
-  // Fetch Live Rates
+  const applyRateData = (d: any, label: string, silent: boolean) => {
+    const u = Number(d.USD?.rial || usdRial);
+    const e = Number(d.EUR?.rial || eurRial);
+    const a = Number(d.AED?.rial || aedRial);
+    const g = Number(d.GBP?.rial || gbpRial);
+    const t = Number(d.TRY?.rial || tryRial);
+    const ch = Number(d.USD?.change ?? 0.45);
+    const nowStr = new Date().toLocaleTimeString('fa-IR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+
+    setUsdRial(u);
+    setEurRial(e);
+    setAedRial(a);
+    setGbpRial(g);
+    setTryRial(t);
+    setChangePct(ch);
+    setEditUsdRial(String(u));
+    setEditEurRial(String(e));
+    setEditAedRial(String(a));
+    setEditGbpRial(String(g));
+    setEditTryRial(String(t));
+    setProviderName(label);
+    setLastUpdated(nowStr);
+    persistRates(u, e, a, g, t, ch, label, nowStr);
+    updatePaymentSettings({ exchangeRateToman: Math.round(t / 10) });
+    if (!silent) {
+      showToast('قیمت‌های لحظه‌ای ارز از بازار زنده با موفقیت به‌روزرسانی شدند.', 'success');
+    }
+  };
+
+  // Multi-Layer Live Rate Fetcher (1. Server API -> 2. PHP API -> 3. Direct Browser API)
   const fetchLiveRates = async (silent = false) => {
     setIsRefreshing(true);
+
+    // Layer 1: Node / Express /api/fx-rates
     try {
       const res = await fetch('/api/fx-rates');
       if (res.ok) {
-        const text = await res.text();
-        try {
-          const result = JSON.parse(text);
-          if (result.success && result.data) {
-            const d = result.data;
-            if (d.USD?.rial) setUsdRial(Number(d.USD.rial));
-            if (d.EUR?.rial) setEurRial(Number(d.EUR.rial));
-            if (d.AED?.rial) setAedRial(Number(d.AED.rial));
-            if (d.GBP?.rial) setGbpRial(Number(d.GBP.rial));
-            if (d.TRY?.rial) {
-              setTryRial(Number(d.TRY.rial));
-              updatePaymentSettings({ exchangeRateToman: Math.round(Number(d.TRY.rial) / 10) });
-            }
-            setProviderName('نرخ‌های زنده بازار آزاد و صرافی');
-            setLastUpdated(new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-            if (!silent) showToast('قیمت‌های زنده با موفقیت به‌روزرسانی شدند.', 'success');
-            setIsRefreshing(false);
-            return;
-          }
-        } catch {
-          // JSON parse fallback
+        const result = await res.json();
+        if (result?.success && result?.data?.USD?.rial) {
+          applyRateData(
+            result.data,
+            result.providerLabel || 'بازار زنده ارز ایران (Wallex/Nobitex + Global Forex)',
+            silent
+          );
+          setIsRefreshing(false);
+          return;
         }
       }
-    } catch (err) {
-      console.warn('Live rates fetch note:', err);
+    } catch {
+      // try next layer
     }
 
-    // Default exact values
-    setTimeout(() => {
-      setUsdRial(2725000);
-      setEurRial(3051800);
-      setAedRial(746610);
-      setGbpRial(3655500);
-      setTryRial(54600);
-      setLastUpdated(new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-      setIsRefreshing(false);
-      if (!silent) {
-        showToast('قیمت‌های زنده بازار آزاد به‌روزرسانی شدند.', 'success');
+    // Layer 2: PHP endpoint (/api/fx-rates.php for karbama34.ir)
+    try {
+      const phpRes = await fetch('/api/fx-rates.php');
+      if (phpRes.ok) {
+        const result = await phpRes.json();
+        if (result?.success && result?.data?.USD?.rial) {
+          applyRateData(
+            result.data,
+            result.providerLabel || 'وب‌سرویس زنده ارز سرور (PHP Live FX)',
+            silent
+          );
+          setIsRefreshing(false);
+          return;
+        }
       }
-    }, 300);
+    } catch {
+      // try next layer
+    }
+
+    // Layer 3: Direct Client-Side Browser Fetch (Open Exchange Rates + Wallex)
+    try {
+      let liveUsdToman = 0;
+      let liveCh = 0.45;
+      try {
+        const wRes = await fetch('https://api.wallex.ir/v1/markets');
+        if (wRes.ok) {
+          const wJson = await wRes.json();
+          const p = Number(wJson?.result?.symbols?.USDTTMN?.stats?.lastPrice || 0);
+          if (p > 20000) {
+            liveUsdToman = Math.round(p);
+            liveCh = Number(wJson?.result?.symbols?.USDTTMN?.stats?.['24h_ch'] || 0);
+          }
+        }
+      } catch {
+        // fallback
+      }
+
+      const erRes = await fetch('https://open.er-api.com/v6/latest/USD');
+      if (erRes.ok) {
+        const erJson = await erRes.json();
+        const rates = erJson?.rates || {};
+        const baseUsdRial = (liveUsdToman > 20000 ? liveUsdToman : Math.round(usdRial / 10)) * 10;
+        const tryRate = Number(rates.TRY || 44.62);
+        const eurRate = Number(rates.EUR || 0.851);
+        const aedRate = Number(rates.AED || 3.6725);
+        const gbpRate = Number(rates.GBP || 0.742);
+
+        applyRateData(
+          {
+            USD: { rial: baseUsdRial, change: liveCh },
+            TRY: { rial: Math.round((baseUsdRial / tryRate) / 10) * 10 },
+            EUR: { rial: Math.round((baseUsdRial / eurRate) / 100) * 100 },
+            AED: { rial: Math.round((baseUsdRial / aedRate) / 100) * 100 },
+            GBP: { rial: Math.round((baseUsdRial / gbpRate) / 100) * 100 },
+          },
+          'اتصال مستقیم مرورگر به بازار جهانی ارز (Live Direct FX)',
+          silent
+        );
+        setIsRefreshing(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('Direct FX fetch warning:', err);
+    }
+
+    setIsRefreshing(false);
+    if (!silent) {
+      showToast('نرخ‌های ذخیره‌شده نمایش داده شد.', 'info');
+    }
   };
 
+  // Fetch on mount & auto-refresh every 60 seconds
   useEffect(() => {
     fetchLiveRates(true);
+    const timer = setInterval(() => {
+      fetchLiveRates(true);
+    }, 60000);
+    return () => clearInterval(timer);
   }, []);
 
   const handleSaveRates = (e: React.FormEvent) => {
     e.preventDefault();
-    const newUsd = parseFloat(editUsdRial) || 2725000;
-    const newEur = parseFloat(editEurRial) || 3051800;
-    const newAed = parseFloat(editAedRial) || 746610;
-    const newGbp = parseFloat(editGbpRial) || 3655500;
-    const newTry = parseFloat(editTryRial) || 54600;
+    const newUsd = parseFloat(editUsdRial) || usdRial;
+    const newEur = parseFloat(editEurRial) || eurRial;
+    const newAed = parseFloat(editAedRial) || aedRial;
+    const newGbp = parseFloat(editGbpRial) || gbpRial;
+    const newTry = parseFloat(editTryRial) || tryRial;
+    const nowStr = new Date().toLocaleTimeString('fa-IR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
 
     setUsdRial(newUsd);
     setEurRial(newEur);
     setAedRial(newAed);
     setGbpRial(newGbp);
     setTryRial(newTry);
+    setLastUpdated(nowStr);
+    persistRates(newUsd, newEur, newAed, newGbp, newTry, changePct, 'نرخ تنظیم‌شده توسط مدیریت', nowStr);
     updatePaymentSettings({ exchangeRateToman: Math.round(newTry / 10) });
     setIsEditingRates(false);
     showToast('نرخ‌های جدید ارز با موفقیت ذخیره و در تمام سامانه اعمال شدند.', 'success');
@@ -154,8 +287,11 @@ export const CurrencyExchangeSection: React.FC = () => {
   const currentConvertedToman = Math.round(currentConvertedRial / 10);
 
   // Practical 500 Lira to Rial calculation
-  const lira500ToRial = 500 * tryRial; // 500 * 54,600 = 27,300,000 Rial
-  const lira500ToToman = Math.round(lira500ToRial / 10); // 2,730,000 Toman
+  const lira500ToRial = 500 * tryRial;
+  const lira500ToToman = Math.round(lira500ToRial / 10);
+
+  const isPositiveChange = changePct >= 0;
+  const formattedPct = `${isPositiveChange ? '+' : ''}${changePct.toFixed(2)}%`;
 
   // Currency list structure
   const currencies: CurrencyItem[] = [
@@ -165,9 +301,9 @@ export const CurrencyExchangeSection: React.FC = () => {
       name: 'دلار آمریکا',
       rial: usdRial,
       toman: Math.round(usdRial / 10),
-      changeText: '+۱۴,۴۰۰ (۰.۵۳٪)',
-      changePct: 0.53,
-      isPositive: true,
+      changeText: `نوسان ۲۴ساعته: ${formattedPct}`,
+      changePct: Math.abs(changePct),
+      isPositive: isPositiveChange,
       flag: '🇺🇸',
       badge: 'ارز پایه بین‌المللی',
     },
@@ -177,9 +313,9 @@ export const CurrencyExchangeSection: React.FC = () => {
       name: 'یورو اروپا',
       rial: eurRial,
       toman: Math.round(eurRial / 10),
-      changeText: '+۳۲,۸۰۰ (۱.۰۹٪)',
-      changePct: 1.09,
-      isPositive: true,
+      changeText: `نوسان ۲۴ساعته: ${formattedPct}`,
+      changePct: Math.abs(changePct),
+      isPositive: isPositiveChange,
       flag: '🇪🇺',
       badge: 'اتحادیه اروپا',
     },
@@ -189,9 +325,9 @@ export const CurrencyExchangeSection: React.FC = () => {
       name: 'درهم امارات',
       rial: aedRial,
       toman: Math.round(aedRial / 10),
-      changeText: '+۳,۷۲۰ (۰.۵٪)',
-      changePct: 0.5,
-      isPositive: true,
+      changeText: `نوسان ۲۴ساعته: ${formattedPct}`,
+      changePct: Math.abs(changePct),
+      isPositive: isPositiveChange,
       flag: '🇦🇪',
       badge: 'منطقه‌ای خلیج فارس',
     },
@@ -201,9 +337,9 @@ export const CurrencyExchangeSection: React.FC = () => {
       name: 'پوند انگلیس',
       rial: gbpRial,
       toman: Math.round(gbpRial / 10),
-      changeText: '+۳۸,۶۰۰ (۱.۰۷٪)',
-      changePct: 1.07,
-      isPositive: true,
+      changeText: `نوسان ۲۴ساعته: ${formattedPct}`,
+      changePct: Math.abs(changePct),
+      isPositive: isPositiveChange,
       flag: '🇬🇧',
       badge: 'بریتانیا',
     },
@@ -213,9 +349,9 @@ export const CurrencyExchangeSection: React.FC = () => {
       name: 'لیر ترکیه',
       rial: tryRial,
       toman: Math.round(tryRial / 10),
-      changeText: '۵۴,۶۰۰ ریال',
-      changePct: 0,
-      isPositive: true,
+      changeText: `${tryRial.toLocaleString('fa-IR')} ریال (${Math.round(tryRial / 10).toLocaleString('fa-IR')} تومان)`,
+      changePct: Math.abs(changePct),
+      isPositive: isPositiveChange,
       flag: '🇹🇷',
       badge: 'واحد کارباما',
     },

@@ -57,7 +57,13 @@ import {
 } from '../utils/safeNotification';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../services/firebase';
-import { checkPasswordStrength, isValidEmail } from '../utils/validators';
+import {
+  checkPasswordStrength,
+  isValidEmail,
+  validatePhoneNumber,
+  validateIranianBankCard,
+  validateNationalIdOrPassport,
+} from '../utils/validators';
 import {
   normalizeEmailForComparison,
   normalizePhoneForComparison,
@@ -673,12 +679,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       safeStorage.removeItem('karbama_seekers_v19_clean');
       safeStorage.removeItem('karbama_current_user_v19_clean');
 
-      if (safeStorage.getItem('karbama_purge_all_default_seekers_v20_final') !== 'done') {
-        safeStorage.removeItem(STORAGE_KEYS.SEEKERS);
-        safeStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
-        safeStorage.setItem('karbama_purge_all_default_seekers_v20_final', 'done');
-        return [];
-      }
       const stored = safeStorage.getItem(STORAGE_KEYS.SEEKERS);
       const parsed: JobSeeker[] = stored ? JSON.parse(stored) : [];
       return Array.isArray(parsed) ? parsed.filter((s) => !isSampleOrLegacySeeker(s)) : [];
@@ -1101,19 +1101,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (!db) return;
 
-    // Listen to users collection (and purge any legacy/sample seekers from Firestore)
-    const shouldPurgeFirestoreOnce = safeStorage.getItem('karbama_firestore_seekers_purged_v20_final') !== 'done';
+    // Listen to users collection (only remove sample/demo records, never real registered seekers)
     const unsubUsers = onSnapshot(
       collection(db, 'users'),
       (snapshot) => {
-        if (shouldPurgeFirestoreOnce) {
-          safeStorage.setItem('karbama_firestore_seekers_purged_v20_final', 'done');
-          snapshot.forEach((docSnap) => {
-            deleteDoc(doc(db, 'users', docSnap.id)).catch(() => {});
-          });
-          setJobSeekers([]);
-          return;
-        }
         const firestoreUsers: JobSeeker[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data() as JobSeeker;
@@ -1126,8 +1117,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setJobSeekers((prev) => {
           const map = new Map<string, JobSeeker>();
           prev.filter((s) => !isSampleOrLegacySeeker(s)).forEach((s) => map.set(s.id, s));
-          firestoreUsers.forEach((s) => map.set(s.id, s));
-          return Array.from(map.values());
+          firestoreUsers.forEach((s) => {
+            const existing = map.get(s.id);
+            map.set(s.id, existing ? { ...s, ...existing } : s);
+          });
+          const merged = Array.from(map.values());
+          safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(merged));
+          return merged;
         });
       },
       (error) => {
@@ -1258,8 +1254,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const syncUserToFirestore = async (user: JobSeeker) => {
     try {
+      if (!db) return;
+      const sanitized: Record<string, any> = {};
+      Object.entries(user).forEach(([k, v]) => {
+        if (v !== undefined) {
+          // Ensure individual base64 fields don't exceed Firestore's 1MB document limit
+          if (typeof v === 'string' && v.startsWith('data:image/') && v.length > 320000) {
+            sanitized[k] = v.slice(0, 320000);
+          } else {
+            sanitized[k] = v;
+          }
+        }
+      });
       await setDoc(doc(db, 'users', user.id), {
-        ...user,
+        ...sanitized,
         pushNotificationEnabled: true,
         updatedAt: new Date().toISOString(),
       });
@@ -1466,6 +1474,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'لطفاً پیش‌شماره کشور و شماره تماس خود را وارد نمایید.' };
     }
 
+    const phoneValidation = validatePhoneNumber(input.phoneNumber, input.phoneCountryCode);
+    if (!phoneValidation.isValid) {
+      return { success: false, error: phoneValidation.error || 'شماره تلفن وارد شده معتبر نیست.' };
+    }
+
     if (!input.gender) {
       return { success: false, error: 'تعیین جنسیت الزامی می‌باشد.' };
     }
@@ -1484,8 +1497,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const cleanNatId = input.nationalId.trim();
-    if (cleanNatId.replace(/\s/g, '').length < 6) {
-      return { success: false, error: 'کد ملی یا شماره پاسپورت باید حداقل ۶ کاراکتر باشد.' };
+    const natIdCheck = validateNationalIdOrPassport(cleanNatId);
+    if (!natIdCheck.isValid) {
+      return { success: false, error: natIdCheck.error || 'کد ملی یا شماره پاسپورت وارد شده معتبر نیست.' };
+    }
+
+    if (input.payerCardNumber && input.payerCardNumber.trim() !== '') {
+      const cardCheck = validateIranianBankCard(input.payerCardNumber);
+      if (!cardCheck.isValid) {
+        return { success: false, error: cardCheck.error || 'شماره کارت بانکی وارد شده واقعی و معتبر نیست.' };
+      }
     }
 
     // 2. Iran Residence & Target Country Validation
@@ -1570,12 +1591,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setJobSeekers((prev) => {
         const next = [...prev];
         next[existingIndex] = updatedSeeker;
+        safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(next));
         return next;
       });
+      safeStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, updatedSeeker.id);
       syncUserToFirestore(updatedSeeker);
       setCurrentSeekerId(updatedSeeker.id);
+      setIsAdminLoggedIn(false);
       setRole('jobseeker');
-      setActiveTab('jobs');
+      setActiveTab('settings');
 
       addAdminNotification({
         type: 'seeker_registered',
@@ -1584,7 +1608,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         data: { seekerId: updatedSeeker.id },
       });
 
-      showToast(`پرونده و تعهدنامه شما با موفقیت ثبت شد. خوش آمدید ${updatedSeeker.fullName}!`, 'success');
+      showToast(`پرونده و تعهدنامه شما با موفقیت ثبت شد و پنل کاربری شما فعال گردید. خوش آمدید ${updatedSeeker.fullName}!`, 'success');
       return { success: true, seeker: updatedSeeker };
     }
 
@@ -1636,11 +1660,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
-    setJobSeekers((prev) => [newSeeker, ...prev]);
+    setJobSeekers((prev) => {
+      const next = [newSeeker, ...prev];
+      safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(next));
+      return next;
+    });
+    safeStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newSeeker.id);
     syncUserToFirestore(newSeeker);
     setCurrentSeekerId(newSeeker.id);
+    setIsAdminLoggedIn(false);
     setRole('jobseeker');
-    setActiveTab('jobs');
+    setActiveTab('settings');
 
     addAdminNotification({
       type: 'seeker_registered',
@@ -1649,7 +1679,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       data: { seekerId: newSeeker.id },
     });
 
-    showToast(`ثبت‌نام با موفقیت انجام شد. خوش آمدید ${newSeeker.fullName}!`, 'success');
+    showToast(`ثبت‌نام و تشکیل پرونده با موفقیت انجام شد. پنل کاربری شما فعال است، خوش آمدید ${newSeeker.fullName}!`, 'success');
     return { success: true, seeker: newSeeker };
   };
 
@@ -1663,7 +1693,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'نام کاربری یا رمز عبور کارجو اشتباه است.' };
     }
 
+    safeStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, seeker.id);
     setCurrentSeekerId(seeker.id);
+    setIsAdminLoggedIn(false);
     setRole('jobseeker');
     showToast(`خوش آمدید، ${seeker.fullName}!`, 'success');
     return { success: true };

@@ -110,18 +110,18 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
             <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2.5">
               <div className="flex items-center gap-2 text-emerald-300 font-extrabold text-xs sm:text-sm">
                 <Store className="w-4 h-4 text-emerald-400" />
-                <span>فایل‌های آماده آپلود در پیشخوان کافه‌بازار (APK و AAB)</span>
+                <span>دانلود مستقیم سایت + فایل‌های آماده آپلود کافه‌بازار، مایکت و گوگل‌پلی</span>
               </div>
               <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold">
-                v{APP_VERSION}
+                v{APP_VERSION} (کد: {APP_VERSION_CODE})
               </span>
             </div>
 
             <p className="text-slate-300 text-[11.5px] leading-relaxed">
-              هر دو فرمت مورد پذیرش <strong>پیشخوان توسعه‌دهندگان کافه‌بازار</strong> (فایل نصبی <code className="text-emerald-300 font-mono">.apk</code> و باندل <code className="text-amber-300 font-mono">.aab</code>) با امضای دیجیتال <code className="text-emerald-300 font-mono">V1 + V2</code> و مانیفست باینری آماده دانلود و بارگذاری هستند:
+              با هر بار به‌روزرسانی سامانه، نسخه جدید اپلیکیشن به صورت خودکار ساخته و امضا می‌شود؛ هم برای <strong>دانلود مستقیم کاربران از داخل سایت</strong> و هم برای بارگذاری در <strong>کافه‌بازار، مایکت</strong> (<code className="text-emerald-300 font-mono">.apk</code>) و <strong>گوگل‌پلی</strong> (<code className="text-amber-300 font-mono">.aab</code>) با امضای دیجیتال <code className="text-emerald-300 font-mono">V1 + V2</code>:
             </p>
 
-            {/* Primary Download Buttons: APK & AAB Only */}
+            {/* Primary Download Buttons: Direct APK, Store APK, Google Play AAB, Complete Store Bundle */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
               <a
                 href={`/downloads/karbama-v${APP_VERSION}.apk`}
@@ -130,10 +130,10 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
               >
                 <div className="flex items-center gap-1.5">
                   <Download className="w-4 h-4" />
-                  <span>دانلود فایل APK کافه‌بازار</span>
+                  <span>دانلود مستقیم APK (نصب در گوشی / کافه‌بازار و مایکت)</span>
                 </div>
                 <span className="text-[10px] text-emerald-100 font-mono">
-                  karbama-v{APP_VERSION}.apk
+                  karbama-v{APP_VERSION}.apk (Signed V1+V2)
                 </span>
               </a>
 
@@ -144,10 +144,24 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
               >
                 <div className="flex items-center gap-1.5">
                   <Package className="w-4 h-4" />
-                  <span>دانلود App Bundle (فایل AAB)</span>
+                  <span>دانلود باندل AAB (مخصوص گوگل‌پلی و کافه‌بازار)</span>
                 </div>
                 <span className="text-[10px] text-slate-900 font-mono font-bold">
-                  karbama-v{APP_VERSION}.aab
+                  karbama-v{APP_VERSION}.aab (Android App Bundle)
+                </span>
+              </a>
+
+              <a
+                href={`/downloads/karbama-cafebazaar-v${APP_VERSION}.zip`}
+                download={`karbama-cafebazaar-v${APP_VERSION}.zip`}
+                className="sm:col-span-2 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl transition flex items-center justify-between gap-2 text-xs shadow-md shadow-indigo-700/20"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Store className="w-4 h-4" />
+                  <span>دانلود بسته کامل انتشار در کافه‌بازار، مایکت و گوگل‌پلی (شامل APK + AAB + راهنما)</span>
+                </div>
+                <span className="text-[10px] bg-indigo-950/60 px-2 py-0.5 rounded font-mono">
+                  v{APP_VERSION}.zip
                 </span>
               </a>
             </div>
