@@ -99,6 +99,8 @@ export interface JobSeeker {
   seekerPaidAmount?: string;          // مبلغ پرداختی توسط کارجو
   seekerPaymentCurrency?: 'IRT' | 'TRY' | 'USD'; // واحد مبلغ پرداختی (تومان / لیر / دلار)
   seekerPaymentStatus?: 'paid' | 'partial' | 'unpaid'; // وضعیت پرداخت کارجو
+  seekerPaymentMethod?: PaymentMethod; // روش پرداخت کارجو (سپال، زرین‌پال، حساب ترکیه، کارت ایران)
+  seekerPaymentRefId?: string;        // کد پیگیری / شماره ارجاع تراکنش بانکی
 
   // بخش ۳: شغل‌ها، تخصص‌ها و زبان‌ها
   selectedJobs?: string[];      // شغل‌ها و تخصص‌های انتخابی کارجو از لیست
@@ -194,12 +196,14 @@ export interface BrokerSettings {
   brokerNotice?: string;
 }
 
-export type PaymentMethod = 'zarinpal' | 'turkey_bank' | 'iran_card';
+export type PaymentMethod = 'sepal' | 'zarinpal' | 'turkey_bank' | 'iran_card';
 export type JobPaymentStatus = 'pending_payment' | 'pending_approval' | 'paid' | 'rejected';
 
 export interface PaymentGatewaySettings {
-  feeTL: number;                // تعرفه ثابت به لیر (۵۰۰ لیر)
-  exchangeRateToman: number;    // نرخ روز هر لیر به تومان (مثلاً ۲,۳۰۰ تومان)
+  feeTL: number;                // پایه محاسبه لیر (پیش‌فرض ۵۰۰)
+  exchangeRateToman: number;    // نرخ روز هر لیر به تومان
+  lastRateUpdateDate?: string;  // تاریخ آخرین به‌روزرسانی خودکار روزانه
+  autoUpdateDaily?: boolean;    // فعال بودن به‌روزرسانی خودکار روزانه
   turkeyBankName: string;       // نام بانک ترکیه (Ziraat Bankası)
   turkeyIban: string;           // شماره شبا / ایبان ترکیه
   turkeyAccountHolder: string;  // نام صاحب حساب ترکیه
@@ -207,6 +211,10 @@ export interface PaymentGatewaySettings {
   iranCardNumber: string;       // شماره کارت ایران
   iranCardHolder: string;       // نام صاحب کارت ایران
   zarinpalMerchantId?: string;  // مرچنت آی‌دی زرین‌پال
+  sepalApiKey?: string;         // کلید وب‌سرویس درگاه سپال
+  sepalUniqueCode?: string;     // کد یکتای سپال‌یار
+  sepalInquiryToken?: string;   // توکن استعلامات سپال
+  sepTerminalId?: string;       // کد ترمینال درگاه پرداخت سامان (SEP)
 }
 
 export interface AdminCredentials {

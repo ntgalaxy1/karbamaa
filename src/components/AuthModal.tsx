@@ -52,6 +52,7 @@ import {
   KeyRound,
   PenTool,
   Palette,
+  Loader2,
 } from 'lucide-react';
 
 interface AuthModalProps {
@@ -305,8 +306,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
   const [fullBodyPhotoUrl, setFullBodyPhotoUrl] = useState<string>('');
   const [nationalCardPhotoUrl, setNationalCardPhotoUrl] = useState<string>('');
   const [payerCardNumber, setPayerCardNumber] = useState<string>('');
+  const [inquiredPayerBank, setInquiredPayerBank] = useState<string | null>(null);
+  const [isInquiringPayerBank, setIsInquiringPayerBank] = useState(false);
   const [contractTermsAgreed, setContractTermsAgreed] = useState<boolean>(true);
   const [isCommitmentModalOpen, setIsCommitmentModalOpen] = useState<boolean>(false);
+
+  const inquireSepalBank = async (rawCard: string) => {
+    if (rawCard.length !== 16) {
+      setInquiredPayerBank(null);
+      return;
+    }
+    setIsInquiringPayerBank(true);
+    try {
+      const res = await fetch('/api/sepal/card-to-iban', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardNumber: rawCard }),
+      });
+      const data = await res.json();
+      if (data.success && data.data?.bankName) {
+        setInquiredPayerBank(data.data.bankName);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsInquiringPayerBank(false);
+    }
+  };
 
   // File input refs for reliable WebView / mobile taps
   const passportInputRef = useRef<HTMLInputElement | null>(null);
@@ -1844,6 +1870,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                               const sanitized = sanitizeCardNumber(e.target.value);
                               setPayerCardNumber(sanitized);
                               checkFieldDuplicate('payerCardNumber', sanitized);
+                              const cleanDigits = sanitized.replace(/\D/g, '');
+                              if (cleanDigits.length === 16) {
+                                inquireSepalBank(cleanDigits);
+                              } else {
+                                setInquiredPayerBank(null);
+                              }
                             }}
                             onBlur={() => checkFieldDuplicate('payerCardNumber', payerCardNumber)}
                             className={`w-full bg-slate-800 border rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden text-left font-mono font-bold ${
@@ -1851,6 +1883,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                             }`}
                           />
                         </div>
+
+                        {/* Sepal Card Inquiry Feedback */}
+                        {isInquiringPayerBank && (
+                          <div className="flex items-center gap-1.5 text-[11px] text-teal-400 font-bold bg-teal-950/40 border border-teal-500/30 p-2 rounded-xl animate-in fade-in">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>در حال استعلام نام بانک از وب‌سرویس سپال‌یار...</span>
+                          </div>
+                        )}
+
+                        {!isInquiringPayerBank && inquiredPayerBank && (
+                          <div className="flex items-center gap-1.5 text-[11px] text-emerald-300 font-bold bg-emerald-950/40 border border-emerald-500/40 p-2 rounded-xl animate-in fade-in">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span>بانک صادرکننده: {inquiredPayerBank} (استعلام رسمی سپال)</span>
+                          </div>
+                        )}
+
                         {duplicateErrors.payerCardNumber && (
                           <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
                             <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
@@ -1858,7 +1906,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                           </div>
                         )}
                         <p className="text-[10px] text-slate-400">
-                          شماره کارت ۱۶ رقمی که هزینه کارگزار از آن پرداخت گردیده است.
+                          شماره کارت ۱۶ رقمی که هزینه کارگزار از آن پرداخت گردیده است (استعلام آنی با سپال).
                         </p>
                       </div>
 

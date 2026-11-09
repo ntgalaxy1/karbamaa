@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { t } from '../utils/translations';
 import { JobVacancy, JobCategory, TurkishLevel, ContractType } from '../types';
@@ -56,8 +56,10 @@ import {
   Upload,
   Loader2,
   AlertTriangle,
+  CreditCard,
 } from 'lucide-react';
 import { JobImagePicker } from './JobImagePicker';
+import { SepalGatewayModal } from './SepalGatewayModal';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 import { ALL_TURKEY_CITIES_FA, CITIES_WITH_ALL } from '../data/turkeyCities';
 import { getDistrictsForCity } from '../data/turkeyData';
@@ -151,17 +153,25 @@ export const JobSearch: React.FC = () => {
     addAdminNotification,
     appLanguage,
     setAdminJobModalOpen,
+    approveSeekerAccount,
+    updateProfile,
   } = useApp();
 
+  const seekerFeeToman = (paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460);
+  const seekerFeeRial = seekerFeeToman * 10;
+
   // Payment referral state for locked jobseeker with Receipt Photo Upload & AI Verification
+  const receiptFileInputRef = useRef<HTMLInputElement>(null);
   const [paymentReceiptPhoto, setPaymentReceiptPhoto] = useState<string | null>(null);
   const [paymentRefNote, setPaymentRefNote] = useState('');
   const [isReferredToAdmin, setIsReferredToAdmin] = useState(false);
+  const [isSepalModalOpen, setIsSepalModalOpen] = useState(false);
   const [isVerifyingReceipt, setIsVerifyingReceipt] = useState(false);
   const [receiptAiResult, setReceiptAiResult] = useState<{
     tested: boolean;
     isBankReceipt: boolean;
     confidence?: string;
+    detectedType?: string;
     reason: string;
     extractedInfo?: {
       amount?: string;
@@ -172,14 +182,93 @@ export const JobSearch: React.FC = () => {
     };
   } | null>(null);
 
+  // Client-side visual metrics extractor for intelligent bank receipt detection
+  const extractVisualMetrics = async (base64: string): Promise<{
+    width: number;
+    height: number;
+    aspectRatio: number;
+    skinRatio: number;
+    docPatternScore: number;
+    edgeEnergy: number;
+  }> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const w = img.naturalWidth || 100;
+          const h = img.naturalHeight || 100;
+          const sampleSize = 100;
+          const canvas = document.createElement('canvas');
+          canvas.width = sampleSize;
+          canvas.height = sampleSize;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            return resolve({ width: w, height: h, aspectRatio: w / h, skinRatio: 0, docPatternScore: 50, edgeEnergy: 20 });
+          }
+          ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+          const data = ctx.getImageData(0, 0, sampleSize, sampleSize).data;
+          let skinPixels = 0;
+          let edgeSum = 0;
+          const total = sampleSize * sampleSize;
+          let brightPixels = 0;
+          let darkPixels = 0;
+
+          for (let y = 0; y < sampleSize; y++) {
+            for (let x = 0; x < sampleSize; x++) {
+              const idx = (y * sampleSize + x) * 4;
+              const r = data[idx];
+              const g = data[idx + 1];
+              const b = data[idx + 2];
+              const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+              if (lum > 200) brightPixels++;
+              if (lum < 50) darkPixels++;
+
+              // Skin tone detector
+              if (r > 95 && g > 40 && b > 20 && r > g && g > b && (r - g) > 15 && (r - b) > 15) {
+                skinPixels++;
+              }
+
+              // Horizontal edge variation (text lines)
+              if (x < sampleSize - 1) {
+                const nextIdx = (y * sampleSize + (x + 1)) * 4;
+                const nextLum = 0.299 * data[nextIdx] + 0.587 * data[nextIdx + 1] + 0.114 * data[nextIdx + 2];
+                edgeSum += Math.abs(lum - nextLum);
+              }
+            }
+          }
+
+          const skinRatio = skinPixels / total;
+          const edgeEnergy = edgeSum / total;
+          const docPatternScore = ((brightPixels + darkPixels) / total) * 100;
+
+          resolve({
+            width: w,
+            height: h,
+            aspectRatio: w / h,
+            skinRatio,
+            docPatternScore,
+            edgeEnergy,
+          });
+        } catch {
+          resolve({ width: 100, height: 100, aspectRatio: 1, skinRatio: 0, docPatternScore: 50, edgeEnergy: 20 });
+        }
+      };
+      img.onerror = () => {
+        resolve({ width: 100, height: 100, aspectRatio: 1, skinRatio: 0, docPatternScore: 50, edgeEnergy: 20 });
+      };
+      img.src = base64;
+    });
+  };
+
   const verifyReceiptWithAI = async (base64Data: string) => {
     setIsVerifyingReceipt(true);
     setReceiptAiResult(null);
     try {
+      const visualFeatures = await extractVisualMetrics(base64Data);
       const res = await fetch('/api/ai/verify-bank-receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64Data }),
+        body: JSON.stringify({ imageBase64: base64Data, visualFeatures }),
       });
       const data = await res.json();
       const isBank = Boolean(data.isBankReceipt);
@@ -187,23 +276,24 @@ export const JobSearch: React.FC = () => {
         tested: true,
         isBankReceipt: isBank,
         confidence: data.confidence || 'high',
-        reason: data.reason || (isBank ? 'فیش بانکی معتبر تایید شد.' : 'تصویر بارگذاری شده فیش بانکی نیست.'),
+        detectedType: data.detectedType,
+        reason: data.reason || (isBank ? 'فیش بانکی معتبر تایید شد.' : 'تصویر ارسال‌شده شبیه فیش بانکی نمی‌باشد.'),
         extractedInfo: data.extractedInfo,
       });
 
       if (isBank) {
         showToast('✅ اصالت فیش بانکی توسط هوش مصنوعی کارباما تایید شد.', 'success');
       } else {
-        showToast('⚠️ تصویر بارگذاری‌شده فیش بانکی نیست! هوش مصنوعی آن را نپذیرفت.', 'error');
+        showToast('⚠️ تصویر ارسالی شبیه فیش بانکی نیست! لطفاً فیش صحیح را مجدداً ارسال فرمایید.', 'error');
       }
     } catch (err) {
       console.error('Receipt verification failed:', err);
-      // Fallback open
       setReceiptAiResult({
         tested: true,
-        isBankReceipt: true,
-        reason: 'بررسی هوشمند موقتاً در دسترس نبود؛ فیش جهت بازبینی دستی برای مدیریت ارسال خواهد شد.',
+        isBankReceipt: false,
+        reason: 'خطا در ارتباط با سامانه هوش مصنوعی. لطفاً تصویر واضح از فیش بانکی را مجدداً ارسال فرمایید.',
       });
+      showToast('خطا در ارزیابی هوش مصنوعی؛ لطفاً مجدداً تصویر فیش را ارسال فرمایید.', 'error');
     } finally {
       setIsVerifyingReceipt(false);
     }
@@ -225,6 +315,8 @@ export const JobSearch: React.FC = () => {
       }
     };
     reader.readAsDataURL(file);
+    // Reset file input so user can pick the exact same file name if re-trying
+    e.target.value = '';
   };
 
   // Top View Mode: All Jobs vs Saved Jobs
@@ -592,7 +684,7 @@ export const JobSearch: React.FC = () => {
     }
 
     if (currentSeeker.verificationStatus !== 'approved' && !isAdminLoggedIn) {
-      showToast('امکان ارسال درخواست قفل است؛ ابتدا باید واریز ۵۰۰ لیر انجام شده و توسط مدیر تایید شود.', 'error');
+      showToast('امکان ارسال درخواست قفل است؛ ابتدا باید هزینه خدمات پرداخت شده و توسط مدیریت تایید شود.', 'error');
       return;
     }
 
@@ -678,7 +770,7 @@ export const JobSearch: React.FC = () => {
   const handleReferPaymentToAdmin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!paymentReceiptPhoto) {
-      showToast('لطفاً ابتدا تصویر فیش واریزی ۵۰۰ لیر را بارگذاری نمایید.', 'error');
+      showToast('لطفاً ابتدا تصویر فیش واریزی هزینه خدمات را بارگذاری نمایید.', 'error');
       return;
     }
     if (isVerifyingReceipt) {
@@ -692,7 +784,7 @@ export const JobSearch: React.FC = () => {
     addAdminNotification({
       type: 'seeker_payment_referred',
       title: 'ارجاع تصویر فیش واریزی کارجو جهت فعال‌سازی امکانات',
-      message: `کارجو «${currentSeeker?.fullName}» با کد ملی ${currentSeeker?.nationalId} تصویر فیش واریزی (۵۰۰ لیر) را جهت بررسی و فعال‌سازی حساب ارسال کرد.${receiptAiResult?.isBankReceipt ? ' (تایید شده توسط هوش مصنوعی کارباما)' : ''}`,
+      message: `کارجو «${currentSeeker?.fullName}» با کد ملی ${currentSeeker?.nationalId} تصویر فیش واریزی هزینه مصوب را جهت بررسی و فعال‌سازی حساب ارسال کرد.${receiptAiResult?.isBankReceipt ? ' (تایید شده توسط هوش مصنوعی کارباما)' : ''}`,
       data: {
         receiptPhotoUrl: paymentReceiptPhoto,
         paymentNote: paymentRefNote,
@@ -702,6 +794,34 @@ export const JobSearch: React.FC = () => {
     });
     setIsReferredToAdmin(true);
     showToast('تصویر فیش واریزی با موفقیت به مدیریت ارجاع شد. به محض تایید، حساب شما فعال می‌گردد.', 'success');
+  };
+
+  const handleSepalSeekerSuccess = (refId: string) => {
+    setIsSepalModalOpen(false);
+    if (currentSeeker) {
+      updateProfile({
+        seekerPaymentStatus: 'paid',
+        seekerPaymentMethod: 'sepal',
+        seekerPaymentRefId: refId,
+        seekerPaidAmount: `${seekerFeeToman.toLocaleString('fa-IR')} تومان`,
+        seekerPaymentCurrency: 'IRT',
+        verificationStatus: 'pending',
+        isPaymentVerified: false,
+        adminVerificationNote: `پرداخت موفق درگاه شاپرک سپال | کد رهگیری: ${refId} | مبلغ: ${seekerFeeToman.toLocaleString('fa-IR')} تومان | تاریخ: ${new Date().toLocaleDateString('fa-IR')}`,
+      });
+      addAdminNotification({
+        type: 'seeker_payment_referred',
+        title: '💳 پرداخت آنلاین هزینه خدمات توسط کارجو (درگاه شاپرک)',
+        message: `کارجو «${currentSeeker?.fullName}» با کد ملی ${currentSeeker?.nationalId} مبلغ هزینه خدمات مصوب (${seekerFeeToman.toLocaleString('fa-IR')} تومان) را از طریق درگاه پرداخت شاپرک پرداخت نمود (کد رهگیری: ${refId}). لطفاً پس از بررسی، قفل دسترسی ایشان را در پنل مدیریت فعال فرمایید.`,
+        data: {
+          seekerId: currentSeeker?.id,
+          paymentRefId: refId,
+          method: 'sepal',
+        },
+      });
+      setIsReferredToAdmin(true);
+      showToast(`پرداخت شما با شناسه ارجاع سپال ${refId} با موفقیت ثبت شد و به مدیریت ارجاع گردید. پس از بررسی و تایید مدیریت، قفل دسترسی شما فعال خواهد شد.`, 'success');
+    }
   };
 
   const hasActiveFilters =
@@ -905,10 +1025,10 @@ export const JobSearch: React.FC = () => {
                 <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="font-bold text-white">
-                    وضعیت حساب کارجو: در انتظار تایید مدارک و واریز وجه (۵۰۰ لیر)
+                    وضعیت حساب کارجو: در انتظار پرداخت هزینه خدمات و تایید مدیریت
                   </p>
                   <p className="text-slate-300 leading-relaxed">
-                    کارجوی گرامی، اطلاعات شما ثبت شده است. جهت فعال‌سازی کامل امکان ارسال درخواست شغل، مشاهده تماس کارفرمایان و رزومه‌ساز آنلاین، لطفاً ۵۰۰ لیر فیش واریزی را به مدیر ارسال فرمایید یا منتظر تایید پنل بمانید.
+                    کارجوی گرامی، اطلاعات شما ثبت شده است. جهت فعال‌سازی کامل امکان ارسال درخواست شغل، مشاهده تماس کارفرمایان و رزومه‌ساز آنلاین، لطفاً هزینه خدمات به مبلغ {seekerFeeToman.toLocaleString('fa-IR')} تومان ({seekerFeeRial.toLocaleString('fa-IR')} ریال) را پرداخت نمایید یا منتظر تایید پنل بمانید.
                   </p>
                 </div>
               </div>
@@ -1612,7 +1732,7 @@ export const JobSearch: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                      طبق دستورالعمل رسمی کارباما، هیچ آگهی کاری به کارجو تا زمان واریز مبلغ مورد نظر (۵۰۰ لیر ترکیه / معادل ۲,۷۲۵,۰۰۰ تومان به نرخ روز) و ارجاع پرونده به مدیر سامانه نمایش داده نمی‌شود.
+                      طبق دستورالعمل رسمی کارباما، مشاهده اطلاعات تماس کارفرمایان ترکیه تا زمان پرداخت هزینه مصوب خدمات ({seekerFeeToman.toLocaleString('fa-IR')} تومان / {seekerFeeRial.toLocaleString('fa-IR')} ریال به نرخ روز) و تایید مدیر سامانه، قفل می‌باشد.
                     </p>
                   </div>
                 </div>
@@ -1646,15 +1766,47 @@ export const JobSearch: React.FC = () => {
                 </div>
               </div>
 
+              {/* Instant Sepal Online Payment Option */}
+              <div className="p-5 bg-gradient-to-r from-teal-950/70 via-slate-900 to-emerald-950/70 border-2 border-teal-500/50 rounded-2xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="space-y-1 text-right w-full sm:w-auto">
+                  <div className="flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-xl bg-teal-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-md">
+                      سپال
+                    </span>
+                    <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
+                      <span>پرداخت آنلاین شاپرک سپال (ارسال فوری به مدیر جهت تایید و بازگشایی)</span>
+                      <span className="text-[10px] bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded-full font-bold">
+                        شاپرک شتاب
+                      </span>
+                    </h4>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    با پرداخت آنلاین از طریق درگاه رسمی شاپرک سپال، شناسه ارجاع بانکی ثبت شده و به پنل مدیریت ارجاع می‌گردد تا پس از بررسی مدیر، قفل حساب شما فعال و باز شود.
+                  </p>
+                  <div className="text-xs text-teal-300 font-bold font-mono">
+                    مبلغ مصوب (به‌روزرسانی روزانه): {seekerFeeToman.toLocaleString('fa-IR')} تومان ({seekerFeeRial.toLocaleString('fa-IR')} ریال)
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsSepalModalOpen(true)}
+                  className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer transition"
+                >
+                  <CreditCard className="w-4 h-4 text-slate-950" />
+                  <span>ورود به درگاه پرداخت شاپرک و ارسال به مدیر</span>
+                </button>
+              </div>
+
               {/* Payment Details Card */}
               <div className="p-5 bg-gradient-to-br from-red-950/40 to-slate-850/80 border border-red-500/30 rounded-2xl space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <h4 className="text-sm font-bold text-white flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-emerald-400" />
-                    اطلاعات واریز حق خدمات کاریابی و اعزام رسمی به ترکیه
+                    یا واریز دستی به حساب و بارگذاری فیش
                   </h4>
                   <span className="px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-black font-mono self-start sm:self-auto">
-                    مبلغ مصوب: ۵۰۰ لیر (۲,۷۲۵,۰۰۰ تومان / ۲۷,۲۵۰,۰۰۰ ریال)
+                    مبلغ مصوب: {seekerFeeToman.toLocaleString('fa-IR')} تومان ({seekerFeeRial.toLocaleString('fa-IR')} ریال)
                   </span>
                 </div>
 
@@ -1681,15 +1833,23 @@ export const JobSearch: React.FC = () => {
               <div className="p-5 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-3">
                 <h4 className="text-xs font-bold text-white flex items-center gap-2">
                   <Camera className="w-4 h-4 text-amber-400" />
-                  بارگذاری عکس فیش واریزی ۵۰۰ لیر و ارجاع به مدیر جهت فعال‌سازی
+                  بارگذاری عکس فیش واریزی و ارجاع به مدیر جهت فعال‌سازی قفل
                 </h4>
 
-                {isReferredToAdmin ? (
-                  <div className="p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-xl text-emerald-200 text-xs space-y-2">
+                {isReferredToAdmin || currentSeeker.seekerPaymentStatus === 'paid' || Boolean(currentSeeker.seekerPaymentRefId) ? (
+                  <div className="p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-xl text-emerald-200 text-xs space-y-2.5">
                     <div className="flex items-center gap-2 font-bold text-emerald-300">
-                      <CheckCircle className="w-5 h-5 text-emerald-400" />
-                      تصویر فیش واریزی با موفقیت به مدیریت ارسال گردید!
+                      <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+                      <span>اطلاعات واریز هزینه خدمات ثبت و به مدیریت ارجاع گردید!</span>
                     </div>
+                    {currentSeeker.seekerPaymentRefId && (
+                      <div className="p-2.5 bg-slate-900/80 rounded-xl border border-teal-500/30 flex items-center justify-between">
+                        <span className="text-[11px] text-slate-300">کد رهگیری تراکنش شاپرک:</span>
+                        <span className="font-mono text-xs font-bold text-teal-300 select-all">
+                          {currentSeeker.seekerPaymentRefId}
+                        </span>
+                      </div>
+                    )}
                     {paymentReceiptPhoto && (
                       <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-emerald-500/50 shadow-md">
                         <img
@@ -1700,7 +1860,7 @@ export const JobSearch: React.FC = () => {
                       </div>
                     )}
                     <p className="text-[11px] text-slate-300 leading-relaxed">
-                      تصویر فیش جهت تطبیق حسابداری به مدیریت ارجاع شد. به محض تایید مدیریت، تمامی امکانات و آگهی‌های کارفرما برای شما فعال و آزاد خواهند شد.
+                      پرونده و تراکنش شما در نوبت بررسی مدیریت کارباما قرار دارد. پس از بررسی و تایید مدیر، قفل حساب شما به صورت خودکار باز شده و دسترسی کامل به شماره تماس کارفرمایان و ارسال رزومه آزاد خواهد شد.
                     </p>
                   </div>
                 ) : (
@@ -1708,7 +1868,7 @@ export const JobSearch: React.FC = () => {
                     {/* Photo Upload Area */}
                     <div className="space-y-2">
                       <label className="block text-xs font-bold text-slate-300">
-                        تصویر فیش واریزی ۵۰۰ لیر (عکس با دوربین یا گالری) *
+                        تصویر فیش واریزی هزینه مصوب (عکس با دوربین یا گالری) *
                       </label>
 
                       {paymentReceiptPhoto ? (
@@ -1786,34 +1946,51 @@ export const JobSearch: React.FC = () => {
 
                           {/* AI Rejection Card (NOT A BANK RECEIPT) */}
                           {!isVerifyingReceipt && receiptAiResult?.tested && !receiptAiResult.isBankReceipt && (
-                            <div className="p-4 bg-red-950/40 border-2 border-red-500/60 rounded-2xl space-y-2.5 animate-fadeIn">
-                              <div className="flex items-start gap-2.5">
-                                <div className="p-2 rounded-xl bg-red-500/20 text-red-400 shrink-0">
-                                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                            <div className="p-4 bg-red-950/60 border-2 border-red-500 rounded-2xl space-y-3 animate-fadeIn shadow-lg shadow-red-950/50">
+                              <div className="flex items-start gap-3">
+                                <div className="p-2.5 rounded-xl bg-red-500/20 text-red-400 shrink-0 border border-red-500/30">
+                                  <AlertTriangle className="w-6 h-6 text-red-400 animate-pulse" />
                                 </div>
-                                <div className="space-y-1">
-                                  <h5 className="text-xs font-black text-red-300 flex items-center gap-1.5">
-                                    <span>⚠️ این تصویر فیش بانکی نیست!</span>
-                                  </h5>
-                                  <p className="text-xs text-red-200/95 leading-relaxed font-medium">
+                                <div className="space-y-1.5 flex-1">
+                                  <div className="flex items-center justify-between flex-wrap gap-2">
+                                    <h5 className="text-xs font-black text-red-300 flex items-center gap-1.5">
+                                      <span>⚠️ خطا: تصویر بارگذاری‌شده اشتباه است و شبیه فیش بانکی نمی‌باشد!</span>
+                                    </h5>
+                                    <span className="px-2 py-0.5 bg-red-900/60 text-red-300 border border-red-500/40 rounded-md text-[10px] font-bold">
+                                      رد شده توسط هوش مصنوعی
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-red-100 font-medium leading-relaxed bg-red-900/30 p-2.5 rounded-xl border border-red-500/20">
                                     {receiptAiResult.reason}
                                   </p>
-                                  <p className="text-[11px] text-slate-300 leading-relaxed pt-1">
-                                    جهت فعال‌سازی دسترسی و احراز واریز ۵۰۰ لیر، باید عکس یا اسکرین‌شات واضح از «رسید واریز کارت به کارت»، «فیش خودپرداز» یا «همراه بانک» بارگذاری فرمایید. تصاویر چهره، سلفی، مدارک هویتی یا عکس‌های نامربوط به عنوان فیش بانکی پذیرفته نمی‌شوند.
+                                  <p className="text-[11px] text-slate-300 leading-relaxed pt-0.5">
+                                    کارجوی گرامی، لطفاً تصویر صحیح فیش واریز هزینه مصوب را مجدداً ارسال فرمایید. عکس چهره، سلفی، اسکرین‌شات‌های نامربوط یا مدارک هویتی به عنوان فیش بانکی مورد قبول نمی‌باشند.
                                   </p>
                                 </div>
                               </div>
-                              <div className="pt-1 flex items-center gap-2">
+                              <div className="pt-1 flex flex-wrap items-center gap-2.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPaymentReceiptPhoto(null);
+                                    setReceiptAiResult(null);
+                                    setTimeout(() => receiptFileInputRef.current?.click(), 50);
+                                  }}
+                                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black rounded-xl text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Camera className="w-4 h-4" />
+                                  <span>📸 ارسال مجدد فیش بانکی (انتخاب عکس جدید)</span>
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setPaymentReceiptPhoto(null);
                                     setReceiptAiResult(null);
                                   }}
-                                  className="px-3.5 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs shadow-md transition flex items-center gap-1.5"
+                                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700 flex items-center gap-1.5"
                                 >
                                   <RotateCcw className="w-3.5 h-3.5" />
-                                  حذف و انتخاب مجدد فیش بانکی واقعی
+                                  حذف تصویر
                                 </button>
                               </div>
                             </div>
@@ -1867,14 +2044,17 @@ export const JobSearch: React.FC = () => {
                           <p className="text-[10px] text-slate-400 mt-0.5">
                             هوش مصنوعی فیش ارسالی را تست و اعتبارسنجی می‌کند (حداکثر ۱۰ مگابایت)
                           </p>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handlePaymentReceiptPhotoUpload}
-                            className="hidden"
-                          />
                         </label>
                       )}
+
+                      {/* Always available hidden file input */}
+                      <input
+                        ref={receiptFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePaymentReceiptPhotoUpload}
+                        className="hidden"
+                      />
                     </div>
 
                     {/* Optional Payment Note */}
@@ -2226,7 +2406,7 @@ export const JobSearch: React.FC = () => {
                       <button
                         onClick={() => setSelectedJob(job)}
                         className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-amber-300/90 rounded-xl border border-amber-500/30 text-[11px] font-bold transition"
-                        title="اطلاعات تماس مستقیم کارفرما قفل است (نیاز به عضویت و تایید ۵۰۰ لیر)"
+                        title="اطلاعات تماس مستقیم کارفرما قفل است (نیاز به پرداخت هزینه خدمات و تایید مدیریت)"
                       >
                         <Lock className="w-3.5 h-3.5 text-amber-400" />
                         <span>تماس: قفل</span>
@@ -2258,8 +2438,8 @@ export const JobSearch: React.FC = () => {
                     ) : (
                       <button
                         onClick={() => setSelectedJob(job)}
-                        className="px-3 py-1.5 bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium rounded-xl transition flex items-center gap-1"
-                        title="ارسال درخواست قفل است؛ نیاز به عضویت و تایید ۵۰۰ لیر"
+                        className="px-3.5 py-1.5 bg-slate-800/90 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium rounded-xl transition flex items-center gap-1"
+                        title="ارسال درخواست قفل است؛ نیاز به پرداخت هزینه خدمات و تایید مدیریت"
                       >
                         <Lock className="w-3 h-3 text-amber-400" />
                         <span>ارسال (قفل)</span>
@@ -2661,7 +2841,7 @@ export const JobSearch: React.FC = () => {
                       <p className="text-xs text-slate-300 leading-relaxed">
                         {!currentSeeker
                           ? 'مشخصات، دسته‌بندی و حقوق این شغل قابل مشاهده است، اما جهت ارتباط، شماره تلفن و واتساپ مستقیم کارفرما و ارسال درخواست نیازمند ثبت‌نام کارجو است.'
-                          : 'حساب شما ثبت شده اما در انتظار واریز وجه (۵۰۰ لیر) و تایید مدیریت است. به محض تایید پرداخت، شماره تماس مستقیم کارفرما و دکمه ارسال رزومه فعال خواهد شد.'}
+                          : `حساب شما ثبت شده اما در انتظار واریز هزینه خدمات (${seekerFeeToman.toLocaleString('fa-IR')} تومان) و تایید مدیریت است. به محض تایید پرداخت، شماره تماس مستقیم کارفرما و دکمه ارسال رزومه فعال خواهد شد.`}
                       </p>
                     </div>
                   </div>
@@ -2692,7 +2872,7 @@ export const JobSearch: React.FC = () => {
                     <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-amber-500/30 space-y-2">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-slate-300 font-bold">
-                          وضعیت پرونده شما: <strong className="text-amber-400">در انتظار تایید پرداخت ۵۰۰ لیر ⏳</strong>
+                          وضعیت پرونده شما: <strong className="text-amber-400">در انتظار تایید پرداخت هزینه خدمات ⏳</strong>
                         </span>
                         <span className="text-[11px] text-slate-400 font-mono">
                           نام کاربری: @{currentSeeker.username}
@@ -3216,6 +3396,17 @@ export const JobSearch: React.FC = () => {
           accommodationOnly,
           workPermitOnly,
         }}
+      />
+
+      {/* Sepal IPG Modal for Instant Seeker Membership Activation */}
+      <SepalGatewayModal
+        isOpen={isSepalModalOpen}
+        onClose={() => setIsSepalModalOpen(false)}
+        amountToman={seekerFeeToman}
+        description="تسویه حق عضویت و فعال‌سازی فوری حساب کاربری در سامانه کارباما"
+        payerName={currentSeeker?.fullName || ''}
+        payerMobile={currentSeeker?.phone || currentSeeker?.phoneNumber || ''}
+        onSuccess={handleSepalSeekerSuccess}
       />
     </div>
   );

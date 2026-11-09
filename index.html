@@ -18,6 +18,34 @@
     <meta name="twitter:title" content="کارباما | سامانه کاریابی و اقامت ترکیه" />
     <meta name="twitter:description" content="کارباما - سامانه جامع و هوشمند کاریابی، ساخت رزومه آنلاین، هتل‌ها و آدرس‌های ضروری ترکیه برای فارسی‌زبانان با پشتیبانی از وب‌اپلیکیشن PWA" />
     <meta name="twitter:image" content="/logo.png" />
+    
+    <!-- Suppress disabled HMR WebSocket / Vite runner warnings in preview iframe -->
+    <script>
+      (function() {
+        function shouldSuppress(msg) {
+          var s = String(msg || '');
+          return s.indexOf('WebSocket') !== -1 ||
+                 s.indexOf('createWebSocketModuleRunnerTransport') !== -1 ||
+                 s.indexOf('@vite/client') !== -1 ||
+                 s.indexOf('24678') !== -1;
+        }
+        window.addEventListener('error', function(e) {
+          if (shouldSuppress(e.message || (e.error && e.error.message))) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+        window.addEventListener('unhandledrejection', function(e) {
+          var reason = e.reason && (e.reason.message || String(e.reason));
+          if (shouldSuppress(reason)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+      })();
+    </script>
 
     <!-- Schema.org JSON-LD Structured Data for rich search and social cards -->
     <script type="application/ld+json">

@@ -279,7 +279,9 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const DEFAULT_PAYMENT_SETTINGS: PaymentGatewaySettings = {
   feeTL: 500,
-  exchangeRateToman: 5470, // نرخ روز: هر ۱ لیر ترکیه = ۵,۴۷۰ تومان => ۵۰۰ لیر = ۲,۷۳۵,۰۰۰ تومان (۲۷,۳۵۰,۰۰۰ ریال)
+  exchangeRateToman: 5460, // معادل ریالی روز: ۲,۷۳۰,۰۰۰ تومان (۲۷,۳۰۰,۰۰۰ ریال)
+  lastRateUpdateDate: new Date().toISOString().split('T')[0],
+  autoUpdateDaily: true,
   turkeyBankName: 'Ziraat Bankası (زراعت بانک ترکیه)',
   turkeyIban: 'TR56 0001 0090 1234 5678 9050 01',
   turkeyAccountHolder: 'Karbama Danışmanlık ve İnsan Kaynakları',
@@ -287,6 +289,10 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentGatewaySettings = {
   iranCardNumber: '۶۱۰۴-۳۳۷۸-۹۰۱۲-۳۴۵۶',
   iranCardHolder: 'مدیریت امور مالی کارباما',
   zarinpalMerchantId: 'zp-karbama-official',
+  sepalApiKey: 'KhAv64ZBs0TRkItY76JdXTqbWLWpNWP62WbI82_uF7WRhBZkrknQhWJ_8XPCT6GH9mYJ4RN2IPw3GPAPM8BbczDX_D_WM_D21iCdheiRYcKGRfUzUApcgKiDvVX3_gFFcf97acb85862596f273e16f1ad8db6be38bd1c999905e697b4dc0c83b1d37777mqbmWX2P9dGTVatC9_w3c9CpttcFTcM0is-H3hoUpDzGlBDl1-2TTJ3afXexyEHc',
+  sepalUniqueCode: '2930311446',
+  sepalInquiryToken: 'KhAv64ZBs0TRkItY76JdXTqbWLWpNWP62WbI82_uF7WRhBZkrknQhWJ_8XPCT6GH9mYJ4RN2IPw3GPAPM8BbczDX_D_WM_D21iCdheiRYcKGRfUzUApcgKiDvVX3_gFFcf97acb85862596f273e16f1ad8db6be38bd1c999905e697b4dc0c83b1d37777mqbmWX2P9dGTVatC9_w3c9CpttcFTcM0is-H3hoUpDzGlBDl1-2TTJ3afXexyEHc',
+  sepTerminalId: '14589230',
 };
 
 export const DEFAULT_ADMIN_CREDENTIALS: AdminCredentials = {
@@ -418,6 +424,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     showToast('تنظیمات پرداخت، نرخ روز ارز و حساب‌های بانکی با موفقیت ذخیره شد.', 'success');
   };
+
+  // Automatic Daily Exchange Rate & Rial Fee Updater
+  useEffect(() => {
+    const checkAndUpdateDailyRate = async () => {
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        // If already updated today and rate is healthy, skip
+        if (paymentSettings.lastRateUpdateDate === todayStr && paymentSettings.exchangeRateToman > 1000) {
+          return;
+        }
+
+        const res = await fetch('/api/fx-rates');
+        if (res.ok) {
+          const json = await res.json();
+          if (json && json.success && json.data?.TRY) {
+            const tryData = json.data.TRY;
+            const tomanVal = Number(tryData.toman) || (Number(tryData.rial) ? Math.round(Number(tryData.rial) / 10) : 0);
+            if (tomanVal > 1000) {
+              setPaymentSettings((prev) => {
+                const next: PaymentGatewaySettings = {
+                  ...prev,
+                  exchangeRateToman: tomanVal,
+                  lastRateUpdateDate: todayStr,
+                  autoUpdateDaily: true,
+                };
+                try {
+                  safeStorage.setItem(STORAGE_KEYS.PAYMENT_SETTINGS, JSON.stringify(next));
+                } catch (e) {
+                  console.error(e);
+                }
+                return next;
+              });
+            }
+          }
+        }
+      } catch (err) {
+        // silent fallback
+      }
+    };
+
+    checkAndUpdateDailyRate();
+    // Schedule check every 6 hours
+    const interval = setInterval(checkAndUpdateDailyRate, 6 * 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [paymentSettings.lastRateUpdateDate, paymentSettings.exchangeRateToman]);
   // App Language State (Persian, Turkish, English, Arabic)
   const [appLanguage, setAppLanguage] = useState<'fa' | 'tr' | 'en' | 'ar'>(() => {
     try {
@@ -520,7 +571,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setJobSeekers((prev) => {
       const next = prev.map((s) =>
         s.id === seekerId
-          ? { ...s, verificationStatus: 'approved' as const, isPaymentVerified: true, adminVerificationNote: note }
+          ? {
+              ...s,
+              verificationStatus: 'approved' as const,
+              isPaymentVerified: true,
+              seekerPaymentStatus: 'paid' as const,
+              adminVerificationNote: note || s.adminVerificationNote || 'تایید و آزادسازی توسط مدیریت کارباما',
+            }
           : s
       );
       try {
@@ -530,11 +587,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return next;
     });
-    showToast('حساب کاربری و تسویه وجه کارجو با موفقیت تایید و فعال شد.', 'success');
+    showToast('قفل حساب کارجو با موفقیت باز شد و دسترسی کامل فعال گردید.', 'success');
 
     if (seeker) {
-      showSafeNotification(`✅ حساب کاربری کارجو تایید شد!`, {
-        body: `کارجوی گرامی ${seeker.fullName}، حساب کاربری و دسترسی‌های شما توسط مدیریت کارباما فعال گردید.`,
+      showSafeNotification(`✅ قفل حساب کاربری شما باز شد!`, {
+        body: `کارجوی گرامی ${seeker.fullName}، پرداخت و مدارک شما توسط مدیریت کارباما تایید گردید و قفل تمامی بخش‌ها باز شد.`,
         icon: '/pwa-192x192.png',
         tag: `seeker-status-${seekerId}`,
       });
@@ -1949,7 +2006,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setJobs((prev) => [newJob, ...prev]);
 
     if (isOnlinePaid) {
-      showToast('پرداخت آنلاین ۵۰۰ لیر تایید شد و آگهی شما بلافاصله در سایت منتشر گردید.', 'success');
+      showToast('پرداخت آنلاین تعرفه تایید شد و آگهی شما بلافاصله در سایت منتشر گردید.', 'success');
       checkJobAlerts(newJob);
 
       const notifItem: JobNotification = {
@@ -1976,7 +2033,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addAdminNotification({
         type: 'employer_payment',
         title: '💳 فیش واریزی آگهی استخدام کارفرما',
-        message: `کارفرما فیش واریزی ۵۰۰ لیر را برای آگهی «${newJob.title}» جهت تایید ثبت نمود.`,
+        message: `کارفرما فیش واریزی تعرفه آگهی را برای عنوان «${newJob.title}» جهت تایید ثبت نمود.`,
         data: { jobId: newJob.id },
       });
       showToast('آگهی و فیش واریز شما با موفقیت ثبت شد و پس از بررسی و تایید مدیر منتشر خواهد شد.', 'success');
@@ -1993,7 +2050,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...j,
             isActive: true,
             paymentStatus: 'paid',
-            paymentAdminNote: adminNote || 'پرداخت ۵۰۰ لیر تایید شد و آگهی فعال گردید.',
+            paymentAdminNote: adminNote || 'پرداخت تعرفه تایید شد و آگهی فعال گردید.',
           };
           checkJobAlerts(updated);
 

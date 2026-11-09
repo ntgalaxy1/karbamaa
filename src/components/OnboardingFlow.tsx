@@ -46,6 +46,7 @@ import {
   Mail,
   Award,
   CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 
 const DESTINATION_COUNTRIES: { id: TargetCountry; nameKey: string; flag: string; descKey: string }[] = [
@@ -112,6 +113,31 @@ export const OnboardingFlow: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
   const [payerCardNumber, setPayerCardNumber] = useState('');
+  const [inquiredPayerBank, setInquiredPayerBank] = useState<string | null>(null);
+  const [isInquiringPayerBank, setIsInquiringPayerBank] = useState(false);
+
+  const inquireSepalBank = async (rawCard: string) => {
+    if (rawCard.length !== 16) {
+      setInquiredPayerBank(null);
+      return;
+    }
+    setIsInquiringPayerBank(true);
+    try {
+      const res = await fetch('/api/sepal/card-to-iban', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardNumber: rawCard }),
+      });
+      const data = await res.json();
+      if (data.success && data.data?.bankName) {
+        setInquiredPayerBank(data.data.bankName);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsInquiringPayerBank(false);
+    }
+  };
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -743,12 +769,34 @@ export const OnboardingFlow: React.FC = () => {
                           const sanitized = sanitizeCardNumber(e.target.value);
                           setPayerCardNumber(sanitized);
                           checkFieldDuplicate('payerCardNumber', sanitized);
+                          const clean = sanitized.replace(/\D/g, '');
+                          if (clean.length === 16) {
+                            inquireSepalBank(clean);
+                          } else {
+                            setInquiredPayerBank(null);
+                          }
                         }}
                         onBlur={() => checkFieldDuplicate('payerCardNumber', payerCardNumber)}
                         className={`w-full bg-slate-800 border rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono font-bold text-left focus:outline-hidden ${
                           duplicateErrors.payerCardNumber ? 'border-red-500 ring-1 ring-red-500/50' : 'border-slate-700 focus:border-amber-500'
                         }`}
                       />
+
+                      {/* Sepal Card Inquiry Feedback */}
+                      {isInquiringPayerBank && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-teal-400 font-bold bg-teal-950/40 border border-teal-500/30 p-2 rounded-xl animate-in fade-in">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>در حال استعلام نام بانک از وب‌سرویس سپال‌یار...</span>
+                        </div>
+                      )}
+
+                      {!isInquiringPayerBank && inquiredPayerBank && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-emerald-300 font-bold bg-emerald-950/40 border border-emerald-500/40 p-2 rounded-xl animate-in fade-in">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>بانک صادرکننده: {inquiredPayerBank} (استعلام رسمی سپال)</span>
+                        </div>
+                      )}
+
                       {duplicateErrors.payerCardNumber && (
                         <div className="p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
                           <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />

@@ -29,6 +29,7 @@ import { JobCategory, ContractType, PayFrequency, TurkishLevel, PaymentMethod } 
 import { TURKEY_PROVINCES_AND_DISTRICTS } from '../data/turkeyCities';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 import { getDistrictsForCity } from '../data/turkeyData';
+import { SepalGatewayModal } from './SepalGatewayModal';
 
 export const PostJobSection: React.FC = () => {
   const { paymentSettings, submitJobWithPayment, setActiveTab, showToast } = useApp();
@@ -63,7 +64,8 @@ export const PostJobSection: React.FC = () => {
   const [imageUrl, setImageUrl] = useState('');
 
   // Payment State
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('zarinpal');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('sepal');
+  const [isSepalModalOpen, setIsSepalModalOpen] = useState(false);
   const [receiptImage, setReceiptImage] = useState<string>('');
   const [referenceId, setReferenceId] = useState('');
   const [payerName, setPayerName] = useState('');
@@ -128,6 +130,11 @@ export const PostJobSection: React.FC = () => {
   };
 
   const handleSubmit = () => {
+    if (paymentMethod === 'sepal') {
+      setIsSepalModalOpen(true);
+      return;
+    }
+
     if (paymentMethod !== 'zarinpal' && !receiptImage && !referenceId) {
       showToast('لطفاً تصویر فیش واریزی یا شماره پیگیری را وارد نمایید.', 'error');
       return;
@@ -191,6 +198,68 @@ export const PostJobSection: React.FC = () => {
     }
   };
 
+  const handleSepalSuccess = (refId: string) => {
+    setIsSepalModalOpen(false);
+    const subcatString = selectedSubcategories.join('، ');
+
+    const jobData = {
+      title: title.trim(),
+      company: company.trim(),
+      city,
+      district: district.trim() || 'مرکز شهر',
+      category,
+      subcategory: subcatString || undefined,
+      contractType,
+      payFrequency,
+      keywords: [
+        title,
+        company,
+        city,
+        district,
+        currentCatData?.label || '',
+        ...selectedSubcategories,
+        accommodation ? 'جای خواب' : '',
+        meals ? 'غذا' : '',
+      ].filter(Boolean),
+      salaryMin: Number(salaryMin) || 0,
+      salaryMax: Number(salaryMax) || 0,
+      currency: 'TRY' as const,
+      accommodation,
+      accommodationDetails: accommodation ? accommodationDetails : undefined,
+      meals,
+      mealDetails: meals ? mealDetails : undefined,
+      hasLeave,
+      leaveDetails: hasLeave ? leaveDetails : undefined,
+      workPermitSupport,
+      turkishRequired,
+      gender,
+      description: description.trim(),
+      requirements: requirements
+        .split('\n')
+        .map((r) => r.trim())
+        .filter(Boolean),
+      contactPhone: contactPhone.trim(),
+      contactWhatsapp: contactWhatsapp.trim(),
+      imageUrl: imageUrl.trim() || undefined,
+      paymentMethod: 'sepal' as const,
+      paymentStatus: 'pending_approval' as const,
+      paymentAmountTL: feeTL,
+      paymentAmountToman: feeToman,
+      paymentReceiptUrl: undefined,
+      paymentReferenceId: refId,
+      paymentPayerName: payerName.trim() || undefined,
+      paymentPayerPhone: payerPhone.trim() || undefined,
+    };
+
+    const res = submitJobWithPayment(jobData);
+    if (res.success) {
+      setCreatedJobId(res.jobId);
+      setReferenceId(refId);
+      setStep(3);
+      showToast('پرداخت از طریق درگاه شاپرک سپال با موفقیت ثبت شد و آگهی جهت بررسی و انتشار به مدیریت ارجاع گردید.', 'success');
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12 animate-in fade-in duration-300 text-right">
       
@@ -234,7 +303,7 @@ export const PostJobSection: React.FC = () => {
       <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-3">
         <HelpCircle className="w-5 h-5 shrink-0 text-amber-400" />
         <p className="leading-relaxed">
-          کلیه آگهی‌های ثبت شده پس از واریز ۵۰۰ لیر و تایید توسط تیم مدیریت کارباما، به مدت ۳۰ روز در صدر آگهی‌ها قرار گرفته و به تمامی کارجویان واجد شرایط نوتیفیکیشن ارسال می‌شود.
+          کلیه آگهی‌های ثبت شده پس از پرداخت هزینه تعرفه و تایید توسط تیم مدیریت کارباما، به مدت ۳۰ روز در صدر آگهی‌ها قرار گرفته و به تمامی کارجویان واجد شرایط نوتیفیکیشن ارسال می‌شود.
         </p>
       </div>
 
@@ -525,7 +594,7 @@ export const PostJobSection: React.FC = () => {
               }}
               className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg transition"
             >
-              <span>مرحله بعد: پرداخت تعرفه (۵۰۰ لیر)</span>
+              <span>مرحله بعد: پرداخت تعرفه آگهی</span>
               <ArrowLeft className="w-4 h-4" />
             </button>
           </div>
@@ -537,20 +606,41 @@ export const PostJobSection: React.FC = () => {
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
           <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
             <div>
-              <h3 className="font-extrabold text-white text-base">گام دوم: انتخاب روش پرداخت تعرفه ۵۰۰ لیر</h3>
-              <p className="text-xs text-slate-400 mt-1">یکی از ۳ روش زیر را جهت پرداخت انتخاب فرمایید:</p>
+              <h3 className="font-extrabold text-white text-base">گام دوم: انتخاب روش پرداخت تعرفه آگهی</h3>
+              <p className="text-xs text-slate-400 mt-1">یکی از روش‌های زیر را جهت پرداخت انتخاب فرمایید:</p>
             </div>
             <div className="text-left bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-xl">
-              <span className="text-[10px] text-amber-300 block">مبلغ قابل پرداخت:</span>
-              <span className="text-sm font-extrabold text-amber-400 font-mono">۵۰۰ لیر ترکیه</span>
-              <span className="text-[10px] text-slate-400 block font-mono">({feeToman.toLocaleString('fa-IR')} تومان)</span>
+              <span className="text-[10px] text-amber-300 block">مبلغ قابل پرداخت (به‌روزرسانی روزانه):</span>
+              <span className="text-sm font-extrabold text-amber-400 font-mono">{feeToman.toLocaleString('fa-IR')} تومان</span>
+              <span className="text-[10px] text-slate-400 block font-mono">({(feeToman * 10).toLocaleString('fa-IR')} ریال)</span>
             </div>
           </div>
 
-          {/* 3 Payment Methods Tabs */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* 4 Payment Methods Tabs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+
+            {/* Method 1: Sepal Official Shaparak Gateway */}
+            <button
+              onClick={() => setPaymentMethod('sepal')}
+              className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between space-y-3 ${
+                paymentMethod === 'sepal'
+                  ? 'bg-teal-600/20 border-teal-500 text-white shadow-lg'
+                  : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full">
+                <span className="text-xs font-extrabold">۱. درگاه شاپرک سپال</span>
+                <ShieldCheck className="w-5 h-5 text-teal-400" />
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                پرداخت آنلاین از طریق درگاه رسمی شاپرک سپال با استعلام هوشمند بانکی و انتشار آنی آگهی
+              </p>
+              <span className="text-[10px] font-bold text-teal-300 bg-teal-500/10 px-2 py-0.5 rounded-lg border border-teal-500/20 self-start">
+                سپال‌پی / فعال‌سازی آنی
+              </span>
+            </button>
             
-            {/* Method 1: Zarinpal Online Gateway */}
+            {/* Method 2: Zarinpal Online Gateway */}
             <button
               onClick={() => setPaymentMethod('zarinpal')}
               className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between space-y-3 ${
@@ -560,7 +650,7 @@ export const PostJobSection: React.FC = () => {
               }`}
             >
               <div className="flex items-center justify-between w-full">
-                <span className="text-xs font-extrabold">۱. درگاه زرین‌پال / شتاب</span>
+                <span className="text-xs font-extrabold">۲. درگاه زرین‌پال / شتاب</span>
                 <CreditCard className="w-5 h-5 text-amber-400" />
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -571,7 +661,7 @@ export const PostJobSection: React.FC = () => {
               </span>
             </button>
 
-            {/* Method 2: Turkey Bank Account (Ziraat Bank) */}
+            {/* Method 3: Turkey Bank Account (Ziraat Bank) */}
             <button
               onClick={() => setPaymentMethod('turkey_bank')}
               className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between space-y-3 ${
@@ -581,18 +671,18 @@ export const PostJobSection: React.FC = () => {
               }`}
             >
               <div className="flex items-center justify-between w-full">
-                <span className="text-xs font-extrabold">۲. حساب بانکی ترکیه (İBAN)</span>
+                <span className="text-xs font-extrabold">۳. حساب بانکی ترکیه (İBAN)</span>
                 <Landmark className="w-5 h-5 text-red-400" />
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                واریز مستقیم ۵۰۰ لیر ترکیه به حساب زراعت بانک یا ایش‌بانک کارباما با حواله یا FAST
+                واریز مستقیم معادل ارزی تعرفه به حساب زراعت بانک یا ایش‌بانک کارباما با حواله یا FAST
               </p>
               <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-lg border border-red-500/20 self-start">
-                واریز به لیر (TL)
+                حساب بانکی ترکیه
               </span>
             </button>
 
-            {/* Method 3: Card to Card from Iran */}
+            {/* Method 4: Card to Card from Iran */}
             <button
               onClick={() => setPaymentMethod('iran_card')}
               className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between space-y-3 ${
@@ -602,7 +692,7 @@ export const PostJobSection: React.FC = () => {
               }`}
             >
               <div className="flex items-center justify-between w-full">
-                <span className="text-xs font-extrabold">۳. کارت به کارت از ایران</span>
+                <span className="text-xs font-extrabold">۴. کارت به کارت از ایران</span>
                 <Send className="w-5 h-5 text-emerald-400" />
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -615,6 +705,54 @@ export const PostJobSection: React.FC = () => {
 
           </div>
 
+          {/* METHOD 1 CONTENT: SEPAL */}
+          {paymentMethod === 'sepal' && (
+            <div className="p-6 bg-slate-950 border border-teal-500/40 rounded-2xl space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-black">
+                  سپال
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                    <span>درگاه پرداخت امن بانکی شاپرک سپال (Sepal Pay)</span>
+                    <span className="text-[10px] bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded-full font-bold">
+                      پروتکل شاپرک
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-400">
+                    مبلغ ریالی تعرفه با نرخ روز لحظه‌ای: <strong className="text-teal-300 font-mono">{feeToman.toLocaleString('fa-IR')} تومان</strong> ({ (feeToman * 10).toLocaleString('fa-IR') } ریال)
+                  </p>
+                </div>
+              </div>
+              <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1.5 leading-relaxed">
+                <p>• متصل به وب‌سرویس رسمی سپال و سامانه استعلام کارت سپال‌یار.</p>
+                <p>• به محض پرداخت موفقیت‌آمیز، کد پیگیری سپال ثبت و آگهی استخدام شما در بخش فرصت‌های شغلی ترکیه به صورت آنی منتشر خواهد شد.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div>
+                  <label className="block text-xs text-slate-300 mb-1">نام کارفرما / صاحب کارت</label>
+                  <input
+                    type="text"
+                    value={payerName}
+                    onChange={(e) => setPayerName(e.target.value)}
+                    placeholder="مثال: علی اکبری"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-300 mb-1">شماره همراه جهت دریافت فاکتور و کد پیگیری</label>
+                  <input
+                    type="text"
+                    value={payerPhone}
+                    onChange={(e) => setPayerPhone(e.target.value)}
+                    placeholder="0912..."
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white dir-ltr text-right"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* METHOD 1 CONTENT: ZARINPAL */}
           {paymentMethod === 'zarinpal' && (
             <div className="p-6 bg-slate-950 border border-slate-800 rounded-2xl space-y-4">
@@ -624,7 +762,7 @@ export const PostJobSection: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="font-bold text-white text-sm">درگاه پرداخت امن بانکی شتاب (زرین‌پال)</h4>
-                  <p className="text-xs text-slate-400">مبلغ ریالی معادل ۵۰۰ لیر با نرخ روز لحظه‌ای: <strong className="text-amber-300">{feeToman.toLocaleString('fa-IR')} تومان</strong></p>
+                  <p className="text-xs text-slate-400">مبلغ ریالی تعرفه با نرخ روز لحظه‌ای: <strong className="text-amber-300">{feeToman.toLocaleString('fa-IR')} تومان</strong> ({ (feeToman * 10).toLocaleString('fa-IR') } ریال)</p>
                 </div>
               </div>
               <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1.5 leading-relaxed">
@@ -665,7 +803,7 @@ export const PostJobSection: React.FC = () => {
                     <Landmark className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-white text-sm">مشخصات حساب بانکی ترکیه جهت واریز ۵۰۰ لیر</h4>
+                    <h4 className="font-bold text-white text-sm">مشخصات حساب بانکی ترکیه جهت واریز تعرفه آگهی</h4>
                     <p className="text-xs text-slate-400">بانک: {paymentSettings.turkeyBankName}</p>
                   </div>
                 </div>
@@ -850,12 +988,18 @@ export const PostJobSection: React.FC = () => {
 
             <button
               onClick={handleSubmit}
-              className="px-7 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xl transition"
+              className={`px-7 py-3 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xl transition cursor-pointer ${
+                paymentMethod === 'sepal'
+                  ? 'bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500'
+                  : 'bg-red-600 hover:bg-red-500'
+              }`}
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>
-                {paymentMethod === 'zarinpal'
-                  ? `پرداخت آنلاین (${feeToman.toLocaleString('fa-IR')} تومان) و انتشار`
+                {paymentMethod === 'sepal'
+                  ? `پرداخت آنلاین با سپال (${feeToman.toLocaleString('fa-IR')} تومان) و انتشار آنی`
+                  : paymentMethod === 'zarinpal'
+                  ? `پرداخت آنلاین با زرین‌پال (${feeToman.toLocaleString('fa-IR')} تومان) و انتشار`
                   : 'ثبت نهایی آگهی و ارسال فیش برای تایید مدیر'}
               </span>
             </button>
@@ -873,14 +1017,10 @@ export const PostJobSection: React.FC = () => {
 
           <div className="space-y-2">
             <h2 className="text-xl sm:text-2xl font-black text-white">
-              {paymentMethod === 'zarinpal'
-                ? 'آگهی استخدام شما با موفقیت ثبت و منتشر شد!'
-                : 'آگهی و فیش واریز شما با موفقیت ثبت شد!'}
+              آگهی و اطلاعات پرداخت شما با موفقیت ثبت شد!
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 max-w-lg mx-auto leading-relaxed">
-              {paymentMethod === 'zarinpal'
-                ? 'پرداخت تعرفه ۵۰۰ لیر تایید شد. هم‌اکنون آگهی شما در بخش فرصت‌های شغلی ترکیه در دسترس کارجویان قرار گرفت.'
-                : 'فیش واریزی ۵۰۰ لیر در صف بررسی مدیریت کارباما قرار گرفت. پس از تایید توسط مدیر، آگهی بلافاصله در سایت منتشر خواهد شد.'}
+              پرداخت تعرفه آگهی {paymentMethod === 'sepal' ? `از طریق درگاه شاپرک سپال (کد رهگیری: ${referenceId || 'ثبت شده'})` : ''} در سیستم ثبت شد و در صف بررسی مدیریت کارباما قرار گرفت. پس از بررسی و تایید توسط مدیر، آگهی بلافاصله در سایت فعال و منتشر خواهد شد.
             </p>
           </div>
 
@@ -889,6 +1029,22 @@ export const PostJobSection: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="text-xs text-slate-400">کد رهگیری آگهی:</span>
               <span className="text-xs font-mono font-bold text-amber-300">{createdJobId}</span>
+            </div>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="text-xs text-slate-400">روش پرداخت:</span>
+              <span className="text-xs font-bold text-teal-300">
+                {paymentMethod === 'sepal'
+                  ? 'درگاه شاپرک سپال (Sepal)'
+                  : paymentMethod === 'zarinpal'
+                  ? 'درگاه زرین‌پال'
+                  : paymentMethod === 'turkey_bank'
+                  ? 'حساب بانکی ترکیه'
+                  : 'کارت به کارت ایران'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="text-xs text-slate-400">شماره ارجاع / پیگیری بانکی:</span>
+              <span className="text-xs font-mono font-bold text-white select-all">{referenceId || 'سیستمی'}</span>
             </div>
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="text-xs text-slate-400">عنوان شغل:</span>
@@ -900,12 +1056,12 @@ export const PostJobSection: React.FC = () => {
             </div>
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="text-xs text-slate-400">تعرفه پرداخت شده:</span>
-              <span className="text-xs font-bold text-emerald-400 font-mono">۵۰۰ لیر ({feeToman.toLocaleString('fa-IR')} تومان)</span>
+              <span className="text-xs font-bold text-emerald-400 font-mono">{feeToman.toLocaleString('fa-IR')} تومان ({ (feeToman * 10).toLocaleString('fa-IR') } ریال)</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400">وضعیت نمایش:</span>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${paymentMethod === 'zarinpal' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                {paymentMethod === 'zarinpal' ? 'منتشر شده و فعال' : 'در انتظار تایید فیش توسط مدیر'}
+              <span className="text-xs text-slate-400">وضعیت نمایش آگهی:</span>
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+                در صف بررسی و تایید مدیریت ⏳
               </span>
             </div>
           </div>
@@ -935,6 +1091,17 @@ export const PostJobSection: React.FC = () => {
 
         </div>
       )}
+
+      {/* Sepal IPG Modal */}
+      <SepalGatewayModal
+        isOpen={isSepalModalOpen}
+        onClose={() => setIsSepalModalOpen(false)}
+        amountToman={feeToman}
+        description={`تعرفه ثبت آگهی استخدام «${title || 'فرصت شغلی'}» در کارباما`}
+        payerName={payerName || company}
+        payerMobile={payerPhone || contactPhone}
+        onSuccess={handleSepalSuccess}
+      />
 
     </div>
   );

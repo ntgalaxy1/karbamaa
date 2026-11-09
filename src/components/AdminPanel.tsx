@@ -16,6 +16,7 @@ import {
   Plus,
   Trash2,
   CheckCircle,
+  CheckCircle2,
   XCircle,
   Clock,
   Phone,
@@ -152,6 +153,22 @@ export const AdminPanel: React.FC = () => {
     (j) => j.paymentStatus === 'pending_approval' || j.paymentStatus === 'pending_payment'
   );
 
+  // Count pending payment seekers (those who paid via Sepal, uploaded receipts, or need account unlocking)
+  const pendingPaymentSeekers = jobSeekers.filter(
+    (s) =>
+      s.verificationStatus !== 'approved' &&
+      (s.seekerPaymentStatus === 'paid' ||
+       Boolean(s.paymentReceiptPhotoUrl) ||
+       Boolean(s.seekerPaymentRefId) ||
+       Boolean(s.adminVerificationNote?.includes('سپال')) ||
+       Boolean(s.adminVerificationNote?.includes('واریز')) ||
+       Boolean(s.adminVerificationNote?.includes('فیش')) ||
+       Boolean(s.payerCardNumber))
+  );
+
+  const [paymentApprovalSubTab, setPaymentApprovalSubTab] = useState<'seekers' | 'jobs'>('seekers');
+  const [rejectModalSeekerId, setRejectModalSeekerId] = useState<string | null>(null);
+
   // State for Admin Security & Password Change
   const [currentAdminPassInput, setCurrentAdminPassInput] = useState('');
   const [newAdminUsernameInput, setNewAdminUsernameInput] = useState(adminCredentials.username);
@@ -167,6 +184,8 @@ export const AdminPanel: React.FC = () => {
   const [iranBankInput, setIranBankInput] = useState(paymentSettings.iranBankName);
   const [iranCardInput, setIranCardInput] = useState(paymentSettings.iranCardNumber);
   const [iranHolderInput, setIranHolderInput] = useState(paymentSettings.iranCardHolder);
+  const [sepalApiKeyInput, setSepalApiKeyInput] = useState(paymentSettings.sepalApiKey || 'sepal-karbama-official');
+  const [sepalUniqueCodeInput, setSepalUniqueCodeInput] = useState(paymentSettings.sepalUniqueCode || '2930311446');
 
   // State for Receipt View Modal & Rejection Reason & AI Testing
   const [viewReceiptModalUrl, setViewReceiptModalUrl] = useState<string | null>(null);
@@ -192,10 +211,48 @@ export const AdminPanel: React.FC = () => {
     setAdminAiCheckingReceipt(true);
     setAdminAiReceiptResult(null);
     try {
+      let visualFeatures: any = null;
+      try {
+        const img = new Image();
+        await new Promise((resolve) => {
+          img.onload = resolve;
+          img.onerror = resolve;
+          img.src = viewReceiptModalUrl;
+        });
+        const w = img.naturalWidth || 100;
+        const h = img.naturalHeight || 100;
+        const canvas = document.createElement('canvas');
+        canvas.width = 100;
+        canvas.height = 100;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, 100, 100);
+          const data = ctx.getImageData(0, 0, 100, 100).data;
+          let skin = 0;
+          let edges = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            if (r > 95 && g > 40 && b > 20 && r > g && g > b && (r - g) > 15 && (r - b) > 15) {
+              skin++;
+            }
+          }
+          visualFeatures = {
+            width: w,
+            height: h,
+            aspectRatio: w / h,
+            skinRatio: skin / (100 * 100),
+          };
+        }
+      } catch (e) {
+        // ignore
+      }
+
       const res = await fetch('/api/ai/verify-bank-receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: viewReceiptModalUrl }),
+        body: JSON.stringify({ imageBase64: viewReceiptModalUrl, visualFeatures }),
       });
       const data = await res.json();
       setAdminAiReceiptResult({
@@ -791,10 +848,10 @@ export const AdminPanel: React.FC = () => {
           }`}
         >
           <DollarSign className="w-4 h-4 text-amber-300" />
-          <span>تایید آگهی‌ها و فیش‌های واریزی (۵۰۰ لیر)</span>
-          {pendingPaymentJobs.length > 0 && (
+          <span>تایید واریزی‌ها و فعال‌سازی قفل‌ها ({pendingPaymentSeekers.length + pendingPaymentJobs.length})</span>
+          {pendingPaymentSeekers.length + pendingPaymentJobs.length > 0 && (
             <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-amber-400 text-slate-950 animate-pulse">
-              {pendingPaymentJobs.length} منتظر تایید
+              {pendingPaymentSeekers.length + pendingPaymentJobs.length} نیاز به بررسی
             </span>
           )}
         </button>
@@ -1154,28 +1211,247 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* 0. PAYMENT APPROVALS & RECEIPT VERIFICATION (Requested Feature) */}
+      {/* 0. PAYMENT APPROVALS, RECEIPT VERIFICATION & ACCOUNT UNLOCK */}
       {adminTab === 'payment-approvals' && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
             <div>
               <h3 className="font-extrabold text-white text-sm flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-amber-400" />
-                <span>بررسی و تایید آگهی‌های استخدامی و فیش‌های واریزی (۵۰۰ لیر)</span>
+                <span>بررسی تراکنش‌های پرداختی، فیش‌ها و فعال‌سازی قفل حساب کاربران (۵۰۰ لیر)</span>
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                آگهی‌های ثبت شده توسط کارفرمایان پس از بررسی فیش واریزی و زدن دکمه «تایید و انتشار»، در سایت فعال خواهند شد.
+                مطابق دستورالعمل سیستم: دسترسی کاربران و قفل حساب پس از پرداخت ۵۰۰ لیر مستلزم بررسی و تایید مدیریت است.
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl font-bold font-mono">
-                {pendingPaymentJobs.length} آگهی در صف تایید
+              <span className="text-xs px-3 py-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl font-bold font-mono">
+                {pendingPaymentSeekers.length + pendingPaymentJobs.length} مورد نیازمند بررسی مدیریت
               </span>
             </div>
           </div>
 
-          {/* List of Pending Jobs */}
-          {pendingPaymentJobs.length === 0 ? (
+          {/* Subtab Navigation */}
+          <div className="flex items-center gap-2 p-1.5 bg-slate-900/90 border border-slate-800 rounded-2xl">
+            <button
+              type="button"
+              onClick={() => setPaymentApprovalSubTab('seekers')}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
+                paymentApprovalSubTab === 'seekers'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>کارجویان در انتظار تایید پرداخت و باز شدن قفل</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                paymentApprovalSubTab === 'seekers' ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-slate-300'
+              }`}>
+                {pendingPaymentSeekers.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPaymentApprovalSubTab('jobs')}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
+                paymentApprovalSubTab === 'jobs'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>آگهی‌های کارفرمایان در انتظار تایید و انتشار</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                paymentApprovalSubTab === 'jobs' ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-slate-300'
+              }`}>
+                {pendingPaymentJobs.length}
+              </span>
+            </button>
+          </div>
+
+          {/* SUBTAB 1: SEEKERS PENDING PAYMENT APPROVAL & UNLOCK */}
+          {paymentApprovalSubTab === 'seekers' && (
+            <div className="space-y-4">
+              {pendingPaymentSeekers.length === 0 ? (
+                <div className="p-12 text-center bg-slate-900 border border-slate-800 rounded-3xl space-y-3">
+                  <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto">
+                    <CheckCircle className="w-8 h-8" />
+                  </div>
+                  <h4 className="font-bold text-white text-sm">هیچ کارجویی در صف تایید واریزی یا بازگشایی قفل وجود ندارد.</h4>
+                  <p className="text-xs text-slate-400">تمام کارجویانی که هزینه ۵۰۰ لیر را پرداخت کرده‌اند، بررسی و فعال شده‌اند.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingPaymentSeekers.map((seeker) => {
+                    const isSepal = seeker.seekerPaymentMethod === 'sepal' || Boolean(seeker.seekerPaymentRefId);
+                    const hasReceiptPhoto = Boolean(seeker.paymentReceiptPhotoUrl);
+                    const formattedDate = new Date(seeker.createdAt).toLocaleDateString('fa-IR');
+
+                    return (
+                      <div
+                        key={seeker.id}
+                        className="p-5 bg-slate-900 border border-amber-500/30 rounded-3xl space-y-4 shadow-xl hover:border-amber-500/50 transition relative overflow-hidden"
+                      >
+                        {/* Top Accent bar */}
+                        <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-amber-500 via-emerald-500 to-amber-500" />
+
+                        {/* Header info */}
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-slate-800/80 pb-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+                              <h4 className="font-extrabold text-white text-base">
+                                {seeker.fullName}
+                              </h4>
+                              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
+                                قفل دسترسی فعال — نیازمند تایید پرداخت
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 pt-1">
+                              <span>کد ملی: <strong className="text-slate-300 font-mono">{seeker.nationalId || 'ثبت نشده'}</strong></span>
+                              <span>•</span>
+                              <span>نام پدر: <strong className="text-slate-300">{seeker.fatherName || 'ثبت نشده'}</strong></span>
+                              <span>•</span>
+                              <span>شماره تماس: <strong className="text-emerald-400 font-mono" dir="ltr">{seeker.phone || seeker.phoneNumber || '—'}</strong></span>
+                              <span>•</span>
+                              <span>شغل انتخابی: <strong className="text-slate-200">{seeker.skills?.[0] || 'عمومی'}</strong></span>
+                              <span>•</span>
+                              <span>شهر مقصد: <strong className="text-slate-200">{seeker.targetCity || 'استانبول'}</strong></span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 self-start">
+                            <span className="text-xs text-slate-400 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 font-mono">
+                              ثبت: {formattedDate}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Payment & Receipt Details Box */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-950/80 border border-slate-800 p-4 rounded-2xl">
+                          <div className="space-y-1">
+                            <span className="text-[11px] text-slate-400 block">مبلغ پرداختی تعهد شده:</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-base font-extrabold text-amber-400 font-mono">۵۰۰ لیر</span>
+                              <span className="text-xs text-slate-400">
+                                ({Number(500 * (paymentSettings.exchangeRateToman || 2300)).toLocaleString('fa-IR')} تومان)
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-emerald-400 block pt-0.5">
+                              {isSepal ? '✅ پرداخت آنلاین از طریق درگاه سپال شاپرک' : 'رسید واریزی / کارت به کارت'}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <span className="text-[11px] text-slate-400 block">شماره تراکنش / ارجاع (RefId):</span>
+                            {seeker.seekerPaymentRefId ? (
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-xs font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 rounded-lg">
+                                  {seeker.seekerPaymentRefId}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-500">شماره ارجاع خودکار ثبت نشده (فیش دستی)</span>
+                            )}
+                            {seeker.payerCardNumber && (
+                              <div className="text-[11px] text-slate-400 pt-0.5">
+                                شماره کارت واریزکننده: <span className="font-mono text-slate-200" dir="ltr">{seeker.payerCardNumber}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-1">
+                            <span className="text-[11px] text-slate-400 block">تصویر فیش واریزی:</span>
+                            {hasReceiptPhoto ? (
+                              <button
+                                type="button"
+                                onClick={() => setViewReceiptModalUrl(seeker.paymentReceiptPhotoUrl || null)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 rounded-xl text-xs font-bold transition"
+                              >
+                                <Camera className="w-3.5 h-3.5" />
+                                <span>مشاهده تصویر فیش واریز</span>
+                              </button>
+                            ) : isSepal ? (
+                              <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                پرداخت آنلاین سپال نیاز به فیش دستی ندارد
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-500">تصویر فیش ضمیمه نشده است</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Note from seeker if any */}
+                        {seeker.adminVerificationNote && (
+                          <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl text-xs text-slate-300 flex items-start gap-2">
+                            <FileText className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                            <div className="space-y-0.5">
+                              <span className="font-bold text-amber-300 block">یادداشت ثبت شده در پرونده:</span>
+                              <p className="leading-relaxed">{seeker.adminVerificationNote}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Management Actions */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedSeekerDossier(seeker)}
+                              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>مشاهده پرونده و مدارک</span>
+                            </button>
+
+                            <a
+                              href={`tel:${(seeker.phone || seeker.phoneNumber || '').replace(/\s/g, '')}`}
+                              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                              <span>تماس تلفنی</span>
+                            </a>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRejectModalSeekerId(seeker.id);
+                                setRejectReasonInput('');
+                              }}
+                              className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                            >
+                              <XCircle className="w-4 h-4" />
+                              <span>رد پرداخت / قفل ماندن حساب</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                approveSeekerAccount(seeker.id, 'پرداخت ۵۰۰ لیر توسط مدیریت تایید و قفل سامانه باز شد');
+                              }}
+                              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg transition flex items-center gap-2"
+                            >
+                              <ShieldCheck className="w-4 h-4" />
+                              <span>تایید پرداخت ۵۰۰ لیر و فعال‌سازی قفل حساب (دسترسی فوری کارجو)</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SUBTAB 2: EMPLOYER JOBS PENDING APPROVAL */}
+          {paymentApprovalSubTab === 'jobs' && (
+            <div className="space-y-4">
+              {pendingPaymentJobs.length === 0 ? (
             <div className="p-12 text-center bg-slate-900 border border-slate-800 rounded-3xl space-y-3">
               <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto">
                 <CheckCircle className="w-8 h-8" />
@@ -1187,7 +1463,9 @@ export const AdminPanel: React.FC = () => {
             <div className="space-y-4">
               {pendingPaymentJobs.map((job) => {
                 const methodLabel =
-                  job.paymentMethod === 'zarinpal'
+                  job.paymentMethod === 'sepal'
+                    ? 'درگاه پرداخت شاپرک سپال (Sepal)'
+                    : job.paymentMethod === 'zarinpal'
                     ? 'درگاه آنلاین زرین‌پال'
                     : job.paymentMethod === 'turkey_bank'
                     ? 'حساب بانکی ترکیه (Ziraat Bankası)'
@@ -1310,6 +1588,8 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 );
               })}
+            </div>
+          )}
             </div>
           )}
         </div>
@@ -1435,6 +1715,63 @@ export const AdminPanel: React.FC = () => {
             </div>
           </div>
 
+          {/* Sepal IPG & Inquiry (Sepal-Yar) Configuration */}
+          <div className="p-6 bg-slate-950 rounded-2xl border border-teal-500/30 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <h4 className="text-xs font-extrabold text-teal-400 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-teal-400" />
+                <span>تنظیمات درگاه شاپرک سپال و استعلام بانکی سپال‌یار (Sepal)</span>
+              </h4>
+              <span className="text-[10px] bg-teal-500/20 border border-teal-500/40 text-teal-300 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 w-fit">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+                متصل به وب‌سرویس رسمی سپال
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-slate-300 font-bold mb-1">
+                  کد یکتای سپال (X-Unique-Code):
+                </label>
+                <input
+                  type="text"
+                  value={sepalUniqueCodeInput}
+                  onChange={(e) => setSepalUniqueCodeInput(e.target.value)}
+                  placeholder="مثال: 2930311446"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono dir-ltr text-right focus:border-teal-500 outline-hidden"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  کد یکتای اختصاصی شما در پنل inquiry.sepal.ir جهت استعلام شماره کارت و شبای کارجویان
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs text-slate-300 font-bold mb-1">
+                  کلید درگاه پرداخت سپال (apiKey):
+                </label>
+                <input
+                  type="text"
+                  value={sepalApiKeyInput}
+                  onChange={(e) => setSepalApiKeyInput(e.target.value)}
+                  placeholder="کلید درگاه پرداخت سپال"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono dir-ltr text-right focus:border-teal-500 outline-hidden"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  کلید ارائه‌شده در بخش درگاه پرداخت sepal.ir جهت تسویه آنلاین شاپرک
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-teal-950/30 border border-teal-500/20 rounded-xl text-[11px] text-teal-200/90 leading-relaxed space-y-1">
+              <p className="font-bold flex items-center gap-1 text-teal-300">
+                <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+                سرویس‌های یکپارچه‌شده سپال در کارباما:
+              </p>
+              <p>۱. <strong>استعلام هوشمند کارت و شبا:</strong> تشخیص نام بانک، نام صاحب حساب و تبدیل کارت به شبا هنگام ثبت‌نام کارجویان.</p>
+              <p>۲. <strong>درگاه شاپرک سپال‌پی:</strong> پرداخت آنلاین ۵۰۰ لیر تعرفه آگهی کارفرما و فعال‌سازی فوری حساب کارجو با کلیه کارت‌های شتاب.</p>
+            </div>
+          </div>
+
           <div className="flex justify-end pt-2">
             <button
               onClick={() => {
@@ -1447,6 +1784,8 @@ export const AdminPanel: React.FC = () => {
                   iranBankName: iranBankInput.trim(),
                   iranCardNumber: iranCardInput.trim(),
                   iranCardHolder: iranHolderInput.trim(),
+                  sepalApiKey: sepalApiKeyInput.trim(),
+                  sepalUniqueCode: sepalUniqueCodeInput.trim(),
                 });
               }}
               className="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold shadow-lg transition"
@@ -4662,6 +5001,51 @@ export const AdminPanel: React.FC = () => {
                 className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg transition"
               >
                 تایید رد آگهی
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Reject Seeker Payment with Reason & Keep Locked */}
+      {rejectModalSeekerId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="max-w-md w-full bg-slate-900 border border-red-500/40 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-2 text-red-400">
+              <AlertCircle className="w-6 h-6" />
+              <h3 className="font-extrabold text-white text-sm">رد پرداخت و قفل ماندن حساب کارجو</h3>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              علت عدم تایید پرداخت یا عدم بازگشایی حساب کارجو را وارد نمایید (این پیام به کارجو اطلاع داده می‌شود):
+            </p>
+            <textarea
+              rows={3}
+              value={rejectReasonInput}
+              onChange={(e) => setRejectReasonInput(e.target.value)}
+              placeholder="مثال: شماره پیگیری نامعتبر است / مبلغ ۵۰۰ لیر کامل واریز نشده / فیش ارسالی ناخوانا است..."
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500"
+            />
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectModalSeekerId(null);
+                  setRejectReasonInput('');
+                }}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition"
+              >
+                انصراف
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  rejectSeekerAccount(rejectModalSeekerId, rejectReasonInput || 'عدم تایید پرداخت ۵۰۰ لیر توسط مدیریت');
+                  setRejectModalSeekerId(null);
+                  setRejectReasonInput('');
+                }}
+                className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg transition"
+              >
+                ثبت رد پرداخت و قفل ماندن
               </button>
             </div>
           </div>

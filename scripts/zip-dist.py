@@ -54,11 +54,17 @@ def zip_dist():
     apk_file = f"public/downloads/karbama-v{version}.apk"
     aab_file = f"public/downloads/karbama-v{version}.aab"
 
+    try:
+        parts = version.split('.')
+        version_code = 100000 + int(parts[-1]) if len(parts) >= 4 else 100032
+    except Exception:
+        version_code = 100032
+
     readme_bazaar = f"""راهنمای آپلود نسخه {version} کارباما در پیشخوان کافه‌بازار
 ==========================================================
 نام بسته (Package Name): app.karbama.twa
 نام نسخه (Version Name): {version}
-کد نسخه (Version Code): 100019
+کد نسخه (Version Code): {version_code}
 حداقل اندروید (Min SDK): 21 (Android 5.0)
 اندروید هدف (Target SDK): 34 (Android 14)
 امضای دیجیتال: V1 (JAR) + V2 (APK Signature Scheme v2)
