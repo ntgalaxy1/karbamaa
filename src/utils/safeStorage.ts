@@ -38,14 +38,41 @@ export const safeStorage = {
   },
 
   setItem(key: string, value: string): void {
-    if (storageAvailable) {
+    memoryStore.set(key, value);
+    if (!storageAvailable) return;
+
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      // Likely QuotaExceededError when base64 images fill up the 5MB localStorage limit.
       try {
+        // 1. If saving seekers, strip heavy base64 image dataUrls from older entries or current payload so credentials ALWAYS persist in localStorage
+        if (key.includes('seekers') && value.startsWith('[')) {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed)) {
+            const lightweight = parsed.map((item) => {
+              if (!item || typeof item !== 'object') return item;
+              const copy = { ...item };
+              for (const k of ['passportPhotoUrl', 'fullBodyPhotoUrl', 'nationalCardPhotoUrl', 'signatureDataUrl']) {
+                if (typeof copy[k] === 'string' && copy[k].length > 35000) {
+                  copy[k] = '';
+                }
+              }
+              return copy;
+            });
+            window.localStorage.setItem(key, JSON.stringify(lightweight));
+            return;
+          }
+        }
+        // 2. Otherwise free up non-user cache keys and retry
+        window.localStorage.removeItem('karbama_jobs_v10');
+        window.localStorage.removeItem('karbama_hotels_v10');
+        window.localStorage.removeItem('karbama_addresses_v10');
         window.localStorage.setItem(key, value);
       } catch {
-        // Absorb SecurityError
+        // Keep in memoryStore
       }
     }
-    memoryStore.set(key, value);
   },
 
   removeItem(key: string): void {

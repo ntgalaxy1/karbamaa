@@ -65,6 +65,7 @@ import {
   validateNationalIdOrPassport,
 } from '../utils/validators';
 import {
+  toEnglishDigits,
   normalizeEmailForComparison,
   normalizePhoneForComparison,
   normalizeNationalIdForComparison,
@@ -982,6 +983,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Persist state updates securely to safeStorage & IndexedDB (for offline SW access)
   useEffect(() => {
     safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(jobSeekers));
+    if (jobSeekers && jobSeekers.length > 0) {
+      idbCache.saveSeekers(jobSeekers);
+    }
   }, [jobSeekers]);
 
   useEffect(() => {
@@ -1009,10 +1013,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [hotels]);
 
-  // Initial IndexedDB hydration fallback when offline or on first load
+  // Initial IndexedDB & Server API hydration fallback when offline or on first load
   useEffect(() => {
-    const hydrateFromIndexedDB = async () => {
+    const hydrateFromIndexedDBAndServer = async () => {
       try {
+        const cachedSeekers = await idbCache.getSeekers();
+        if (cachedSeekers && cachedSeekers.length > 0) {
+          setJobSeekers((prev) => {
+            const map = new Map<string, JobSeeker>();
+            cachedSeekers.filter((s) => !isSampleOrLegacySeeker(s)).forEach((s) => map.set(s.id, s));
+            prev.filter((s) => !isSampleOrLegacySeeker(s)).forEach((s) => {
+              const old = map.get(s.id);
+              map.set(s.id, old ? { ...old, ...s } : s);
+            });
+            return Array.from(map.values());
+          });
+        }
+
         const cachedJobs = await idbCache.getJobs();
         if (cachedJobs && cachedJobs.length > 0) {
           setJobs((prev) => {
@@ -1039,9 +1056,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch (err) {
         console.warn('[IDB Hydrate] Failed:', err);
       }
+
+      // Also hydrate & two-way sync registered seekers & partners with server (/api/users.php)
+      const syncWithServer = async () => {
+        try {
+          const res = await fetch(`/api/users.php?t=${Date.now()}`, { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            const serverSeekers: JobSeeker[] = Array.isArray(data?.seekers) ? data.seekers : [];
+            const serverIds = new Set(serverSeekers.map((s) => s.id));
+
+            setJobSeekers((prev) => {
+              const map = new Map<string, JobSeeker>();
+              serverSeekers.filter((s) => !isSampleOrLegacySeeker(s)).forEach((s) => map.set(s.id, s));
+              prev.filter((s) => !isSampleOrLegacySeeker(s)).forEach((s) => {
+                const existing = map.get(s.id);
+                map.set(s.id, existing ? { ...existing, ...s } : s);
+                // If local device has a registered seeker not yet on server, push it now!
+                if (!serverIds.has(s.id)) {
+                  fetch('/api/users.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'upsert', seeker: s }),
+                  }).catch(() => {});
+                  syncUserToFirestore(s);
+                }
+              });
+              const merged = Array.from(map.values());
+              safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(merged));
+              return merged;
+            });
+
+            if (data && Array.isArray(data.partners) && data.partners.length > 0) {
+              setPartners((prev) => {
+                const map = new Map<string, PartnerAccount>();
+                data.partners.forEach((p: PartnerAccount) => {
+                  if (p && p.id) map.set(p.id, p);
+                });
+                prev.forEach((p) => {
+                  const existing = map.get(p.id);
+                  map.set(p.id, existing ? { ...existing, ...p } : p);
+                });
+                return Array.from(map.values());
+              });
+            }
+          }
+        } catch {
+          // Ignore network error when offline
+        }
+      };
+
+      await syncWithServer();
     };
 
-    hydrateFromIndexedDB();
+    hydrateFromIndexedDBAndServer();
+
+    const interval = setInterval(() => {
+      fetch(`/api/users.php?t=${Date.now()}`, { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data && Array.isArray(data.seekers) && data.seekers.length > 0) {
+            setJobSeekers((prev) => {
+              const map = new Map<string, JobSeeker>();
+              data.seekers.filter((s: JobSeeker) => !isSampleOrLegacySeeker(s)).forEach((s: JobSeeker) => map.set(s.id, s));
+              prev.filter((s) => !isSampleOrLegacySeeker(s)).forEach((s) => {
+                const existing = map.get(s.id);
+                map.set(s.id, existing ? { ...existing, ...s } : s);
+              });
+              return Array.from(map.values());
+            });
+          }
+        })
+        .catch(() => {});
+    }, 15000);
+
+    return () => clearInterval(interval);
   }, []);
 
 
@@ -1253,19 +1342,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const syncUserToFirestore = async (user: JobSeeker) => {
+    // 1. Always sync to backend server (/api/users.php) for PHP/MySQL & cross-device reliability
+    try {
+      fetch('/api/users.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'upsert', seeker: user }),
+      }).catch(() => {});
+    } catch {
+      // ignore
+    }
+
+    // 2. Sync to Firestore (ensuring total document size stays strictly under 900KB so setDoc never fails!)
     try {
       if (!db) return;
       const sanitized: Record<string, any> = {};
+      let totalEstimatedBytes = 0;
+      const imageKeys = ['passportPhotoUrl', 'fullBodyPhotoUrl', 'nationalCardPhotoUrl', 'signatureDataUrl'];
+
       Object.entries(user).forEach(([k, v]) => {
-        if (v !== undefined) {
-          // Ensure individual base64 fields don't exceed Firestore's 1MB document limit
-          if (typeof v === 'string' && v.startsWith('data:image/') && v.length > 320000) {
-            sanitized[k] = v.slice(0, 320000);
-          } else {
-            sanitized[k] = v;
-          }
+        if (v !== undefined && !imageKeys.includes(k)) {
+          sanitized[k] = v;
+          totalEstimatedBytes += typeof v === 'string' ? v.length : 64;
         }
       });
+
+      for (const imgKey of imageKeys) {
+        const val = (user as any)[imgKey];
+        if (typeof val === 'string' && val.length > 0) {
+          // Only include valid image data URLs if total Firestore doc stays under 820KB (never slice base64!)
+          if (val.length <= 210000 && totalEstimatedBytes + val.length < 820000) {
+            sanitized[imgKey] = val;
+            totalEstimatedBytes += val.length;
+          } else {
+            sanitized[imgKey] = '';
+          }
+        }
+      }
+
       await setDoc(doc(db, 'users', user.id), {
         ...sanitized,
         pushNotificationEnabled: true,
@@ -1277,6 +1391,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const syncPartnerToFirestore = async (partner: PartnerAccount) => {
+    try {
+      fetch('/api/users.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'upsert', partner }),
+      }).catch(() => {});
+    } catch {
+      // ignore
+    }
+
     try {
       if (!db) return;
       await setDoc(doc(db, 'partners', partner.id), {
@@ -1518,8 +1642,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'تعیین کشور مقصد (ترکیه، ارمنستان، عراق یا آلمان) الزامی است.' };
     }
 
-    const cleanUsername = input.username.trim().toLowerCase();
-    const cleanEmail = input.email.trim().toLowerCase();
+    const cleanUsername = toEnglishDigits(input.username).trim().toLowerCase();
+    const cleanPassword = toEnglishDigits(input.password).trim();
+    const cleanEmail = toEnglishDigits(input.email).trim().toLowerCase();
     const fullName = `${input.firstName.trim()} ${input.lastName.trim()}`.trim();
     const formattedPhone = input.phone || `${input.phoneCountryCode} ${input.phoneNumber.trim()}`;
 
@@ -1567,7 +1692,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         phone: formattedPhone || targetSeeker.phone,
         email: cleanEmail || targetSeeker.email,
         username: cleanUsername || targetSeeker.username,
-        password: input.password || targetSeeker.password,
+        password: cleanPassword || targetSeeker.password,
         iranProvince: input.iranProvince.trim() || targetSeeker.iranProvince,
         iranCity: input.iranCity.trim() || targetSeeker.iranCity,
         iranAddress: input.iranAddress.trim() || targetSeeker.iranAddress,
@@ -1592,6 +1717,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const next = [...prev];
         next[existingIndex] = updatedSeeker;
         safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(next));
+        idbCache.saveSeekers(next);
         return next;
       });
       safeStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, updatedSeeker.id);
@@ -1631,7 +1757,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       phone: formattedPhone,
       email: cleanEmail,
       username: cleanUsername,
-      password: input.password,
+      password: cleanPassword,
       iranProvince: input.iranProvince.trim(),
       iranCity: input.iranCity.trim(),
       iranAddress: input.iranAddress.trim(),
@@ -1663,6 +1789,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setJobSeekers((prev) => {
       const next = [newSeeker, ...prev];
       safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(next));
+      idbCache.saveSeekers(next);
       return next;
     });
     safeStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newSeeker.id);
@@ -1684,28 +1811,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const loginSeeker = (username: string, password: string): { success: boolean; error?: string } => {
-    const cleanUsername = username.trim().toLowerCase();
-    const seeker = jobSeekers.find(
-      (s) => s.username.toLowerCase() === cleanUsername && s.password === password
-    );
+    const rawUser = toEnglishDigits(username || '').trim().toLowerCase();
+    const sanitizedUser = rawUser.replace(/[^a-z0-9_.-]/g, '');
+    const normPhone = normalizePhoneForComparison(rawUser);
+    const normNatId = normalizeNationalIdForComparison(rawUser);
+    const cleanPass = toEnglishDigits(password || '').trim();
+
+    if (!rawUser || !cleanPass) {
+      return { success: false, error: 'لطفاً نام کاربری و رمز عبور خود را وارد نمایید.' };
+    }
+
+    // Match user by username (exact or sanitized), email, phone number, or national ID
+    const matchedSeekers = jobSeekers.filter((s) => {
+      const sUser = toEnglishDigits(s.username || '').trim().toLowerCase();
+      const sUserSanitized = sUser.replace(/[^a-z0-9_.-]/g, '');
+      const sEmail = toEnglishDigits(s.email || '').trim().toLowerCase();
+      const sPhone = normalizePhoneForComparison(s.phoneNumber || s.phone || '');
+      const sNatId = normalizeNationalIdForComparison(s.nationalId || '');
+
+      return (
+        (sUser && (sUser === rawUser || (sanitizedUser.length >= 3 && sUserSanitized === sanitizedUser))) ||
+        (sEmail && sEmail === rawUser) ||
+        (normPhone.length >= 10 && sPhone === normPhone) ||
+        (normNatId.length >= 6 && sNatId === normNatId)
+      );
+    });
+
+    if (matchedSeekers.length === 0) {
+      return {
+        success: false,
+        error: 'حسابی با این نام کاربری / ایمیل / شماره موبایل یافت نشد. در صورت فراموشی، دکمه «فراموشی رمز عبور» را بزنید.',
+      };
+    }
+
+    // Check password (exact English digits match or case-insensitive fallback for mobile auto-capitalization)
+    const seeker = matchedSeekers.find((s) => {
+      const sPass = toEnglishDigits(s.password || '').trim();
+      return sPass === cleanPass || sPass.toLowerCase() === cleanPass.toLowerCase();
+    });
 
     if (!seeker) {
-      return { success: false, error: 'نام کاربری یا رمز عبور کارجو اشتباه است.' };
+      return {
+        success: false,
+        error: 'رمز عبور وارد شده صحیح نیست. می‌توانید از گزینه «فراموشی رمز عبور» برای مشاهده رمز خود استفاده کنید.',
+      };
     }
 
     safeStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, seeker.id);
     setCurrentSeekerId(seeker.id);
     setIsAdminLoggedIn(false);
     setRole('jobseeker');
+    setActiveTab('settings');
     showToast(`خوش آمدید، ${seeker.fullName}!`, 'success');
     return { success: true };
   };
 
   const loginAdmin = (username: string, password: string): { success: boolean; error?: string } => {
-    const cleanInputUser = username.trim().toLowerCase();
-    const cleanAdminUser = adminCredentials.username.trim().toLowerCase();
+    const cleanInputUser = toEnglishDigits(username || '').trim().toLowerCase();
+    const cleanAdminUser = toEnglishDigits(adminCredentials.username || '').trim().toLowerCase();
+    const cleanInputPass = toEnglishDigits(password || '').trim();
+    const cleanAdminPass = toEnglishDigits(adminCredentials.password || '').trim();
 
-    if (cleanInputUser === cleanAdminUser && password === adminCredentials.password) {
+    if (cleanInputUser === cleanAdminUser && cleanInputPass === cleanAdminPass) {
       setIsAdminLoggedIn(true);
       setRole('admin');
       setActiveTab('admin');
@@ -1734,17 +1901,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'کاربری وارد نشده است.' };
     }
 
-    if (currentSeeker.password !== oldPassword) {
+    const cleanOld = toEnglishDigits(oldPassword || '').trim();
+    const currentPass = toEnglishDigits(currentSeeker.password || '').trim();
+    if (currentPass !== cleanOld && currentPass.toLowerCase() !== cleanOld.toLowerCase()) {
       return { success: false, error: 'رمز عبور فعلی نادرست است.' };
     }
 
-    const pwdCheck = checkPasswordStrength(newPassword);
+    const cleanNew = toEnglishDigits(newPassword || '').trim();
+    const pwdCheck = checkPasswordStrength(cleanNew);
     if (!pwdCheck.isValid) {
       return { success: false, error: pwdCheck.error };
     }
 
     setJobSeekers((prev) =>
-      prev.map((s) => (s.id === currentSeeker.id ? { ...s, password: newPassword } : s))
+      prev.map((s) => {
+        if (s.id === currentSeeker.id) {
+          const updated = { ...s, password: cleanNew };
+          syncUserToFirestore(updated);
+          return updated;
+        }
+        return s;
+      })
     );
 
     showToast('رمز عبور شما با موفقیت تغییر یافت.', 'success');
@@ -1755,15 +1932,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     emailOrUsername: string
   ): { success: boolean; message?: string; error?: string; username?: string; password?: string } => {
     if (!emailOrUsername || !emailOrUsername.trim()) {
-      return { success: false, error: 'لطفاً نام کاربری یا ایمیل ثبت‌شده خود را وارد کنید.' };
+      return { success: false, error: 'لطفاً نام کاربری، ایمیل، شماره موبایل یا کد ملی ثبت‌شده خود را وارد کنید.' };
     }
 
-    const cleanInput = emailOrUsername.trim().toLowerCase();
+    const cleanInput = toEnglishDigits(emailOrUsername).trim().toLowerCase();
+    const sanitizedInput = cleanInput.replace(/[^a-z0-9_.-]/g, '');
+    const normPhone = normalizePhoneForComparison(cleanInput);
+    const normNatId = normalizeNationalIdForComparison(cleanInput);
 
-    // 1. Search Seekers
-    const seeker = jobSeekers.find(
-      (s) => (s.email && s.email.toLowerCase() === cleanInput) || s.username.toLowerCase() === cleanInput
-    );
+    // 1. Search Seekers by username, email, phone, or nationalId
+    const seeker = jobSeekers.find((s) => {
+      const sUser = toEnglishDigits(s.username || '').trim().toLowerCase();
+      const sEmail = toEnglishDigits(s.email || '').trim().toLowerCase();
+      const sPhone = normalizePhoneForComparison(s.phoneNumber || s.phone || '');
+      const sNatId = normalizeNationalIdForComparison(s.nationalId || '');
+      return (
+        sUser === cleanInput ||
+        (sanitizedInput.length >= 3 && sUser.replace(/[^a-z0-9_.-]/g, '') === sanitizedInput) ||
+        (sEmail && sEmail === cleanInput) ||
+        (normPhone.length >= 10 && sPhone === normPhone) ||
+        (normNatId.length >= 6 && sNatId === normNatId)
+      );
+    });
     if (seeker) {
       return {
         success: true,
@@ -1774,9 +1964,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     // 2. Search Partners
-    const partner = partners.find(
-      (p) => (p.email && p.email.toLowerCase() === cleanInput) || p.username.toLowerCase() === cleanInput
-    );
+    const partner = partners.find((p) => {
+      const pUser = toEnglishDigits(p.username || '').trim().toLowerCase();
+      const pEmail = toEnglishDigits(p.email || '').trim().toLowerCase();
+      const pPhone = normalizePhoneForComparison(p.phone || '');
+      return (
+        pUser === cleanInput ||
+        (pEmail && pEmail === cleanInput) ||
+        (normPhone.length >= 10 && pPhone === normPhone)
+      );
+    });
     if (partner) {
       return {
         success: true,
@@ -1787,7 +1984,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     // 3. Search Admin Credentials
-    if (adminCredentials.username.toLowerCase() === cleanInput) {
+    if (toEnglishDigits(adminCredentials.username).trim().toLowerCase() === cleanInput) {
       return {
         success: true,
         username: adminCredentials.username,
@@ -1798,7 +1995,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return {
       success: false,
-      error: 'هیچ حسابی با این ایمیل یا نام کاربری در سامانه کارباما یافت نشد.',
+      error: 'هیچ حسابی با این نام کاربری، ایمیل، شماره موبایل یا کد ملی در سامانه یافت نشد.',
     };
   };
 
@@ -2497,10 +2694,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Partner System Methods (بخش همکاران و اشتراک)
   // ==========================================
   const loginPartner = (username: string, password: string): { success: boolean; error?: string } => {
-    const cleanUser = username.trim().toLowerCase();
-    const found = partners.find(
-      (p) => p.username.toLowerCase() === cleanUser && p.password === password
-    );
+    const cleanUser = toEnglishDigits(username || '').trim().toLowerCase();
+    const cleanPass = toEnglishDigits(password || '').trim();
+    const normPhone = normalizePhoneForComparison(cleanUser);
+
+    const found = partners.find((p) => {
+      const pUser = toEnglishDigits(p.username || '').trim().toLowerCase();
+      const pEmail = toEnglishDigits(p.email || '').trim().toLowerCase();
+      const pPhone = normalizePhoneForComparison(p.phone || '');
+      const pPass = toEnglishDigits(p.password || '').trim();
+      const userMatches =
+        pUser === cleanUser ||
+        (pEmail && pEmail === cleanUser) ||
+        (normPhone.length >= 10 && pPhone === normPhone);
+      const passMatches = pPass === cleanPass || pPass.toLowerCase() === cleanPass.toLowerCase();
+      return userMatches && passMatches;
+    });
 
     if (!found) {
       return { success: false, error: 'نام کاربری یا رمز عبور همکار اشتباه است.' };
@@ -2847,11 +3056,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const next = prev.filter((s) => s.id !== seekerId);
       try {
         safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(next));
+        idbCache.saveSeekers(next);
       } catch (e) {
         console.error(e);
       }
       return next;
     });
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete_seeker', id: seekerId }),
+    }).catch(() => {});
     if (db) {
       deleteDoc(doc(db, 'users', seekerId)).catch(() => {});
     }
@@ -2866,9 +3081,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setJobSeekers([]);
     try {
       safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify([]));
+      idbCache.saveSeekers([]);
     } catch (e) {
       console.error(e);
     }
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'clear_seekers' }),
+    }).catch(() => {});
     if (db) {
       ids.forEach((id) => {
         deleteDoc(doc(db, 'users', id)).catch(() => {});

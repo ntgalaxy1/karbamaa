@@ -599,7 +599,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
         const img = new Image();
         img.onload = () => {
           try {
-            const maxDim = 900;
+            const maxDim = 640;
             let width = img.width;
             let height = img.height;
             if (width > maxDim || height > maxDim) {
@@ -617,7 +617,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
             const ctx = canvas.getContext('2d');
             if (ctx) {
               ctx.drawImage(img, 0, 0, width, height);
-              const compressed = canvas.toDataURL('image/jpeg', 0.76);
+              const compressed = canvas.toDataURL('image/jpeg', 0.65);
               setter(compressed);
             } else {
               setter(rawDataUrl);
@@ -2314,6 +2314,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                       </div>
                     </div>
 
+                    {/* Account Login Credentials Reminder Box */}
+                    <div className="bg-emerald-950/40 border border-emerald-500/50 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="text-xs font-black text-emerald-300 flex items-center gap-1.5">
+                          <KeyRound className="w-4 h-4 text-emerald-400" />
+                          <span>اطلاعات ورود به حساب کاربری شما (شما هم‌اکنون وارد حساب خود شده‌اید)</span>
+                        </div>
+                        <p className="text-[11px] text-slate-300">
+                          در مراجعات بعدی می‌توانید با <strong>نام کاربری</strong>، <strong>ایمیل</strong>، <strong>شماره موبایل</strong> یا <strong>کد ملی</strong> خود وارد شوید:
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 bg-slate-950/90 border border-emerald-500/30 px-3.5 py-2 rounded-xl font-mono text-xs shrink-0" dir="ltr">
+                        <div>
+                          <span className="text-slate-400 text-[10px] block">Username:</span>
+                          <strong className="text-emerald-300">{registeredSeeker?.username || username}</strong>
+                        </div>
+                        <div className="h-6 w-px bg-slate-800" />
+                        <div>
+                          <span className="text-slate-400 text-[10px] block">Password:</span>
+                          <strong className="text-amber-300">{registeredSeeker?.password || password}</strong>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Official Electronic Signature Card */}
                     <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-2">
                       <div className="flex items-center justify-between">
@@ -2390,22 +2414,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                     بخش ورود امن مدیریت سامانه کارباما. لطفاً نام کاربری و رمز عبور مدیریت را وارد نمایید.
                   </div>
                 ) : (
-                  <div className="p-3.5 bg-slate-800/80 border border-slate-700 rounded-2xl text-xs text-slate-300">
-                    جهت ورود به پنل کارجو، <strong>نام کاربری (یوزرنیم)</strong> و <strong>رمز عبور (پسوورد)</strong> خود را وارد نمایید.
+                  <div className="p-3.5 bg-slate-800/80 border border-slate-700 rounded-2xl text-xs text-slate-300 leading-relaxed">
+                    جهت ورود به پنل کارجو، می‌توانید <strong>نام کاربری (یوزرنیم)</strong>، <strong>ایمیل</strong>، <strong>شماره موبایل</strong> یا <strong>کد ملی</strong> خود را به همراه <strong>رمز عبور</strong> وارد نمایید.
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">نام کاربری (یوزرنیم)</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    {mode === 'admin' ? 'نام کاربری مدیر (یوزرنیم)' : 'نام کاربری / ایمیل / شماره موبایل / کد ملی'}
+                  </label>
                   <div className="relative">
                     <User className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
                     <input
                       type="text"
                       required
                       dir="ltr"
-                      placeholder={mode === 'admin' ? 'admin' : 'username'}
+                      placeholder={mode === 'admin' ? 'admin' : 'username / 0912... / email'}
                       value={loginUsername}
-                      onChange={(e) => setLoginUsername(e.target.value)}
+                      onChange={(e) => setLoginUsername(toEnglishDigits(e.target.value))}
                       className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 text-left font-mono"
                     />
                   </div>
@@ -2420,12 +2446,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                         onClick={() => {
                           setShowForgotPasswordModal(true);
                           setRecoverResult(null);
-                          setRecoverInput('');
+                          setRecoverInput(loginUsername || '');
                         }}
                         className="text-xs text-amber-400 hover:text-amber-300 font-bold transition flex items-center gap-1"
                       >
                         <KeyRound className="w-3.5 h-3.5" />
-                        فراموشی رمز عبور؟
+                        فراموشی یا مشاهده رمز عبور؟
                       </button>
                     )}
                   </div>
@@ -2437,7 +2463,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                       dir="ltr"
                       placeholder="••••••••"
                       value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
+                      onChange={(e) => setLoginPassword(toEnglishDigits(e.target.value))}
                       className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-9 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 text-left font-mono"
                     />
                     <button

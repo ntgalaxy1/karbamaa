@@ -4,15 +4,16 @@
  * for fast access and offline operation even with poor or lost internet.
  */
 
-import { JobVacancy, EssentialAddress, Hotel } from '../types';
+import { JobVacancy, EssentialAddress, Hotel, JobSeeker } from '../types';
 
 const DB_NAME = 'KarbamaOfflineDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export const STORES = {
   JOBS: 'jobs',
   ADDRESSES: 'addresses',
   HOTELS: 'hotels',
+  SEEKERS: 'seekers',
   META: 'meta',
 } as const;
 
@@ -37,6 +38,9 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORES.HOTELS)) {
         db.createObjectStore(STORES.HOTELS, { keyPath: 'id' });
       }
+      if (!db.objectStoreNames.contains(STORES.SEEKERS)) {
+        db.createObjectStore(STORES.SEEKERS, { keyPath: 'id' });
+      }
       if (!db.objectStoreNames.contains(STORES.META)) {
         db.createObjectStore(STORES.META, { keyPath: 'key' });
       }
@@ -48,6 +52,48 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 export const idbCache = {
+  async saveSeekers(seekers: JobSeeker[]): Promise<void> {
+    try {
+      const db = await openDB();
+      const tx = db.transaction([STORES.SEEKERS, STORES.META], 'readwrite');
+      const store = tx.objectStore(STORES.SEEKERS);
+
+      store.clear();
+      for (const seeker of seekers) {
+        if (seeker && seeker.id) {
+          store.put(seeker);
+        }
+      }
+
+      const metaStore = tx.objectStore(STORES.META);
+      metaStore.put({ key: 'lastSeekersSync', timestamp: Date.now(), count: seekers.length });
+
+      return new Promise((resolve) => {
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+      });
+    } catch (err) {
+      console.warn('[IDBCache] Error saving seekers to IndexedDB:', err);
+    }
+  },
+
+  async getSeekers(): Promise<JobSeeker[]> {
+    try {
+      const db = await openDB();
+      const tx = db.transaction(STORES.SEEKERS, 'readonly');
+      const store = tx.objectStore(STORES.SEEKERS);
+      const request = store.getAll();
+
+      return new Promise((resolve) => {
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => resolve([]);
+      });
+    } catch (err) {
+      console.warn('[IDBCache] Error reading seekers from IndexedDB:', err);
+      return [];
+    }
+  },
+
   async saveJobs(jobs: JobVacancy[]): Promise<void> {
     try {
       const db = await openDB();

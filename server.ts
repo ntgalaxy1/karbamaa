@@ -808,6 +808,100 @@ app.post(['/api/sep/verify', '/api/sep/verify.php'], async (req, res) => {
   }
 });
 
+// 5. Server-Side User & Partner Sync API (/api/users & /api/users.php)
+const usersStorePath = path.resolve(__dirname, 'public', 'api', 'sep', 'data', 'users.json');
+
+function readServerUsersStore(): { seekers: any[]; partners: any[] } {
+  try {
+    if (fs.existsSync(usersStorePath)) {
+      const raw = fs.readFileSync(usersStorePath, 'utf8');
+      const parsed = JSON.parse(raw);
+      return {
+        seekers: Array.isArray(parsed?.seekers) ? parsed.seekers : [],
+        partners: Array.isArray(parsed?.partners) ? parsed.partners : [],
+      };
+    }
+  } catch {
+    // ignore
+  }
+  return { seekers: [], partners: [] };
+}
+
+function writeServerUsersStore(store: { seekers: any[]; partners: any[] }): void {
+  try {
+    const dir = path.dirname(usersStorePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(usersStorePath, JSON.stringify(store, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('Could not write users.json:', err);
+  }
+}
+
+app.get(['/api/users', '/api/users.php'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  const store = readServerUsersStore();
+  return res.json({
+    success: true,
+    seekers: store.seekers,
+    partners: store.partners,
+  });
+});
+
+app.post(['/api/users', '/api/users.php'], (req, res) => {
+  try {
+    const { action = 'upsert', id, seeker, partner } = req.body || {};
+    const store = readServerUsersStore();
+
+    if (action === 'delete_seeker' && id) {
+      store.seekers = store.seekers.filter((s) => s.id !== String(id));
+      writeServerUsersStore(store);
+      return res.json({ success: true });
+    }
+
+    if (action === 'clear_seekers') {
+      store.seekers = [];
+      writeServerUsersStore(store);
+      return res.json({ success: true });
+    }
+
+    if (seeker && seeker.id) {
+      const idx = store.seekers.findIndex(
+        (s) =>
+          s.id === seeker.id ||
+          (seeker.username && String(s.username || '').toLowerCase() === String(seeker.username).toLowerCase())
+      );
+      if (idx >= 0) {
+        store.seekers[idx] = { ...store.seekers[idx], ...seeker };
+      } else {
+        store.seekers.unshift(seeker);
+      }
+      writeServerUsersStore(store);
+      return res.json({ success: true, seeker });
+    }
+
+    if (partner && partner.id) {
+      const idx = store.partners.findIndex(
+        (p) =>
+          p.id === partner.id ||
+          (partner.username && String(p.username || '').toLowerCase() === String(partner.username).toLowerCase())
+      );
+      if (idx >= 0) {
+        store.partners[idx] = { ...store.partners[idx], ...partner };
+      } else {
+        store.partners.unshift(partner);
+      }
+      writeServerUsersStore(store);
+      return res.json({ success: true, partner });
+    }
+
+    return res.status(400).json({ success: false, error: 'Invalid payload' });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Server error' });
+  }
+});
+
 // Helper to reliably serve static PWA assets with explicit MIME types and CORS
 function sendStaticFile(res: express.Response, relativeFilePath: string, contentType: string, noCache = false) {
   const distPath = path.resolve(__dirname, 'dist', relativeFilePath);
