@@ -148,7 +148,6 @@ export const JobSearch: React.FC = () => {
     jobAlerts,
     favoriteJobCategories,
     toggleFavoriteCategory,
-    triggerTestJobAlert,
     openedJobIdFromAlert,
     setOpenedJobIdFromAlert,
     setActiveTab,
@@ -1173,14 +1172,6 @@ export const JobSearch: React.FC = () => {
           <div className="flex items-center gap-2 self-start sm:self-auto">
             <button
               type="button"
-              onClick={() => triggerTestJobAlert()}
-              className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-              <span>تست نوتیفیکیشن</span>
-            </button>
-            <button
-              type="button"
               onClick={() => setJobAlertModalOpen(true)}
               className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer"
             >
@@ -2137,7 +2128,7 @@ export const JobSearch: React.FC = () => {
                             کلیک کنید یا عکس فیش واریزی را انتخاب/گرفتن عکس فرمایید
                           </p>
                           <p className="text-[10px] text-slate-400 mt-0.5">
-                            هوش مصنوعی فیش ارسالی را تست و اعتبارسنجی می‌کند (حداکثر ۱۰ مگابایت)
+                            تصویر فیش ارسالی به صورت هوشمند بررسی و اعتبارسنجی می‌شود (حداکثر ۱۰ مگابایت)
                           </p>
                         </label>
                       )}

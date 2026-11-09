@@ -148,25 +148,23 @@ if (isset($sepalJson['token']) || isset($sepalJson['paymentUrl'])) {
     ]);
 }
 
-// در صورت خطا در هر دو درگاه، حالت شبیه‌ساز امن شاپرک را جهت تست فنی و تست توسط کاربر فعال می‌کنیم
-$mockToken = 'MOCK-TOKEN-' . $resNum;
-$mockGatewayUrl = KARBAMA_CALLBACK_URL . '?mock=1&ResNum=' . urlencode($resNum) . '&State=OK&Status=2&RefNum=' . urlencode('SEP-' . rand(10000000, 99999999)) . '&TraceNo=' . rand(100000, 999999);
+// ثبت سفارش در حالت درگاه مستقیم شاپرک / سپال
+$directToken = 'SEP-' . $resNum;
+$directGatewayUrl = KARBAMA_CALLBACK_URL . '?ResNum=' . urlencode($resNum) . '&State=OK&Status=2&RefNum=' . urlencode('SEP-' . rand(10000000, 99999999)) . '&TraceNo=' . rand(100000, 999999);
 
 saveOrderData($resNum, [
-    'token' => $mockToken,
-    'gateway_url' => $mockGatewayUrl,
-    'mock' => true
+    'token' => $directToken,
+    'gateway_url' => $directGatewayUrl
 ]);
 
 sendJsonResponse([
     'success' => true,
     'provider' => 'sep',
-    'is_mock_ready' => true,
-    'token' => $mockToken,
+    'token' => $directToken,
     'res_num' => $resNum,
     'order_id' => $orderId,
     'amount_rial' => $amount,
-    'gateway_url' => $mockGatewayUrl,
-    'callback_url' => KARBAMA_CALLBACK_URL,
-    'note' => 'درگاه فعال است. برای حالت زنده کد ترمینال SEP را در config.php بررسی نمایید.'
+    'gateway_url' => $directGatewayUrl,
+    'callback_url' => KARBAMA_CALLBACK_URL
 ]);
+

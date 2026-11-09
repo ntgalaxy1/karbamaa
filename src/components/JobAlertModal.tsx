@@ -60,7 +60,6 @@ export const JobAlertModal: React.FC<JobAlertModalProps> = ({
     toggleJobAlert,
     pushPermissionStatus,
     requestPushPermission,
-    triggerTestJobAlert,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'create' | 'manage'>('create');
@@ -502,14 +501,6 @@ export const JobAlertModal: React.FC<JobAlertModalProps> = ({
                 <span className="text-slate-300 font-bold">
                   لیست هشدارهای شغلی فعال شما:
                 </span>
-                <button
-                  type="button"
-                  onClick={() => triggerTestJobAlert()}
-                  className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                  ارسال تست زنده اعلان (Test)
-                </button>
               </div>
 
               {jobAlerts.length === 0 ? (
@@ -607,15 +598,6 @@ export const JobAlertModal: React.FC<JobAlertModalProps> = ({
                             }`}
                           >
                             {alert.isActive ? 'خاموش' : 'روشن'}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => triggerTestJobAlert(alert)}
-                            className="p-2 bg-slate-700/80 hover:bg-slate-700 text-slate-200 rounded-xl transition"
-                            title="تست اعلان این هشدار"
-                          >
-                            <Send className="w-3.5 h-3.5" />
                           </button>
 
                           <button

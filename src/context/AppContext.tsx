@@ -810,15 +810,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [partners, setPartners] = useState<PartnerAccount[]>(() => {
     try {
       const stored = safeStorage.getItem(STORAGE_KEYS.PARTNERS);
-      return stored ? JSON.parse(stored) : INITIAL_PARTNERS;
+      const parsed: PartnerAccount[] = stored ? JSON.parse(stored) : INITIAL_PARTNERS;
+      return Array.isArray(parsed)
+        ? parsed.filter((p) => p.id !== 'partner-1' && p.id !== 'partner-2' && p.username !== 'partner1' && p.username !== 'partner2')
+        : [];
     } catch {
-      return INITIAL_PARTNERS;
+      return [];
     }
   });
 
   const [currentPartnerId, setCurrentPartnerId] = useState<string | null>(() => {
     try {
-      return safeStorage.getItem(STORAGE_KEYS.CURRENT_PARTNER_ID) || null;
+      const stored = safeStorage.getItem(STORAGE_KEYS.CURRENT_PARTNER_ID);
+      if (stored === 'partner-1' || stored === 'partner-2') return null;
+      return stored || null;
     } catch {
       return null;
     }
@@ -834,53 +839,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   // Job Alert & Notification States
-  const DEFAULT_INITIAL_ALERTS: JobAlertSubscription[] = [
-    {
-      id: 'alert-default-1',
-      title: 'همه کارهای با جای خواب در استانبول',
-      city: 'استانبول',
-      category: 'all',
-      contractType: 'all',
-      minSalary: 30000,
-      keywords: ['جای خواب'],
-      accommodationOnly: true,
-      workPermitOnly: false,
-      enableBrowserPush: true,
-      enableInAppToast: true,
-      isActive: true,
-      createdAt: '2026-10-25T10:00:00Z',
-    },
-  ];
+  const DEFAULT_INITIAL_ALERTS: JobAlertSubscription[] = [];
 
   const [jobAlerts, setJobAlerts] = useState<JobAlertSubscription[]>(() => {
     try {
       const stored = safeStorage.getItem(STORAGE_KEYS.JOB_ALERTS);
-      return stored ? JSON.parse(stored) : DEFAULT_INITIAL_ALERTS;
+      const parsed: JobAlertSubscription[] = stored ? JSON.parse(stored) : DEFAULT_INITIAL_ALERTS;
+      return Array.isArray(parsed) ? parsed.filter((a) => a.id !== 'alert-default-1') : [];
     } catch {
-      return DEFAULT_INITIAL_ALERTS;
+      return [];
     }
   });
 
   const [jobNotifications, setJobNotifications] = useState<JobNotification[]>(() => {
     try {
       const stored = safeStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-      return stored
-        ? JSON.parse(stored)
-        : [
-            {
-              id: 'notif-welcome',
-              alertId: 'alert-default-1',
-              jobId: 'job-1',
-              jobTitle: 'کمک‌آشپز و سالن‌کار رستوران سنتی',
-              company: 'رستوران و کباب‌سرای آناتولی',
-              city: 'استانبول',
-              salaryText: '۳۲,۰۰۰ تا ۳۸,۰۰۰ لیر',
-              imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
-              message: 'فرصت شغلی جدید مطابق هشدار شما: کمک‌آشپز در استانبول (فاتیح)',
-              read: false,
-              createdAt: '2026-10-25T11:00:00Z',
-            },
-          ];
+      const parsed: JobNotification[] = stored ? JSON.parse(stored) : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((n) => n.id !== 'notif-welcome' && !String(n.message || '').includes('تست'))
+        : [];
     } catch {
       return [];
     }
@@ -2297,9 +2274,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) return parsed;
       }
-      return ['restaurant', 'hotel'];
+      return [];
     } catch {
-      return ['restaurant', 'hotel'];
+      return [];
     }
   });
 

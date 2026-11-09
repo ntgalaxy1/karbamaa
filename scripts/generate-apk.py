@@ -988,7 +988,7 @@ def build_standalone_apk_and_aab(version=None, version_code=None, package_name="
     os.makedirs("public/downloads", exist_ok=True)
 
     # Clean old versioned APKs and AABs
-    for folder in ["public", "public/downloads"]:
+    for folder in [".", "public", "public/downloads"]:
         if os.path.exists(folder):
             for f in os.listdir(folder):
                 if (f.endswith(".apk") or f.endswith(".aab")) and "v10.0.0." in f and version not in f:

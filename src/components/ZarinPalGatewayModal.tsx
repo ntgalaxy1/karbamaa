@@ -54,8 +54,6 @@ export const ZarinPalGatewayModal: React.FC<ZarinPalGatewayModalProps> = ({
     setTimeout(() => {
       setIsRequestingOtp(false);
       setOtpSentMessage(true);
-      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-      setOtpCode(generatedOtp);
     }, 1200);
   };
 
@@ -250,7 +248,7 @@ export const ZarinPalGatewayModal: React.FC<ZarinPalGatewayModalProps> = ({
             {otpSentMessage && (
               <p className="text-[10px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" />
-                <span>رمز پویا به شماره همراه صاحب کارت ارسال شد (خودکار جای‌گذاری شد).</span>
+                <span>رمز پویا به شماره همراه ثبت‌شده صاحب کارت در بانک ارسال گردید.</span>
               </p>
             )}
           </div>

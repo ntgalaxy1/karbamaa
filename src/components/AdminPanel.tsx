@@ -584,7 +584,7 @@ export const AdminPanel: React.FC = () => {
           </div>
 
           <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-200 text-right">
-            اطلاعات پیش‌فرض مدیر: <strong>یوزرنیم: admin</strong> | <strong>رمز: admin123</strong>
+            دسترسی امنیتی اختصاصی مدیریت سامانه کاریابی و اقامت کارباما
           </div>
 
           {loginError && (
@@ -2603,7 +2603,7 @@ export const AdminPanel: React.FC = () => {
                       >
                         <option value="active">اشتراک فعال (دسترسی کامل فوری)</option>
                         <option value="pending_approval">در انتظار پرداخت / تایید فیش</option>
-                        <option value="unpaid">غیرفعال / آزمایشی</option>
+                        <option value="unpaid">غیرفعال / تسویه‌نشده</option>
                       </select>
                     </div>
 
@@ -4874,7 +4874,7 @@ export const AdminPanel: React.FC = () => {
                   ) : (
                     <>
                       <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                      <span>تست و ارزیابی با هوش مصنوعی</span>
+                      <span>بررسی و اعتبارسنجی هوشمند فیش</span>
                     </>
                   )}
                 </button>

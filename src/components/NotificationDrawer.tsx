@@ -38,7 +38,6 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
     setOpenedJobIdFromAlert,
     pushPermissionStatus,
     requestPushPermission,
-    triggerTestJobAlert,
     jobAlerts,
     favoriteJobCategories,
     toggleFavoriteCategory,
@@ -149,15 +148,6 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
               >
                 <SlidersHorizontal className="w-3 h-3" />
                 تنظیم هشدار ({jobAlerts.length})
-              </button>
-
-              <button
-                onClick={() => triggerTestJobAlert()}
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px] flex items-center gap-1 transition"
-                title="ارسال یک تست زنده اعلان"
-              >
-                <Sparkles className="w-3 h-3 text-emerald-400" />
-                تست اعلان
               </button>
             </div>
 

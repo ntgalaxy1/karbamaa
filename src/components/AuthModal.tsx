@@ -1639,20 +1639,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                             <span className="text-[10px] text-slate-400 mt-0.5">انتخاب از گالری یا دوربین</span>
                           </button>
                         )}
-
-                        {!fullBodyPhotoUrl && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFullBodyPhotoUrl(
-                                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80'
-                              )
-                            }
-                            className="text-[10px] text-slate-400 hover:text-red-400 underline self-center"
-                          >
-                            استفاده از نمونه عکس پرسنلی
-                          </button>
-                        )}
                       </div>
 
                       {/* Document 2: عکس صفحه اول پاسپورت (ضروری - با چهارگوش مشخص) */}
@@ -1735,20 +1721,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                             <span className="text-[9.5px] text-amber-300/80 mt-0.5">
                               کلیک برای عکس با دوربین یا انتخاب از گالری
                             </span>
-                          </button>
-                        )}
-
-                        {!passportPhotoUrl && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setPassportPhotoUrl(
-                                'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80'
-                              )
-                            }
-                            className="text-[10px] text-slate-400 hover:text-amber-400 underline self-center"
-                          >
-                            استفاده از نمونه پاسپورت (۴ گوشه مشخص)
                           </button>
                         )}
                       </div>
@@ -2326,7 +2298,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
               <form onSubmit={handleLoginSubmit} className="space-y-4">
                 {mode === 'admin' ? (
                   <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-200">
-                    اطلاعات پیش‌فرض ورود مدیر: <strong>نام کاربری: admin</strong> | <strong>رمز عبور: admin123</strong>
+                    بخش ورود امن مدیریت سامانه کارباما. لطفاً نام کاربری و رمز عبور مدیریت را وارد نمایید.
                   </div>
                 ) : (
                   <div className="p-3.5 bg-slate-800/80 border border-slate-700 rounded-2xl text-xs text-slate-300">

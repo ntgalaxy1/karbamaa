@@ -72,52 +72,7 @@ export const DEFAULT_PARTNER_PLANS: PartnerSubscriptionPlan[] = [
   },
 ];
 
-export const INITIAL_PARTNERS: PartnerAccount[] = [
-  {
-    id: 'partner-1',
-    partnerCode: 'PART-8801',
-    companyName: 'آژانس کاریابی و مهاجرتی استانبول پارس',
-    fullName: 'سعید مرادی',
-    phone: '+90 532 111 2233',
-    username: 'partner1',
-    password: 'partner123',
-    city: 'استانبول',
-    subscriptionStatus: 'active',
-    planId: '3_months',
-    planTitle: 'اشتراک ۳ ماهه فصل کاری',
-    subscriptionStartDate: '2026-10-01T00:00:00Z',
-    subscriptionExpiresAt: '2027-01-01T00:00:00Z',
-    daysRemaining: 63,
-    paymentMethod: 'turkey_bank',
-    paymentAmountTL: 3900,
-    paymentAmountToman: 8970000,
-    paymentReferenceId: 'TR-REF-9921',
-    paymentPayerName: 'سعید مرادی',
-    paymentDate: '2026-10-01',
-    createdAt: '2026-10-01T00:00:00Z',
-  },
-  {
-    id: 'partner-2',
-    partnerCode: 'PART-9204',
-    companyName: 'موسسه بین‌المللی مهاجرتی آریا',
-    fullName: 'مریم حسینی',
-    phone: '+90 535 444 7788',
-    username: 'partner2',
-    password: 'partner123',
-    city: 'آنکارا',
-    subscriptionStatus: 'pending_approval',
-    planId: '1_month',
-    planTitle: 'اشتراک ۱ ماهه همکار',
-    paymentMethod: 'iran_card',
-    paymentAmountTL: 1500,
-    paymentAmountToman: 3450000,
-    paymentReceiptUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80',
-    paymentReferenceId: 'CARD-6037-992102',
-    paymentPayerName: 'مریم حسینی',
-    paymentDate: '2026-10-28',
-    createdAt: '2026-10-28T14:30:00Z',
-  },
-];
+export const INITIAL_PARTNERS: PartnerAccount[] = [];
 
 export const INITIAL_JOB_SEEKERS: JobSeeker[] = [];
 

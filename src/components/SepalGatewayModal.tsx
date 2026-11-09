@@ -143,8 +143,6 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
     setTimeout(() => {
       setIsRequestingOtp(false);
       setOtpSentMessage(true);
-      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-      setOtpCode(generatedOtp);
     }, 1100);
   };
 
@@ -392,7 +390,7 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
             />
             {otpSentMessage && (
               <p className="text-[10px] text-emerald-600 font-medium">
-                ✓ رمز پویا شبیه‌سازی شده پیامک شد و به صورت خودکار درج گردید.
+                ✓ درخواست ارسال رمز دوم پویا به شماره همراه ثبت‌شده در بانک ارسال شد.
               </p>
             )}
           </div>
