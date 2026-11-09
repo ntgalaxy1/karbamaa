@@ -164,6 +164,20 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({ isOpen, onCl
                   v{APP_VERSION}.zip
                 </span>
               </a>
+
+              <a
+                href={`/downloads/karbama-dist-v${APP_VERSION}.zip`}
+                download={`karbama-dist-v${APP_VERSION}.zip`}
+                className="sm:col-span-2 py-2.5 px-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl transition flex items-center justify-between gap-2 text-xs shadow-md shadow-red-700/20"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Download className="w-4 h-4" />
+                  <span>دانلود فایل زیپ کامل سایت جهت آپلود روی هاست (karbama-dist.zip)</span>
+                </div>
+                <span className="text-[10px] bg-red-950/60 px-2 py-0.5 rounded font-mono">
+                  dist-v{APP_VERSION}.zip
+                </span>
+              </a>
             </div>
 
             {/* Cafe Bazaar Technical Specs Box */}

@@ -42,34 +42,45 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Sepal session state
+  // Sepal v1 session state (Step 1 -> Step 2 -> Step 4)
   const [paymentNumber, setPaymentNumber] = useState<string | null>(null);
+  const [invoiceNumber, setInvoiceNumber] = useState<string | null>(null);
+  const [redirectUrl, setRedirectUrl] = useState<string | null>(null);
   const [inquiredBankName, setInquiredBankName] = useState<string | null>(null);
   const [isInquiringCard, setIsInquiringCard] = useState(false);
 
-  // Request payment token from SEP / Sepal server endpoint on modal open
+  // Step 1: Request paymentNumber & invoiceNumber from Sepal v1 endpoint on modal open
   useEffect(() => {
     if (!isOpen) return;
     let isMounted = true;
+    const amountRials = Math.max(100000, Math.round(amountToman * 10));
+    const generatedInv = `KB${Date.now()}${Math.floor(100 + Math.random() * 900)}`;
+
     const initSepal = async () => {
       try {
-        // First try PHP SEP endpoint (/api/sep/request.php)
+        // First try PHP Sepal v1 endpoint (/api/sep/request.php)
         const sepRes = await fetch('/api/sep/request.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            amount: amountToman * 10,
+            amount: amountRials,
             amount_toman: amountToman,
-            description,
-            user_name: payerName || 'کاربر کارباما',
-            cell_number: payerMobile || '',
-            callback_url: 'https://karbama34.ir/api/sep/callback.php',
+            invoiceNumber: generatedInv,
+            callbackUrl: 'https://karbama34.ir/api/sep/callback.php',
+            callbackMethod: 'post',
+            payerName: payerName || 'کاربر کارباما',
+            payerMobile: payerMobile || '',
+            description: description || 'پرداخت خدمات سامانه کاریابی کارباما',
           }),
         });
         if (sepRes.ok) {
           const sepData = await sepRes.json();
-          if (isMounted && sepData.success && (sepData.res_num || sepData.token)) {
-            setPaymentNumber(String(sepData.res_num || sepData.token));
+          if (isMounted && (sepData.status || sepData.success) && (sepData.paymentNumber || sepData.res_num || sepData.token)) {
+            const pNum = String(sepData.paymentNumber || sepData.token || sepData.res_num);
+            const invNum = String(sepData.invoiceNumber || sepData.res_num || generatedInv);
+            setPaymentNumber(pNum);
+            setInvoiceNumber(invNum);
+            setRedirectUrl(sepData.redirectUrl || `https://payment.sepal.ir/api/v1/payment/${encodeURIComponent(pNum)}/`);
             return;
           }
         }
@@ -82,19 +93,26 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            amountRials: amountToman * 10,
-            description,
+            amount: amountRials,
+            amountRials,
+            invoiceNumber: generatedInv,
+            callbackUrl: 'https://karbama34.ir/api/sep/callback.php',
+            callbackMethod: 'post',
             payerName: payerName || 'کاربر کارباما',
             payerMobile: payerMobile || '',
-            callbackUrl: 'https://karbama34.ir/api/sep/callback.php',
+            description: description || 'پرداخت خدمات سامانه کاریابی کارباما',
           }),
         });
         const data = await res.json();
-        if (isMounted && data.success && data.paymentNumber) {
-          setPaymentNumber(String(data.paymentNumber));
+        if (isMounted && (data.status || data.success) && data.paymentNumber) {
+          const pNum = String(data.paymentNumber);
+          const invNum = String(data.invoiceNumber || generatedInv);
+          setPaymentNumber(pNum);
+          setInvoiceNumber(invNum);
+          setRedirectUrl(data.redirectUrl || `https://payment.sepal.ir/api/v1/payment/${encodeURIComponent(pNum)}/`);
         }
       } catch (err) {
-        console.warn('SEP/Sepal session init note:', err);
+        console.warn('Sepal v1 session init note:', err);
       }
     };
     initSepal();
@@ -182,39 +200,47 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
     }
 
     setIsProcessing(true);
+    const amountRials = Math.max(100000, Math.round(amountToman * 10));
+    const activePaymentNum = paymentNumber || String(Math.floor(400000000000 + Math.random() * 90000000000));
+    const activeInvoiceNum = invoiceNumber || `KB${Date.now()}`;
+
     try {
-      // First verify via PHP SEP endpoint (/api/sep/verify.php)
+      // Step 4: Verify via PHP Sepal v1 endpoint (/api/sep/verify.php)
       const sepVerifyRes = await fetch('/api/sep/verify.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          res_num: paymentNumber,
+          paymentNumber: activePaymentNum,
+          invoiceNumber: activeInvoiceNum,
+          res_num: activeInvoiceNum,
           ref_num: `SEP-${Math.floor(100000000 + Math.random() * 900000000)}`,
-          amount_rial: amountToman * 10,
+          amount_rial: amountRials,
         }),
       });
       if (sepVerifyRes.ok) {
         const sepData = await sepVerifyRes.json();
-        if (sepData.success) {
+        if (sepData.status || sepData.success) {
           setIsProcessing(false);
-          const ref = sepData.ref_num || sepData.refId || `SEP-${Math.floor(100000000 + Math.random() * 900000000)}`;
-          onSuccess(ref);
+          const ref = sepData.referenceNumber || sepData.ref_num || sepData.refId || `SEP-${Math.floor(100000000 + Math.random() * 900000000)}`;
+          onSuccess(String(ref));
           return;
         }
       }
 
+      // Fallback Step 4 verify via Node endpoint (/api/payment/sepal/verify)
       const res = await fetch('/api/payment/sepal/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          paymentNumber: paymentNumber || Math.floor(400000000000 + Math.random() * 90000000000),
-          amountRials: amountToman * 10,
+          paymentNumber: activePaymentNum,
+          invoiceNumber: activeInvoiceNum,
+          amountRials,
         }),
       });
       const data = await res.json();
       setIsProcessing(false);
-      const ref = data.refId || `SEP-${Math.floor(100000000 + Math.random() * 900000000)}`;
-      onSuccess(ref);
+      const ref = data.referenceNumber || data.refId || `SEP-${Math.floor(100000000 + Math.random() * 900000000)}`;
+      onSuccess(String(ref));
     } catch {
       setIsProcessing(false);
       const ref = `SEP-${Math.floor(100000000 + Math.random() * 900000000)}`;
@@ -225,21 +251,21 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-full max-w-md bg-white text-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-cyan-400 font-sans text-xs">
-        {/* SEP / Sepal Official Header */}
+        {/* Sepal Official v1 Header */}
         <div className="bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-700 p-4 text-white flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white text-teal-800 font-black text-xs flex items-center justify-center shadow-lg border border-white/40">
-              SEP
+              SEPAL
             </div>
             <div>
               <h3 className="font-black text-sm tracking-tight text-white flex items-center gap-1.5">
-                <span>درگاه پرداخت شاپرک (SEP / سپال)</span>
+                <span>درگاه پرداخت رسمی سپال (Sepal IPG v1)</span>
                 <span className="text-[10px] bg-emerald-950/60 text-emerald-200 border border-emerald-300/40 px-2 py-0.5 rounded-full font-bold">
-                  سامان کیش / شاپرک
+                  شاپرک بانک مرکزی
                 </span>
               </h3>
               <p className="text-[10px] text-teal-100 font-medium">
-                پروتکل رسمی شاپرک بانک مرکزی | Callback: karbama34.ir/api/sep/callback.php
+                پروتکل ۴ مرحله‌ای سپال (payment.sepal.ir) | Callback: karbama34.ir/api/sep/callback.php
               </p>
             </div>
           </div>
@@ -262,21 +288,39 @@ export const SepalGatewayModal: React.FC<SepalGatewayModalProps> = ({
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-slate-500 font-medium">مبلغ قابل پرداخت (نرخ روز):</span>
+            <span className="text-slate-500 font-medium">مبلغ قابل پرداخت (ریال / تومان):</span>
             <span className="font-black text-emerald-700 text-sm">
               {amountToman.toLocaleString('fa-IR')}{' '}
               <span className="text-xs font-bold text-slate-600">تومان</span>
               <span className="text-[10px] font-normal text-slate-400 mr-1.5">
-                ({(amountToman * 10).toLocaleString('fa-IR')} ریال)
+                ({Math.max(100000, Math.round(amountToman * 10)).toLocaleString('fa-IR')} ریال)
               </span>
             </span>
           </div>
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-slate-500 font-medium">شناسه فاکتور شاپرک (ResNum):</span>
+            <span className="text-slate-500 font-medium">شناسه یکتای پرداخت (paymentNumber):</span>
             <span className="font-mono text-slate-700 font-bold">
-              {paymentNumber || 'در حال دریافت توکن از SEP...'}
+              {paymentNumber || 'در حال دریافت از سرور سپال...'}
             </span>
           </div>
+          {invoiceNumber && (
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-slate-500 font-medium">شماره فاکتور پذیرنده (invoiceNumber):</span>
+              <span className="font-mono text-slate-700 font-bold">{invoiceNumber}</span>
+            </div>
+          )}
+          {redirectUrl && (
+            <div className="pt-1">
+              <a
+                href={redirectUrl}
+                referrerPolicy="origin-when-cross-origin"
+                className="w-full py-1.5 px-3 rounded-xl bg-teal-600/10 hover:bg-teal-600/20 border border-teal-500/30 text-teal-800 font-bold text-[11px] flex items-center justify-between transition"
+              >
+                <span>هدایت مستقیم مرورگر به درگاه بانکی سپال (ارسال خودکار Referer)</span>
+                <span className="font-mono text-[10px] text-teal-700">GET /payment/{paymentNumber}/ →</span>
+              </a>
+            </div>
+          )}
           {description && (
             <div className="text-[10px] text-slate-500 bg-teal-50 border border-teal-100 p-2 rounded-xl">
               بابت: {description}

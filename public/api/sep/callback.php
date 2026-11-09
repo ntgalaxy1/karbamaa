@@ -1,99 +1,169 @@
 <?php
 /**
  * سامانه کارباما - کاریابی و اقامت ترکیه
- * فایل دریافت پاسخ درگاه شاپرک پس از پرداخت (SEP Callback)
- * آدرس نهایی: https://karbama34.ir/api/sep/callback.php
+ * ۳. بازگشت به پذیرنده (CallbackUrl: https://karbama34.ir/api/sep/callback.php)
+ * و ۴. فراخوانی تأیید نهایی (POST https://payment.sepal.ir/api/v1/payment/verify/) از سرور پذیرنده
+ *
+ * پارامترهای ارسالی از سپال به callbackUrl پذیرنده (GET یا POST):
+ * - status: integer (1 = موفق اولیه، 0 = ناموفق)
+ * - paymentNumber: string (شناسه پرداخت)
+ * - invoiceNumber: string (شماره فاکتور)
+ * - در صورت status=1 همچنین: amount (ریال)، cardNumber (شماره کارت)، referenceNumber (شماره مرجع)
  */
 
 require_once __DIR__ . '/config.php';
 
-// خواندن اطلاعات ارسالی از شاپرک (SEP از طریق POST یا GET بازمی‌گرداند)
 $requestData = array_merge($_GET, $_POST);
 
-$resNum = isset($requestData['ResNum']) ? trim($requestData['ResNum']) : (isset($requestData['res_num']) ? trim($requestData['res_num']) : '');
-$refNum = isset($requestData['RefNum']) ? trim($requestData['RefNum']) : (isset($requestData['ref_num']) ? trim($requestData['ref_num']) : '');
-$state = isset($requestData['State']) ? trim($requestData['State']) : '';
-$status = isset($requestData['Status']) ? intval($requestData['Status']) : 0;
-$traceNo = isset($requestData['TraceNo']) ? trim($requestData['TraceNo']) : (isset($requestData['Rrn']) ? trim($requestData['Rrn']) : '');
-$securePan = isset($requestData['SecurePan']) ? trim($requestData['SecurePan']) : '';
-$amount = isset($requestData['Amount']) ? intval($requestData['Amount']) : 0;
+// ۱. دریافت پارامترهای استاندارد سپال (Sepal Callback) و سامان (SEP Callback)
+$paymentNumber = isset($requestData['paymentNumber'])
+    ? trim(strval($requestData['paymentNumber']))
+    : (isset($requestData['payment_number']) ? trim(strval($requestData['payment_number'])) : '');
 
-$order = getOrderById($resNum);
-if ($order && $amount <= 0 && isset($order['amount_rial'])) {
-    $amount = intval($order['amount_rial']);
+$invoiceNumber = isset($requestData['invoiceNumber'])
+    ? trim(strval($requestData['invoiceNumber']))
+    : (isset($requestData['ResNum'])
+        ? trim(strval($requestData['ResNum']))
+        : (isset($requestData['res_num']) ? trim(strval($requestData['res_num'])) : ''));
+
+$sepalStatus = isset($requestData['status']) ? intval($requestData['status']) : -1;
+$sepState = isset($requestData['State']) ? trim(strval($requestData['State'])) : '';
+$sepStatus = isset($requestData['Status']) ? intval($requestData['Status']) : -1;
+
+$referenceNumber = isset($requestData['referenceNumber'])
+    ? trim(strval($requestData['referenceNumber']))
+    : (isset($requestData['RefNum'])
+        ? trim(strval($requestData['RefNum']))
+        : (isset($requestData['ref_num']) ? trim(strval($requestData['ref_num'])) : ''));
+
+$cardNumber = isset($requestData['cardNumber'])
+    ? trim(strval($requestData['cardNumber']))
+    : (isset($requestData['SecurePan']) ? trim(strval($requestData['SecurePan'])) : '');
+
+$amount = isset($requestData['amount'])
+    ? intval($requestData['amount'])
+    : (isset($requestData['Amount']) ? intval($requestData['Amount']) : 0);
+
+$traceNo = isset($requestData['TraceNo']) ? trim(strval($requestData['TraceNo'])) : $referenceNumber;
+
+// بازیابی سفارش از دیتابیس
+$order = getOrderById(!empty($invoiceNumber) ? $invoiceNumber : $paymentNumber);
+if ($order) {
+    if (empty($invoiceNumber) && !empty($order['res_num'])) {
+        $invoiceNumber = $order['res_num'];
+    }
+    if (empty($paymentNumber) && !empty($order['payment_number'])) {
+        $paymentNumber = $order['payment_number'];
+    }
+    if ($amount <= 0 && !empty($order['amount_rial'])) {
+        $amount = intval($order['amount_rial']);
+    }
 }
 
 $isSuccess = false;
+$alreadyVerified = false;
+$verifyMessage = '';
 $errorMessage = '';
 
-// بررسی وضعیت بازگشتی از سامان (State == 'OK' یا Status == 2)
-if ($state === 'OK' || $status === 2 || (isset($requestData['mock']) && $requestData['mock'] === '1')) {
-    // تایید تراکنش در سرور مرکزی
-    if (!empty($refNum)) {
-        $verifyPayload = [
-            'TerminalNumber' => SEP_TERMINAL_ID,
-            'RefNum' => $refNum
-        ];
+// -------------------------------------------------------------
+// الف) بررسی بازگشت موفق اولیه از سپال (status == 1) و فراخوانی سرور به سرور Verify
+// طبق مستندات سپال: status=1 به معنای تأیید قطعی نیست؛ پذیرنده باید Verify را از سرور خود فراخوانی کند
+// -------------------------------------------------------------
+if ($sepalStatus === 1 && !empty($paymentNumber)) {
+    $sepalVerifyPayload = [
+        'apiKey' => SEPAL_API_KEY,
+        'paymentNumber' => $paymentNumber,
+    ];
+    if (!empty($invoiceNumber)) {
+        $sepalVerifyPayload['invoiceNumber'] = $invoiceNumber;
+    }
 
-        // در حالت تست یا استعلام واقعی
-        if (isset($requestData['mock']) && $requestData['mock'] === '1') {
-            $isSuccess = true;
-        } else {
-            $verifyRes = makeHttpPostRequest(SEP_VERIFY_URL, $verifyPayload);
-            $verifyJson = json_decode($verifyRes['body'], true);
+    $verifyRes = makeHttpPostRequest(SEPAL_VERIFY_URL, $sepalVerifyPayload);
+    $verifyJson = json_decode($verifyRes['body'], true);
 
-            if (isset($verifyJson['Success']) && $verifyJson['Success'] === true) {
-                $isSuccess = true;
-            } elseif (isset($verifyJson['ResultCode']) && intval($verifyJson['ResultCode']) === 0) {
-                $isSuccess = true;
-            } else {
-                // تلاش برای تایید از طریق سپال
-                $sepalVerifyPayload = [
-                    'apiKey' => SEPAL_API_KEY,
-                    'token' => isset($order['token']) ? $order['token'] : $refNum
-                ];
-                $sepalHeaders = [
-                    'Authorization: Token ' . SEPAL_API_KEY,
-                    'X-Unique-Code: ' . SEPAL_UNIQUE_CODE
-                ];
-                $sepalRes = makeHttpPostRequest(SEPAL_VERIFY_URL, $sepalVerifyPayload, $sepalHeaders);
-                $sepalJson = json_decode($sepalRes['body'], true);
-                if (isset($sepalJson['status']) && (intval($sepalJson['status']) === 1 || intval($sepalJson['status']) === 200)) {
-                    $isSuccess = true;
-                } else {
-                    $errorMessage = 'تایید نهایی تراکنش توسط سرور شاپرک انجام نشد. در صورت کسر وجه از حساب، حداکثر ظرف ۷۲ ساعت توسط بانک عودت می‌گردد.';
-                }
-            }
+    if (is_array($verifyJson) && isset($verifyJson['status']) && $verifyJson['status'] === true) {
+        $isSuccess = true;
+        $alreadyVerified = !empty($verifyJson['alreadyVerified']);
+        $verifyMessage = isset($verifyJson['message']) ? $verifyJson['message'] : 'پرداخت شما با موفقیت انجام شد';
+        if (!empty($verifyJson['referenceNumber'])) {
+            $referenceNumber = strval($verifyJson['referenceNumber']);
+        }
+        if (!empty($verifyJson['cardNumber'])) {
+            $cardNumber = strval($verifyJson['cardNumber']);
+        }
+        if (!empty($verifyJson['amount'])) {
+            $amount = intval($verifyJson['amount']);
         }
     } else {
-        $errorMessage = 'شماره پیگیری (RefNum) توسط درگاه ارسال نشد.';
+        $errCode = isset($verifyJson['message']) ? $verifyJson['message'] : 'verify_failed';
+        $errorMessage = translateSepalError($errCode);
+    }
+}
+// -------------------------------------------------------------
+// ب) بررسی بازگشت از درگاه سامان کیش (SEP: State === 'OK' || Status === 2)
+// -------------------------------------------------------------
+elseif ($sepState === 'OK' || $sepStatus === 2) {
+    if (!empty($referenceNumber)) {
+        $sepVerifyPayload = [
+            'TerminalNumber' => SEP_TERMINAL_ID,
+            'RefNum' => $referenceNumber
+        ];
+        $verifyRes = makeHttpPostRequest(SEP_VERIFY_URL, $sepVerifyPayload);
+        $verifyJson = json_decode($verifyRes['body'], true);
+
+        if (
+            (isset($verifyJson['Success']) && $verifyJson['Success'] === true) ||
+            (isset($verifyJson['ResultCode']) && intval($verifyJson['ResultCode']) === 0)
+        ) {
+            $isSuccess = true;
+            $verifyMessage = 'پرداخت شما با موفقیت انجام شد';
+        } else {
+            $errorMessage = 'تایید نهایی تراکنش توسط سرور شاپرک انجام نشد. در صورت کسر وجه، ظرف ۷۲ ساعت به حساب شما بازمی‌گردد.';
+        }
+    } else {
+        $errorMessage = 'شماره مرجع بانکی (referenceNumber / RefNum) دریافت نشد.';
     }
 } else {
-    $errorMessage = 'تراکنش پرداخت توسط کاربر لغو شد یا با خطای بانکی مواجه گردید.';
+    $errorMessage = 'تراکنش پرداخت توسط کاربر لغو شد یا از سمت بانک ناموفق اعلام گردید (status=0).';
 }
 
-if ($isSuccess) {
-    saveOrderData($resNum, [
+// ذخیره نتیجه نهایی در دیتابیس
+$orderKey = !empty($invoiceNumber) ? $invoiceNumber : $paymentNumber;
+if ($isSuccess && !empty($orderKey)) {
+    saveOrderData($orderKey, [
+        'res_num' => $invoiceNumber ?: $orderKey,
+        'payment_number' => $paymentNumber,
         'status' => 'paid',
-        'ref_num' => $refNum,
-        'trace_no' => $traceNo,
-        'card_pan' => $securePan,
+        'ref_num' => $referenceNumber ?: $paymentNumber,
+        'trace_no' => $traceNo ?: $referenceNumber,
+        'card_pan' => $cardNumber,
+        'amount_rial' => $amount,
+        'amount_toman' => intval($amount / 10),
+        'already_verified' => $alreadyVerified,
         'verified_at' => date('Y-m-d H:i:s'),
-        'payment_status' => 'pending_admin_approval' // طبق دستورالعمل سیستم: نیازمند تایید مدیریت
+        'payment_status' => 'pending_admin_approval'
+    ]);
+} elseif (!empty($orderKey)) {
+    saveOrderData($orderKey, [
+        'payment_number' => $paymentNumber,
+        'status' => 'failed',
+        'error_message' => $errorMessage
     ]);
 }
 
-// ساخت لینک بازگشت به برنامه وب کارباما
 $returnQuery = http_build_query([
     'payment' => $isSuccess ? 'success' : 'failed',
-    'provider' => 'sep',
-    'refId' => $refNum,
-    'resNum' => $resNum,
-    'traceNo' => $traceNo,
+    'provider' => 'sepal',
+    'paymentNumber' => $paymentNumber,
+    'invoiceNumber' => $invoiceNumber,
+    'refId' => $referenceNumber ?: $paymentNumber,
+    'resNum' => $invoiceNumber,
+    'cardNumber' => $cardNumber,
     'amount' => $amount,
     'amountToman' => intval($amount / 10),
+    'alreadyVerified' => $alreadyVerified ? '1' : '0',
     'userType' => isset($order['user_type']) ? $order['user_type'] : 'seeker',
-    'orderId' => isset($order['order_id']) ? $order['order_id'] : ''
+    'orderId' => isset($order['order_id']) ? $order['order_id'] : $invoiceNumber
 ]);
 
 $appReturnUrl = KARBAMA_DOMAIN . '/?' . $returnQuery;
@@ -103,7 +173,7 @@ $appReturnUrl = KARBAMA_DOMAIN . '/?' . $returnQuery;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $isSuccess ? 'پرداخت موفق - سامانه کارباما' : 'خطا در پرداخت - سامانه کارباما'; ?></title>
+    <title><?php echo $isSuccess ? 'پرداخت موفق - سامانه کارباما' : 'نتیجه پرداخت - سامانه کارباما'; ?></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.0.3/Vazirmatn-font-face.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Vazirmatn', -apple-system, sans-serif; }
@@ -194,29 +264,33 @@ $appReturnUrl = KARBAMA_DOMAIN . '/?' . $returnQuery;
 <div class="card">
     <?php if ($isSuccess): ?>
         <div class="icon success">✓</div>
-        <h1>پرداخت شما با موفقیت ثبت شد</h1>
-        <p class="subtitle">تراکنش بانکی در شبکه شاپرک با موفقیت انجام پذیرفت.</p>
+        <h1><?php echo htmlspecialchars($verifyMessage ?: 'پرداخت شما با موفقیت انجام شد'); ?></h1>
+        <p class="subtitle">تأیید قطعی تراکنش (Verify) توسط سرور پذیرنده انجام و ثبت گردید.</p>
 
         <div class="details-box">
             <div class="detail-row">
-                <span class="detail-label">مبلغ پرداختی:</span>
+                <span class="detail-label">مبلغ تأییدشده:</span>
                 <span class="detail-value" style="color: #34d399; font-size: 14px;">
                     <?php echo number_format(intval($amount / 10)); ?> تومان
                     <small style="color: #94a3b8; font-size: 10px;">(<?php echo number_format($amount); ?> ریال)</small>
                 </span>
             </div>
             <div class="detail-row">
-                <span class="detail-label">شماره پیگیری شاپرک (RefId):</span>
-                <span class="detail-value"><?php echo htmlspecialchars($refNum); ?></span>
+                <span class="detail-label">شناسه یکتای پرداخت (paymentNumber):</span>
+                <span class="detail-value"><?php echo htmlspecialchars($paymentNumber); ?></span>
             </div>
             <div class="detail-row">
-                <span class="detail-label">شماره فاکتور کارباما:</span>
-                <span class="detail-value"><?php echo htmlspecialchars($resNum); ?></span>
+                <span class="detail-label">شماره پیگیری بانکی (referenceNumber):</span>
+                <span class="detail-value"><?php echo htmlspecialchars($referenceNumber ?: $paymentNumber); ?></span>
             </div>
-            <?php if (!empty($traceNo)): ?>
             <div class="detail-row">
-                <span class="detail-label">کد رهگیری بانکی (TraceNo):</span>
-                <span class="detail-value"><?php echo htmlspecialchars($traceNo); ?></span>
+                <span class="detail-label">شماره فاکتور پذیرنده (invoiceNumber):</span>
+                <span class="detail-value"><?php echo htmlspecialchars($invoiceNumber); ?></span>
+            </div>
+            <?php if (!empty($cardNumber)): ?>
+            <div class="detail-row">
+                <span class="detail-label">شماره کارت پرداخت‌کننده:</span>
+                <span class="detail-value" dir="ltr"><?php echo htmlspecialchars($cardNumber); ?></span>
             </div>
             <?php endif; ?>
             <div class="detail-row">
@@ -226,12 +300,12 @@ $appReturnUrl = KARBAMA_DOMAIN . '/?' . $returnQuery;
         </div>
 
         <div class="notice-box">
-            <strong>توجه کارجوی گرامی:</strong>
-            اطلاعات واریز شما در سیستم ثبت و در نوبت بررسی مدیریت کارباما قرار گرفت. پس از بررسی و تایید مدیریت، قفل حساب شما به صورت خودکار فعال شده و تمامی دسترسی‌ها باز خواهد شد.
+            <strong>توجه:</strong>
+            تراکنش شما تایید قطعی شد و در نوبت بررسی مدیریت کارباما قرار گرفت. پس از تایید مدیریت، قفل دسترسی حساب شما فعال خواهد شد.
         </div>
 
         <a href="<?php echo htmlspecialchars($appReturnUrl); ?>" class="btn">
-            بازگشت به برنامه کارباما
+            بازگشت به سامانه کارباما
         </a>
         <p class="countdown">انتقال خودکار به برنامه تا <span id="sec">5</span> ثانیه دیگر...</p>
 
@@ -250,17 +324,25 @@ $appReturnUrl = KARBAMA_DOMAIN . '/?' . $returnQuery;
 
     <?php else: ?>
         <div class="icon failed">✕</div>
-        <h1 style="color: #f87171;">پرداخت انجام نشد</h1>
-        <p class="subtitle"><?php echo htmlspecialchars(!empty($errorMessage) ? $errorMessage : 'تراکنش توسط درگاه بانکی تایید نشد.'); ?></p>
+        <h1 style="color: #f87171;">پرداخت تایید نشد</h1>
+        <p class="subtitle"><?php echo htmlspecialchars(!empty($errorMessage) ? $errorMessage : 'متاسفانه پرداخت تایید نشد.'); ?></p>
 
         <div class="details-box">
+            <?php if (!empty($paymentNumber)): ?>
             <div class="detail-row">
-                <span class="detail-label">شماره فاکتور:</span>
-                <span class="detail-value"><?php echo htmlspecialchars($resNum); ?></span>
+                <span class="detail-label">شناسه پرداخت (paymentNumber):</span>
+                <span class="detail-value"><?php echo htmlspecialchars($paymentNumber); ?></span>
             </div>
+            <?php endif; ?>
+            <?php if (!empty($invoiceNumber)): ?>
+            <div class="detail-row">
+                <span class="detail-label">شماره فاکتور (invoiceNumber):</span>
+                <span class="detail-value"><?php echo htmlspecialchars($invoiceNumber); ?></span>
+            </div>
+            <?php endif; ?>
             <div class="detail-row">
                 <span class="detail-label">وضعیت:</span>
-                <span class="detail-value" style="color: #f87171;">ناموفق / لغو شده</span>
+                <span class="detail-value" style="color: #f87171;">ناموفق / تایید نشده</span>
             </div>
         </div>
 

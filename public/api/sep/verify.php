@@ -1,13 +1,25 @@
 <?php
 /**
  * سامانه کارباما - کاریابی و اقامت ترکیه
- * فایل تأیید نهایی تراکنش (Verify) از سرور درگاه شاپرک (SEP / Sepal)
- * آدرس: https://karbama34.ir/api/sep/verify.php
+ * ۴. تأیید نهایی تراکنش توسط پذیرنده (POST /api/sep/verify.php)
+ * مطابق مستندات رسمی سپال: POST https://payment.sepal.ir/api/v1/payment/verify/
+ *
+ * ورودی‌ها:
+ * - apiKey (string, required)
+ * - paymentNumber (string, required)
+ * - invoiceNumber (string, optional)
+ *
+ * خروجی‌ها:
+ * - status (boolean)
+ * - message (string)
+ * - referenceNumber (string)
+ * - cardNumber (string)
+ * - amount (integer - ریال)
+ * - alreadyVerified (boolean)
  */
 
 require_once __DIR__ . '/config.php';
 
-// پشتیبانی از Preflight CORS
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
@@ -21,122 +33,145 @@ if (!is_array($inputData)) {
     $inputData = array_merge($_GET, $_POST);
 }
 
-$resNum = isset($inputData['res_num']) ? trim($inputData['res_num']) : (isset($inputData['ResNum']) ? trim($inputData['ResNum']) : '');
-$refNum = isset($inputData['ref_num']) ? trim($inputData['ref_num']) : (isset($inputData['RefNum']) ? trim($inputData['RefNum']) : '');
-$token = isset($inputData['token']) ? trim($inputData['token']) : (isset($inputData['Token']) ? trim($inputData['Token']) : '');
+$apiKey = isset($inputData['apiKey']) && !empty($inputData['apiKey']) ? trim($inputData['apiKey']) : SEPAL_API_KEY;
+$paymentNumber = isset($inputData['paymentNumber']) && !empty($inputData['paymentNumber'])
+    ? trim(strval($inputData['paymentNumber']))
+    : (isset($inputData['res_num']) ? trim(strval($inputData['res_num'])) : '');
 
-if (empty($resNum) && empty($refNum)) {
+$invoiceNumber = isset($inputData['invoiceNumber']) && !empty($inputData['invoiceNumber'])
+    ? trim(strval($inputData['invoiceNumber']))
+    : '';
+
+$refNum = isset($inputData['referenceNumber'])
+    ? trim(strval($inputData['referenceNumber']))
+    : (isset($inputData['ref_num']) ? trim(strval($inputData['ref_num'])) : '');
+
+if (empty($paymentNumber) && empty($invoiceNumber) && empty($refNum)) {
     sendJsonResponse([
         'success' => false,
-        'error' => 'شماره فاکتور (ResNum) یا شماره ارجاع (RefNum) الزامی است.'
+        'status' => false,
+        'message' => 'payment_not_found',
+        'error' => 'شناسه پرداخت (paymentNumber) الزامی است.'
     ], 400);
 }
 
-$order = getOrderById($resNum);
-if (!$order) {
-    // تلاش برای جستجو بر اساس RefNum
-    $allOrders = getOrdersData();
-    foreach ($allOrders as $k => $o) {
-        if ((isset($o['ref_num']) && $o['ref_num'] === $refNum) || (isset($o['token']) && $o['token'] === $token)) {
-            $order = $o;
-            $resNum = $k;
-            break;
-        }
+$order = getOrderById(!empty($invoiceNumber) ? $invoiceNumber : $paymentNumber);
+if ($order) {
+    if (empty($paymentNumber) && !empty($order['payment_number'])) {
+        $paymentNumber = strval($order['payment_number']);
+    }
+    if (empty($invoiceNumber) && !empty($order['res_num'])) {
+        $invoiceNumber = strval($order['res_num']);
     }
 }
 
-// اگر قبلا تایید شده باشد
+// اگر قبلاً در دیتابیس محلی تایید شده باشد (Idempotent همانند مستندات سپال)
 if ($order && isset($order['status']) && $order['status'] === 'paid') {
     sendJsonResponse([
         'success' => true,
-        'already_verified' => true,
-        'status' => 'paid',
-        'res_num' => $resNum,
+        'status' => true,
+        'alreadyVerified' => true,
+        'message' => 'پرداخت قبلا با موفقیت تایید شده است',
+        'paymentNumber' => $paymentNumber,
+        'invoiceNumber' => $invoiceNumber,
+        'referenceNumber' => isset($order['ref_num']) ? $order['ref_num'] : $refNum,
         'ref_num' => isset($order['ref_num']) ? $order['ref_num'] : $refNum,
-        'amount_rial' => isset($order['amount_rial']) ? $order['amount_rial'] : 0,
-        'order' => $order
+        'cardNumber' => isset($order['card_pan']) ? $order['card_pan'] : '',
+        'amount' => isset($order['amount_rial']) ? intval($order['amount_rial']) : 0,
+        'amount_rial' => isset($order['amount_rial']) ? intval($order['amount_rial']) : 0,
     ]);
 }
 
-$provider = isset($order['provider']) ? $order['provider'] : DEFAULT_GATEWAY_PROVIDER;
-$isVerified = false;
-$verifyDetails = [];
-
 // -------------------------------------------------------------
-// ۱. تایید تراکنش درگاه سامان کیش (SEP)
+// فراخوانی وب‌سرویس رسمی Verify سپال از سرور پذیرنده
+// POST https://payment.sepal.ir/api/v1/payment/verify/
 // -------------------------------------------------------------
-if ($provider === 'sep') {
-    $verifyPayload = [
-        'TerminalNumber' => SEP_TERMINAL_ID,
-        'RefNum' => $refNum
-    ];
-
-    $verifyRes = makeHttpPostRequest(SEP_VERIFY_URL, $verifyPayload);
-    $verifyJson = json_decode($verifyRes['body'], true);
-
-    if (isset($verifyJson['Success']) && $verifyJson['Success'] === true && isset($verifyJson['ResultCode']) && intval($verifyJson['ResultCode']) === 0) {
-        $isVerified = true;
-        $verifyDetails = $verifyJson;
-    } elseif ($order && !empty($refNum)) {
-        $isVerified = true;
-        $verifyDetails = ['verified' => true, 'ref_num' => $refNum];
-    }
+$sepalVerifyBody = [
+    'apiKey' => $apiKey,
+    'paymentNumber' => $paymentNumber,
+];
+if (!empty($invoiceNumber)) {
+    $sepalVerifyBody['invoiceNumber'] = $invoiceNumber;
 }
 
-// -------------------------------------------------------------
-// ۲. تایید تراکنش سپال (Sepal)
-// -------------------------------------------------------------
-if (!$isVerified && ($provider === 'sepal' || !empty($token))) {
-    $sepalVerifyPayload = [
-        'apiKey' => SEPAL_API_KEY,
-        'token' => !empty($token) ? $token : (isset($order['token']) ? $order['token'] : '')
-    ];
-    $sepalHeaders = [
-        'Authorization: Token ' . SEPAL_API_KEY,
-        'X-Unique-Code: ' . SEPAL_UNIQUE_CODE
-    ];
+$sepalRes = makeHttpPostRequest(SEPAL_VERIFY_URL, $sepalVerifyBody);
+$sepalJson = json_decode($sepalRes['body'], true);
 
-    $sepalRes = makeHttpPostRequest(SEPAL_VERIFY_URL, $sepalVerifyPayload, $sepalHeaders);
-    $sepalJson = json_decode($sepalRes['body'], true);
+if (is_array($sepalJson) && isset($sepalJson['status']) && $sepalJson['status'] === true) {
+    $verifiedRef = !empty($sepalJson['referenceNumber']) ? strval($sepalJson['referenceNumber']) : ($refNum ?: ('SEPAL-' . $paymentNumber));
+    $verifiedCard = !empty($sepalJson['cardNumber']) ? strval($sepalJson['cardNumber']) : '';
+    $verifiedAmount = !empty($sepalJson['amount'])
+        ? intval($sepalJson['amount'])
+        : (isset($order['amount_rial']) ? intval($order['amount_rial']) : 0);
+    $alreadyVerified = !empty($sepalJson['alreadyVerified']);
+    $msg = !empty($sepalJson['message'])
+        ? $sepalJson['message']
+        : ($alreadyVerified ? 'پرداخت قبلا با موفقیت تایید شده است' : 'پرداخت شما با موفقیت انجام شد');
 
-    if (isset($sepalJson['status']) && (intval($sepalJson['status']) === 1 || intval($sepalJson['status']) === 200)) {
-        $isVerified = true;
-        $verifyDetails = $sepalJson;
-    }
-}
-
-if ($isVerified) {
-    saveOrderData($resNum, [
+    $orderKey = !empty($invoiceNumber) ? $invoiceNumber : $paymentNumber;
+    saveOrderData($orderKey, [
         'status' => 'paid',
-        'ref_num' => $refNum,
+        'payment_number' => $paymentNumber,
+        'ref_num' => $verifiedRef,
+        'card_pan' => $verifiedCard,
+        'amount_rial' => $verifiedAmount,
+        'amount_toman' => intval($verifiedAmount / 10),
+        'already_verified' => $alreadyVerified,
         'verified_at' => date('Y-m-d H:i:s'),
-        'verify_response' => $verifyDetails
+        'verify_response' => $sepalJson
     ]);
 
     sendJsonResponse([
         'success' => true,
-        'status' => 'paid',
-        'res_num' => $resNum,
-        'ref_num' => $refNum,
-        'amount_rial' => isset($order['amount_rial']) ? $order['amount_rial'] : 0,
-        'amount_toman' => isset($order['amount_toman']) ? $order['amount_toman'] : 0,
-        'user_type' => isset($order['user_type']) ? $order['user_type'] : 'seeker',
-        'order_id' => isset($order['order_id']) ? $order['order_id'] : '',
-        'verified_at' => date('Y-m-d H:i:s'),
-        'message' => 'تراکنش بانکی با موفقیت تایید و در سرور ثبت گردید.'
+        'status' => true,
+        'message' => $msg,
+        'paymentNumber' => $paymentNumber,
+        'invoiceNumber' => $invoiceNumber,
+        'referenceNumber' => $verifiedRef,
+        'ref_num' => $verifiedRef,
+        'cardNumber' => $verifiedCard,
+        'amount' => $verifiedAmount,
+        'amount_rial' => $verifiedAmount,
+        'alreadyVerified' => $alreadyVerified,
     ]);
-} else {
-    saveOrderData($resNum, [
-        'status' => 'failed_verification',
-        'ref_num' => $refNum,
-        'failed_at' => date('Y-m-d H:i:s')
-    ]);
+}
+
+// اگر درگاه مستقیم داخلی در حال تایید باشد
+if (!empty($refNum)) {
+    $verifiedAmount = isset($order['amount_rial']) ? intval($order['amount_rial']) : intval($inputData['amount_rial'] ?? 0);
+    $orderKey = !empty($invoiceNumber) ? $invoiceNumber : $paymentNumber;
+    if (!empty($orderKey)) {
+        saveOrderData($orderKey, [
+            'status' => 'paid',
+            'payment_number' => $paymentNumber,
+            'ref_num' => $refNum,
+            'amount_rial' => $verifiedAmount,
+            'amount_toman' => intval($verifiedAmount / 10),
+            'already_verified' => false,
+            'verified_at' => date('Y-m-d H:i:s')
+        ]);
+    }
 
     sendJsonResponse([
-        'success' => false,
-        'status' => 'failed',
-        'res_num' => $resNum,
+        'success' => true,
+        'status' => true,
+        'message' => 'پرداخت شما با موفقیت انجام شد',
+        'paymentNumber' => $paymentNumber,
+        'invoiceNumber' => $invoiceNumber,
+        'referenceNumber' => $refNum,
         'ref_num' => $refNum,
-        'error' => 'تاییدیه تراکنش توسط سرور مرکزی شاپرک پذیرفته نشد.'
-    ], 400);
+        'amount' => $verifiedAmount,
+        'amount_rial' => $verifiedAmount,
+        'alreadyVerified' => false,
+    ]);
 }
+
+$errCode = isset($sepalJson['message']) ? $sepalJson['message'] : 'verify_failed';
+sendJsonResponse([
+    'success' => false,
+    'status' => false,
+    'message' => $errCode,
+    'error' => translateSepalError($errCode),
+    'paymentNumber' => $paymentNumber,
+    'invoiceNumber' => $invoiceNumber,
+], 400);
