@@ -808,6 +808,36 @@ app.post(['/api/sep/verify', '/api/sep/verify.php'], async (req, res) => {
   }
 });
 
+// 4b. Sepal Payment OTP Session & Harim Dispatch (/api/sep/send-otp)
+app.post(['/api/sep/send-otp', '/api/sep/send-otp.php'], (req, res) => {
+  try {
+    const { paymentNumber, invoiceNumber, cardPan, amountRials } = req.body || {};
+    const pNum = String(paymentNumber || invoiceNumber || Date.now());
+    const otpSessionId = `OTP-${pNum}-${Date.now()}`;
+    const harimTraceId = `HRM-${Math.floor(100000 + Math.random() * 900000)}`;
+    const expiresAt = new Date(Date.now() + 120 * 1000).toISOString();
+
+    return res.json({
+      success: true,
+      status: true,
+      otpSessionId,
+      harimTraceId,
+      ttlSeconds: 120,
+      expiresAt,
+      paymentNumber: pNum,
+      cardPan: cardPan || null,
+      amountRials: Number(amountRials) || 0,
+      message: 'رمز دوم پویا با مهلت ۱۲۰ ثانیه ارسال شد.',
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      status: false,
+      error: err.message || 'خطا در ارسال رمز دوم پویا',
+    });
+  }
+});
+
 // 5. Server-Side User & Partner Sync API (/api/users & /api/users.php)
 const usersStorePath = path.resolve(__dirname, 'public', 'api', 'sep', 'data', 'users.json');
 

@@ -531,6 +531,7 @@ export function translatePersianStringSync(raw: string, lang: AppLanguage): stri
 interface TrackedTextNode extends Text {
   __origFaText?: string;
   __lastAppliedLang?: AppLanguage;
+  __lastTranslatedValue?: string;
 }
 
 interface TrackedElement extends HTMLElement {
@@ -547,10 +548,23 @@ function processTextNode(node: TrackedTextNode, lang: AppLanguage) {
   const currentVal = node.nodeValue || '';
   if (!currentVal.trim()) return;
 
+  // If React dynamically updated this text node (e.g. loading -> paymentNumber, or countdown timer),
+  // refresh __origFaText so we NEVER overwrite React's new value with stale text!
+  if (node.__lastTranslatedValue !== undefined && currentVal !== node.__lastTranslatedValue) {
+    if (PERSIAN_CHAR_REGEX.test(currentVal)) {
+      node.__origFaText = currentVal;
+    } else {
+      node.__origFaText = undefined;
+      node.__lastTranslatedValue = currentVal;
+      return;
+    }
+  }
+
   // Capture original Persian text when first seen
   if (node.__origFaText === undefined) {
     if (PERSIAN_CHAR_REGEX.test(currentVal)) {
       node.__origFaText = currentVal;
+      node.__lastTranslatedValue = currentVal;
     } else {
       return;
     }
@@ -560,10 +574,11 @@ function processTextNode(node: TrackedTextNode, lang: AppLanguage) {
   if (!origFa) return;
 
   if (lang === 'fa') {
-    if (node.nodeValue !== origFa) {
+    if (node.__lastAppliedLang && node.__lastAppliedLang !== 'fa' && node.nodeValue !== origFa) {
       node.nodeValue = origFa;
     }
     node.__lastAppliedLang = 'fa';
+    node.__lastTranslatedValue = node.nodeValue || origFa;
     return;
   }
 
@@ -572,12 +587,15 @@ function processTextNode(node: TrackedTextNode, lang: AppLanguage) {
     node.nodeValue = syncTranslated;
   }
   node.__lastAppliedLang = lang;
+  node.__lastTranslatedValue = node.nodeValue || syncTranslated;
 
   // If any Persian letters still remain (e.g. a newly added custom job description), fetch neural translation in browser
   if (PERSIAN_CHAR_REGEX.test(syncTranslated)) {
     fetchBrowserNeuralTranslation(origFa, lang, (neuralResult) => {
       if (node.__lastAppliedLang === lang && node.nodeValue !== neuralResult) {
-        node.nodeValue = convertDigitsByLang(neuralResult, lang);
+        const finalVal = convertDigitsByLang(neuralResult, lang);
+        node.nodeValue = finalVal;
+        node.__lastTranslatedValue = finalVal;
       }
     });
   }

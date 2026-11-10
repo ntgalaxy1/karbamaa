@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   CreditCard,
-  Lock,
-  CheckCircle2,
   AlertCircle,
   X,
   ShieldCheck,
@@ -11,6 +9,8 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { validateIranianBankCard } from '../utils/validators';
+import { toEnglishDigits } from '../utils/inputUtils';
+import { PaymentOtpInput } from './PaymentOtpInput';
 
 interface ZarinPalGatewayModalProps {
   isOpen: boolean;
@@ -31,16 +31,35 @@ export const ZarinPalGatewayModal: React.FC<ZarinPalGatewayModalProps> = ({
   const [cvv2, setCvv2] = useState('');
   const [expMonth, setExpMonth] = useState('');
   const [expYear, setExpYear] = useState('');
+
+  // Dynamic OTP & 120-second (2-minute) countdown state
   const [otpCode, setOtpCode] = useState('');
-  const [isRequestingOtp, setIsRequestingOtp] = useState(false);
-  const [otpSentMessage, setOtpSentMessage] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState<number>(0);
+  const [otpExpired, setOtpExpired] = useState(false);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleOtpCountdownChange = useCallback(
+    (secondsLeft: number, isExpired: boolean) => {
+      setOtpCountdown(secondsLeft);
+      setOtpExpired(isExpired);
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setOtpCode('');
+    setOtpCountdown(0);
+    setOtpExpired(false);
+    setErrorMsg(null);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleFormatCardNumber = (value: string) => {
-    const raw = value.replace(/\D/g, '').slice(0, 16);
+    const raw = toEnglishDigits(value).replace(/\D/g, '').slice(0, 16);
     const parts = raw.match(/.{1,4}/g) || [];
     setCardNumber(parts.join(' - '));
     if (raw.length === 16) {
@@ -49,25 +68,11 @@ export const ZarinPalGatewayModal: React.FC<ZarinPalGatewayModalProps> = ({
     }
   };
 
-  const handleRequestOtp = () => {
-    const check = validateIranianBankCard(cardNumber);
-    if (!check.isValid) {
-      setErrorMsg(check.error || 'لطفاً ابتدا یک شماره کارت ۱۶ رقمی واقعی وارد نمایید.');
-      return;
-    }
-    setErrorMsg(null);
-    setIsRequestingOtp(true);
-    setTimeout(() => {
-      setIsRequestingOtp(false);
-      setOtpSentMessage(true);
-    }, 1200);
-  };
-
   const handleSubmitPayment = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
-    const cleanCard = cardNumber.replace(/\D/g, '');
+    const cleanCard = toEnglishDigits(cardNumber).replace(/\D/g, '');
     const check = validateIranianBankCard(cleanCard);
     if (!check.isValid) {
       setErrorMsg(check.error || 'شماره کارت بانکی وارد شده واقعی و معتبر نیست.');
@@ -81,8 +86,12 @@ export const ZarinPalGatewayModal: React.FC<ZarinPalGatewayModalProps> = ({
       setErrorMsg('تاریخ انقضای کارت را کامل وارد کنید.');
       return;
     }
+    if (otpExpired && otpCountdown === 0) {
+      setErrorMsg('مهلت ۱۲۰ ثانیه‌ای رمز دوم پویا به پایان رسیده است. لطفاً کد امنیتی جدید را وارد کرده و مجدداً رمز پویا دریافت کنید.');
+      return;
+    }
     if (!otpCode || otpCode.length < 5) {
-      setErrorMsg('لطفاً رمز دوم پویا را وارد کنید یا دکمه دریافت رمز پویا را بزنید.');
+      setErrorMsg('لطفاً رمز دوم پویا را وارد کنید یا پس از وارد کردن کد امنیتی، دکمه دریافت رمز پویا را بزنید.');
       return;
     }
 
@@ -91,16 +100,16 @@ export const ZarinPalGatewayModal: React.FC<ZarinPalGatewayModalProps> = ({
       setIsProcessing(false);
       const refId = 'ZP-' + Math.floor(100000 + Math.random() * 900000);
       onSuccess(refId);
-    }, 1600);
+    }, 1200);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-white text-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-amber-300 font-sans text-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+      <div className="w-full max-w-md bg-white text-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-amber-300 font-sans text-xs my-auto">
         {/* ZarinPal Official Header */}
-        <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 p-4 text-slate-950 flex items-center justify-between shadow-md">
+        <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 p-3.5 text-slate-950 flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-slate-950 text-amber-400 font-black text-sm flex items-center justify-center shadow-lg border border-amber-300/40">
+            <div className="w-10 h-10 rounded-2xl bg-slate-950 text-amber-400 font-black text-sm flex items-center justify-center shadow-lg border border-amber-300/40 shrink-0">
               ZP
             </div>
             <div>
@@ -117,7 +126,7 @@ export const ZarinPalGatewayModal: React.FC<ZarinPalGatewayModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full bg-slate-950/10 hover:bg-slate-950/20 text-slate-950 transition"
+            className="p-1.5 rounded-full bg-slate-950/10 hover:bg-slate-950/20 text-slate-950 transition shrink-0"
             title="انصراف"
           >
             <X className="w-4 h-4" />
@@ -151,7 +160,7 @@ export const ZarinPalGatewayModal: React.FC<ZarinPalGatewayModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmitPayment} className="p-4 space-y-3.5">
+        <form onSubmit={handleSubmitPayment} className="p-4 space-y-3">
           {errorMsg && (
             <div className="p-2.5 rounded-xl bg-red-100 border border-red-300 text-red-800 text-[11px] flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
@@ -171,7 +180,7 @@ export const ZarinPalGatewayModal: React.FC<ZarinPalGatewayModalProps> = ({
                 placeholder="6037 - XXXX - XXXX - XXXX"
                 value={cardNumber}
                 onChange={(e) => handleFormatCardNumber(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-3 py-2.5 text-slate-900 placeholder-slate-400 font-mono text-center font-black tracking-widest text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-3 py-2 text-slate-900 placeholder-slate-400 font-mono text-center font-black tracking-widest text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               />
             </div>
           </div>
@@ -187,7 +196,7 @@ export const ZarinPalGatewayModal: React.FC<ZarinPalGatewayModalProps> = ({
                 dir="ltr"
                 placeholder="XXX"
                 value={cvv2}
-                onChange={(e) => setCvv2(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) => setCvv2(toEnglishDigits(e.target.value).replace(/\D/g, ''))}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 text-center font-mono focus:ring-2 focus:ring-amber-500"
               />
             </div>
@@ -201,7 +210,7 @@ export const ZarinPalGatewayModal: React.FC<ZarinPalGatewayModalProps> = ({
                   maxLength={2}
                   placeholder="ماه"
                   value={expMonth}
-                  onChange={(e) => setExpMonth(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) => setExpMonth(toEnglishDigits(e.target.value).replace(/\D/g, ''))}
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 text-slate-900 text-center font-mono text-xs focus:ring-2 focus:ring-amber-500"
                 />
                 <span className="text-slate-400 font-bold">/</span>
@@ -211,63 +220,32 @@ export const ZarinPalGatewayModal: React.FC<ZarinPalGatewayModalProps> = ({
                   maxLength={2}
                   placeholder="سال"
                   value={expYear}
-                  onChange={(e) => setExpYear(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) => setExpYear(toEnglishDigits(e.target.value).replace(/\D/g, ''))}
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 text-slate-900 text-center font-mono text-xs focus:ring-2 focus:ring-amber-500"
                 />
               </div>
             </div>
           </div>
 
-          {/* OTP / Second Password Input with Request Button */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-slate-700 font-bold">رمز دوم پویا *</label>
-              <button
-                type="button"
-                onClick={handleRequestOtp}
-                disabled={isRequestingOtp}
-                className="text-[10px] text-amber-700 hover:text-amber-900 font-bold underline flex items-center gap-1 disabled:opacity-50"
-              >
-                {isRequestingOtp ? (
-                  <>
-                    <RefreshCw className="w-3 h-3 animate-spin" />
-                    <span>در حال ارسال پیامک...</span>
-                  </>
-                ) : (
-                  <span>دریافت رمز پویا</span>
-                )}
-              </button>
-            </div>
-
-            <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
-              <input
-                type="password"
-                required
-                maxLength={8}
-                dir="ltr"
-                placeholder="رمز پویای پیامک‌شده"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-3 py-2 text-slate-900 font-mono text-center tracking-widest text-sm focus:ring-2 focus:ring-amber-500"
-              />
-            </div>
-            {otpSentMessage && (
-              <p className="text-[10px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" />
-                <span>رمز پویا به شماره همراه ثبت‌شده صاحب کارت در بانک ارسال گردید.</span>
-              </p>
-            )}
-          </div>
+          {/* OTP (One-Time Password) Verification Component with 120s Countdown & Anti-Fraud Binding */}
+          <PaymentOtpInput
+            cardNumber={cardNumber}
+            amountRials={Math.max(100000, Math.round(amountToman * 10))}
+            otpCode={otpCode}
+            onOtpChange={setOtpCode}
+            onCountdownChange={handleOtpCountdownChange}
+            onError={setErrorMsg}
+            accentColor="amber"
+          />
 
           {/* Security Notice */}
-          <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-500 pt-1">
+          <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-500 pt-0.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             <span>پرداخت امن با پروتکل SSL و تاییدیه رسمی بانک مرکزی</span>
           </div>
 
           {/* Submit Action Buttons */}
-          <div className="pt-2 flex items-center gap-2">
+          <div className="pt-1 flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
