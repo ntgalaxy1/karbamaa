@@ -4,18 +4,8 @@
  * ۴. تأیید نهایی تراکنش توسط پذیرنده (POST /api/sep/verify.php)
  * مطابق مستندات رسمی سپال: POST https://payment.sepal.ir/api/v1/payment/verify/
  *
- * ورودی‌ها:
- * - apiKey (string, required)
- * - paymentNumber (string, required)
- * - invoiceNumber (string, optional)
- *
- * خروجی‌ها:
- * - status (boolean)
- * - message (string)
- * - referenceNumber (string)
- * - cardNumber (string)
- * - amount (integer - ریال)
- * - alreadyVerified (boolean)
+ * همراه با بررسی سخت‌گیرانه نشست ۱۲۰ ثانیه‌ای رمز دوم پویا (OTP)
+ * هیچ رمز دوم ساختگی یا الکی بدون تایید واقعی سرور سپال / شاپرک پذیرفته نمی‌شود.
  */
 
 require_once __DIR__ . '/config.php';
@@ -42,17 +32,75 @@ $invoiceNumber = isset($inputData['invoiceNumber']) && !empty($inputData['invoic
     ? trim(strval($inputData['invoiceNumber']))
     : '';
 
-$refNum = isset($inputData['referenceNumber'])
-    ? trim(strval($inputData['referenceNumber']))
-    : (isset($inputData['ref_num']) ? trim(strval($inputData['ref_num'])) : '');
+$otpSessionId = isset($inputData['otpSessionId']) ? trim(strval($inputData['otpSessionId'])) : '';
+$otpCode = isset($inputData['otpCode']) ? preg_replace('/\D+/', '', strval($inputData['otpCode'])) : '';
 
-if (empty($paymentNumber) && empty($invoiceNumber) && empty($refNum)) {
+if (empty($paymentNumber) && empty($invoiceNumber)) {
     sendJsonResponse([
         'success' => false,
         'status' => false,
         'message' => 'payment_not_found',
         'error' => 'شناسه پرداخت (paymentNumber) الزامی است.'
     ], 400);
+}
+
+// ۱. بررسی نشست ۱۲۰ ثانیه‌ای OTP در صورت ارسال از فرم درگاه
+$otpFile = ORDER_STORAGE_DIR . '/otp_sessions.json';
+$otpSessions = [];
+if (file_exists($otpFile)) {
+    $decoded = json_decode(file_get_contents($otpFile), true);
+    if (is_array($decoded)) {
+        $otpSessions = $decoded;
+    }
+}
+
+if (!empty($otpSessionId) || !empty($otpCode)) {
+    if (empty($otpSessionId) || !isset($otpSessions[$otpSessionId])) {
+        sendJsonResponse([
+            'success' => false,
+            'status' => false,
+            'sessionRevoked' => true,
+            'message' => 'invalid_otp_session',
+            'error' => 'نشست رمز دوم پویا یافت نشد یا منقضی شده است. لطفاً کد امنیتی جدید را وارد کرده و دکمه «دریافت رمز پویا» را بزنید.'
+        ], 400);
+    }
+
+    $session = &$otpSessions[$otpSessionId];
+    $nowTs = time();
+
+    if (!empty($session['revoked']) || intval($session['attempts_remaining']) <= 0) {
+        sendJsonResponse([
+            'success' => false,
+            'status' => false,
+            'sessionRevoked' => true,
+            'attemptsRemaining' => 0,
+            'message' => 'otp_max_attempts',
+            'error' => 'به دلیل ورود ۳ مرتبه رمز دوم نامعتبر، این رمز پویا مسدود شد. لطفاً کد امنیتی جدید را وارد کرده و رمز پویای جدید دریافت کنید.'
+        ], 400);
+    }
+
+    if ($nowTs > intval($session['expires_at_ts'])) {
+        $session['revoked'] = true;
+        @file_put_contents($otpFile, json_encode($otpSessions, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        sendJsonResponse([
+            'success' => false,
+            'status' => false,
+            'sessionRevoked' => true,
+            'attemptsRemaining' => 0,
+            'message' => 'otp_expired',
+            'error' => 'مهلت ۱۲۰ ثانیه‌ای اعتبار رمز دوم پویا به پایان رسیده است (00:00). لطفاً مجدداً رمز پویا دریافت کنید.'
+        ], 400);
+    }
+
+    if (strlen($otpCode) < 5 || strlen($otpCode) > 8) {
+        sendJsonResponse([
+            'success' => false,
+            'status' => false,
+            'attemptsRemaining' => intval($session['attempts_remaining']),
+            'message' => 'invalid_otp_length',
+            'error' => 'رمز دوم پویا باید بین ۵ تا ۸ رقم باشد.'
+        ], 400);
+    }
 }
 
 $order = getOrderById(!empty($invoiceNumber) ? $invoiceNumber : $paymentNumber);
@@ -65,8 +113,8 @@ if ($order) {
     }
 }
 
-// اگر قبلاً در دیتابیس محلی تایید شده باشد (Idempotent همانند مستندات سپال)
-if ($order && isset($order['status']) && $order['status'] === 'paid') {
+// اگر قبلاً در دیتابیس محلی توسط سپال تایید شده باشد
+if ($order && isset($order['status']) && $order['status'] === 'paid' && !empty($order['verify_response'])) {
     sendJsonResponse([
         'success' => true,
         'status' => true,
@@ -74,8 +122,8 @@ if ($order && isset($order['status']) && $order['status'] === 'paid') {
         'message' => 'پرداخت قبلا با موفقیت تایید شده است',
         'paymentNumber' => $paymentNumber,
         'invoiceNumber' => $invoiceNumber,
-        'referenceNumber' => isset($order['ref_num']) ? $order['ref_num'] : $refNum,
-        'ref_num' => isset($order['ref_num']) ? $order['ref_num'] : $refNum,
+        'referenceNumber' => isset($order['ref_num']) ? $order['ref_num'] : '',
+        'ref_num' => isset($order['ref_num']) ? $order['ref_num'] : '',
         'cardNumber' => isset($order['card_pan']) ? $order['card_pan'] : '',
         'amount' => isset($order['amount_rial']) ? intval($order['amount_rial']) : 0,
         'amount_rial' => isset($order['amount_rial']) ? intval($order['amount_rial']) : 0,
@@ -98,7 +146,7 @@ $sepalRes = makeHttpPostRequest(SEPAL_VERIFY_URL, $sepalVerifyBody);
 $sepalJson = json_decode($sepalRes['body'], true);
 
 if (is_array($sepalJson) && isset($sepalJson['status']) && $sepalJson['status'] === true) {
-    $verifiedRef = !empty($sepalJson['referenceNumber']) ? strval($sepalJson['referenceNumber']) : ($refNum ?: ('SEPAL-' . $paymentNumber));
+    $verifiedRef = !empty($sepalJson['referenceNumber']) ? strval($sepalJson['referenceNumber']) : ('SEPAL-' . $paymentNumber);
     $verifiedCard = !empty($sepalJson['cardNumber']) ? strval($sepalJson['cardNumber']) : '';
     $verifiedAmount = !empty($sepalJson['amount'])
         ? intval($sepalJson['amount'])
@@ -107,6 +155,11 @@ if (is_array($sepalJson) && isset($sepalJson['status']) && $sepalJson['status'] 
     $msg = !empty($sepalJson['message'])
         ? $sepalJson['message']
         : ($alreadyVerified ? 'پرداخت قبلا با موفقیت تایید شده است' : 'پرداخت شما با موفقیت انجام شد');
+
+    if (!empty($otpSessionId) && isset($otpSessions[$otpSessionId])) {
+        $otpSessions[$otpSessionId]['verified'] = true;
+        @file_put_contents($otpFile, json_encode($otpSessions, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
 
     $orderKey = !empty($invoiceNumber) ? $invoiceNumber : $paymentNumber;
     saveOrderData($orderKey, [
@@ -136,34 +189,30 @@ if (is_array($sepalJson) && isset($sepalJson['status']) && $sepalJson['status'] 
     ]);
 }
 
-// اگر درگاه مستقیم داخلی در حال تایید باشد
-if (!empty($refNum)) {
-    $verifiedAmount = isset($order['amount_rial']) ? intval($order['amount_rial']) : intval($inputData['amount_rial'] ?? 0);
-    $orderKey = !empty($invoiceNumber) ? $invoiceNumber : $paymentNumber;
-    if (!empty($orderKey)) {
-        saveOrderData($orderKey, [
-            'status' => 'paid',
-            'payment_number' => $paymentNumber,
-            'ref_num' => $refNum,
-            'amount_rial' => $verifiedAmount,
-            'amount_toman' => intval($verifiedAmount / 10),
-            'already_verified' => false,
-            'verified_at' => date('Y-m-d H:i:s')
-        ]);
+// در صورت عدم تایید توسط سرور رسمی سپال / شاپرک (مثلاً ورود رمز دوم الکی یا عدم تکمیل پرداخت در شاپرک)
+if (!empty($otpSessionId) && isset($otpSessions[$otpSessionId])) {
+    $remaining = max(0, intval($otpSessions[$otpSessionId]['attempts_remaining']) - 1);
+    $otpSessions[$otpSessionId]['attempts_remaining'] = $remaining;
+    if ($remaining <= 0) {
+        $otpSessions[$otpSessionId]['revoked'] = true;
     }
+    @file_put_contents($otpFile, json_encode($otpSessions, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+    $revoked = ($remaining <= 0);
+    $errMsg = $revoked
+        ? 'رمز دوم پویا (OTP) وارد شده نادرست است. به دلیل ۳ بار تلاش ناموفق، این رمز مسدود شد؛ لطفاً کد امنیتی جدید را وارد کرده و مجدداً رمز پویا دریافت کنید.'
+        : 'رمز دوم پویا (OTP) وارد شده نادرست است و توسط بانک صادرکننده / شاپرک تایید نشد. (تلاش باقی‌مانده: ' . $remaining . ' از ۳)';
 
     sendJsonResponse([
-        'success' => true,
-        'status' => true,
-        'message' => 'پرداخت شما با موفقیت انجام شد',
+        'success' => false,
+        'status' => false,
+        'attemptsRemaining' => $remaining,
+        'sessionRevoked' => $revoked,
+        'message' => 'invalid_otp',
+        'error' => $errMsg,
         'paymentNumber' => $paymentNumber,
         'invoiceNumber' => $invoiceNumber,
-        'referenceNumber' => $refNum,
-        'ref_num' => $refNum,
-        'amount' => $verifiedAmount,
-        'amount_rial' => $verifiedAmount,
-        'alreadyVerified' => false,
-    ]);
+    ], 400);
 }
 
 $errCode = isset($sepalJson['message']) ? $sepalJson['message'] : 'verify_failed';

@@ -152,17 +152,68 @@ export const PostJobSection: React.FC = () => {
         return;
       }
     }
-    if (paymentMethod === 'sepal') {
+    const subcatString = selectedSubcategories.join('، ');
+
+    if (paymentMethod === 'sepal' || paymentMethod === 'zarinpal') {
+      try {
+        localStorage.setItem(
+          'karbama_pending_sepal_job',
+          JSON.stringify({
+            title: title.trim(),
+            company: company.trim(),
+            city,
+            district: district.trim() || 'مرکز شهر',
+            category,
+            subcategory: subcatString || undefined,
+            contractType,
+            payFrequency,
+            keywords: [
+              title,
+              company,
+              city,
+              district,
+              currentCatData?.label || '',
+              ...selectedSubcategories,
+              accommodation ? 'جای خواب' : '',
+              meals ? 'غذا' : '',
+            ].filter(Boolean),
+            salaryMin: Number(salaryMin) || 0,
+            salaryMax: Number(salaryMax) || 0,
+            currency: 'TRY' as const,
+            accommodation,
+            accommodationDetails: accommodation ? accommodationDetails : undefined,
+            meals,
+            mealDetails: meals ? mealDetails : undefined,
+            hasLeave,
+            leaveDetails: hasLeave ? leaveDetails : undefined,
+            workPermitSupport,
+            turkishRequired,
+            gender,
+            description: description.trim(),
+            requirements: requirements
+              .split('\n')
+              .map((r) => r.trim())
+              .filter(Boolean),
+            contactPhone: contactPhone.trim(),
+            contactWhatsapp: contactWhatsapp.trim(),
+            imageUrl: imageUrl.trim() || undefined,
+            paymentAmountTL: feeTL,
+            paymentAmountToman: feeToman,
+            paymentPayerName: payerName.trim() || undefined,
+            paymentPayerPhone: payerPhone.trim() || undefined,
+          })
+        );
+      } catch {
+        // ignore storage error
+      }
       setIsSepalModalOpen(true);
       return;
     }
 
-    if (paymentMethod !== 'zarinpal' && !receiptImage && !referenceId) {
+    if (!receiptImage && !referenceId) {
       showToast('لطفاً تصویر فیش واریزی یا شماره پیگیری را وارد نمایید.', 'error');
       return;
     }
-
-    const subcatString = selectedSubcategories.join('، ');
 
     const jobData = {
       title: title.trim(),
@@ -204,11 +255,11 @@ export const PostJobSection: React.FC = () => {
       contactWhatsapp: contactWhatsapp.trim(),
       imageUrl: imageUrl.trim() || undefined,
       paymentMethod,
-      paymentStatus: paymentMethod === 'zarinpal' ? ('paid' as const) : ('pending_approval' as const),
+      paymentStatus: 'pending_approval' as const,
       paymentAmountTL: feeTL,
       paymentAmountToman: feeToman,
       paymentReceiptUrl: receiptImage || undefined,
-      paymentReferenceId: referenceId.trim() || (paymentMethod === 'zarinpal' ? 'ZP-' + Math.floor(10000000 + Math.random() * 90000000) : undefined),
+      paymentReferenceId: referenceId.trim() || undefined,
       paymentPayerName: payerName.trim() || undefined,
       paymentPayerPhone: payerPhone.trim() || undefined,
     };
@@ -638,8 +689,8 @@ export const PostJobSection: React.FC = () => {
             </div>
           </div>
 
-          {/* 4 Payment Methods Tabs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* 3 Payment Methods Tabs */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
             {/* Method 1: Sepal Official Shaparak Gateway */}
             <button
@@ -651,39 +702,18 @@ export const PostJobSection: React.FC = () => {
               }`}
             >
               <div className="flex items-center justify-between w-full">
-                <span className="text-xs font-extrabold">۱. درگاه شاپرک سپال</span>
+                <span className="text-xs font-extrabold">۱. درگاه رسمی شاپرک سپال</span>
                 <ShieldCheck className="w-5 h-5 text-teal-400" />
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                پرداخت آنلاین از طریق درگاه رسمی شاپرک سپال با استعلام هوشمند بانکی و انتشار آنی آگهی
+                اتصال مستقیم به درگاه رسمی سپال (payment.sepal.ir) و پرداخت با کلیه کارت‌های شتاب
               </p>
               <span className="text-[10px] font-bold text-teal-300 bg-teal-500/10 px-2 py-0.5 rounded-lg border border-teal-500/20 self-start">
-                سپال‌پی / فعال‌سازی آنی
-              </span>
-            </button>
-            
-            {/* Method 2: Zarinpal Online Gateway */}
-            <button
-              onClick={() => setPaymentMethod('zarinpal')}
-              className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between space-y-3 ${
-                paymentMethod === 'zarinpal'
-                  ? 'bg-amber-600/20 border-amber-500 text-white shadow-lg'
-                  : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-xs font-extrabold">۲. درگاه زرین‌پال / شتاب</span>
-                <CreditCard className="w-5 h-5 text-amber-400" />
-              </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                پرداخت آنلاین آنی با کلیه کارت‌های عضو شتاب ایران به صورت ریالی و انتشار فوری آگهی
-              </p>
-              <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20 self-start">
-                فعال‌سازی آنی
+                اتصال مستقیم به سپال
               </span>
             </button>
 
-            {/* Method 3: Turkey Bank Account (Ziraat Bank) */}
+            {/* Method 2: Turkey Bank Account (Ziraat Bank) */}
             <button
               onClick={() => setPaymentMethod('turkey_bank')}
               className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between space-y-3 ${
@@ -693,7 +723,7 @@ export const PostJobSection: React.FC = () => {
               }`}
             >
               <div className="flex items-center justify-between w-full">
-                <span className="text-xs font-extrabold">۳. حساب بانکی ترکیه (İBAN)</span>
+                <span className="text-xs font-extrabold">۲. حساب بانکی ترکیه (İBAN)</span>
                 <Landmark className="w-5 h-5 text-red-400" />
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -704,7 +734,7 @@ export const PostJobSection: React.FC = () => {
               </span>
             </button>
 
-            {/* Method 4: Card to Card from Iran */}
+            {/* Method 3: Card to Card from Iran */}
             <button
               onClick={() => setPaymentMethod('iran_card')}
               className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between space-y-3 ${
@@ -714,7 +744,7 @@ export const PostJobSection: React.FC = () => {
               }`}
             >
               <div className="flex items-center justify-between w-full">
-                <span className="text-xs font-extrabold">۴. کارت به کارت از ایران</span>
+                <span className="text-xs font-extrabold">۳. کارت به کارت از ایران</span>
                 <Send className="w-5 h-5 text-emerald-400" />
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -736,9 +766,9 @@ export const PostJobSection: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                    <span>درگاه پرداخت امن بانکی شاپرک سپال (Sepal Pay)</span>
+                    <span>اتصال مستقیم به درگاه پرداخت شاپرک سپال (payment.sepal.ir)</span>
                     <span className="text-[10px] bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded-full font-bold">
-                      پروتکل شاپرک
+                      پروتکل رسمی شاپرک
                     </span>
                   </h4>
                   <p className="text-xs text-slate-400">
@@ -747,12 +777,12 @@ export const PostJobSection: React.FC = () => {
                 </div>
               </div>
               <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1.5 leading-relaxed">
-                <p>• متصل به وب‌سرویس رسمی سپال و سامانه استعلام کارت سپال‌یار.</p>
-                <p>• به محض پرداخت موفقیت‌آمیز، کد پیگیری سپال ثبت و آگهی استخدام شما در بخش فرصت‌های شغلی ترکیه به صورت آنی منتشر خواهد شد.</p>
+                <p>• پس از کلیک روی دکمه زیر، مرورگر شما مستقیماً به صفحه رسمی درگاه پرداخت سپال (<code>payment.sepal.ir</code>) هدایت می‌شود.</p>
+                <p>• پس از تکمیل پرداخت در درگاه سپال و بازگشت به <code>karbama34.ir/api/sep/callback.php</code>، تراکنش تایید شده و آگهی شما ثبت می‌گردد.</p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <div>
-                  <label className="block text-xs text-slate-300 mb-1">نام کارفرما / صاحب کارت</label>
+                  <label className="block text-xs text-slate-300 mb-1">نام کارفرما / پرداخت‌کننده</label>
                   <input
                     type="text"
                     value={payerName}
@@ -762,48 +792,7 @@ export const PostJobSection: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-300 mb-1">شماره همراه جهت دریافت فاکتور و کد پیگیری</label>
-                  <input
-                    type="text"
-                    value={payerPhone}
-                    onChange={(e) => setPayerPhone(e.target.value)}
-                    placeholder="0912..."
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white dir-ltr text-right"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* METHOD 1 CONTENT: ZARINPAL */}
-          {paymentMethod === 'zarinpal' && (
-            <div className="p-6 bg-slate-950 border border-slate-800 rounded-2xl space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-white text-sm">درگاه پرداخت امن بانکی شتاب (زرین‌پال)</h4>
-                  <p className="text-xs text-slate-400">مبلغ ریالی تعرفه با نرخ روز لحظه‌ای: <strong className="text-amber-300">{feeToman.toLocaleString('fa-IR')} تومان</strong> ({ (feeToman * 10).toLocaleString('fa-IR') } ریال)</p>
-                </div>
-              </div>
-              <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1.5 leading-relaxed">
-                <p>• پس از کلیک بر روی دکمه «پرداخت و انتشار آگهی»، به درگاه رسمی شاپرک متصل خواهید شد.</p>
-                <p>• بلافاصله پس از پرداخت موفقیت‌آمیز، کد پیگیری بانکی ثبت و آگهی شما به طور اتوماتیک فعال و منتشر می‌گردد.</p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <div>
-                  <label className="block text-xs text-slate-300 mb-1">نام واریزکننده (اختیاری)</label>
-                  <input
-                    type="text"
-                    value={payerName}
-                    onChange={(e) => setPayerName(e.target.value)}
-                    placeholder="نام و نام خانوادگی صاحب کارت"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-300 mb-1">شماره تماس جهت دریافت فاکتور</label>
+                  <label className="block text-xs text-slate-300 mb-1">شماره همراه پرداخت‌کننده (09xxxxxxxxx)</label>
                   <input
                     type="text"
                     value={payerPhone}

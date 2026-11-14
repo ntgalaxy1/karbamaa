@@ -157,18 +157,41 @@ export const JobSearch: React.FC = () => {
     setAdminJobModalOpen,
     approveSeekerAccount,
     updateProfile,
+    submitJobWithPayment,
   } = useApp();
 
   const seekerFeeToman = (paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460);
   const seekerFeeRial = seekerFeeToman * 10;
 
-  // Handle SEP / Shaparak Gateway Callback URL parameters (?payment=success&provider=sep&refId=...)
+  // Handle Official Sepal Gateway Callback URL parameters (?payment=success&provider=sepal&refId=...)
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const paymentStatus = params.get('payment');
-      const refId = params.get('refId') || params.get('RefNum');
+      const refId = params.get('refId') || params.get('RefNum') || params.get('paymentNumber');
       if (paymentStatus === 'success' && refId) {
+        const pendingJobRaw = localStorage.getItem('karbama_pending_sepal_job');
+        if (pendingJobRaw) {
+          try {
+            const pendingJob = JSON.parse(pendingJobRaw);
+            localStorage.removeItem('karbama_pending_sepal_job');
+            submitJobWithPayment({
+              ...pendingJob,
+              paymentMethod: 'sepal',
+              paymentStatus: 'pending_approval',
+              paymentReferenceId: refId,
+            });
+            showToast(
+              `✅ پرداخت آگهی شما در درگاه سپال با کد رهگیری ${refId} تایید و جهت انتشار به مدیریت ارجاع شد.`,
+              'success'
+            );
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+          } catch {
+            // fallback to seeker flow
+          }
+        }
+
         if (currentSeeker) {
           updateProfile({
             seekerPaymentStatus: 'paid',
@@ -178,12 +201,28 @@ export const JobSearch: React.FC = () => {
             seekerPaymentCurrency: 'IRT',
             verificationStatus: 'pending',
             isPaymentVerified: false,
-            adminVerificationNote: `پرداخت موفق درگاه شاپرک (SEP) | کد رهگیری: ${refId} | تاریخ: ${new Date().toLocaleDateString('fa-IR')}`,
+            adminVerificationNote: `پرداخت موفق درگاه رسمی سپال | کد رهگیری: ${refId} | تاریخ: ${new Date().toLocaleDateString('fa-IR')}`,
+          });
+          addAdminNotification({
+            type: 'seeker_payment_referred',
+            title: '💳 پرداخت آنلاین هزینه خدمات توسط کارجو (درگاه رسمی سپال)',
+            message: `کارجو «${currentSeeker.fullName}» با کد ملی ${currentSeeker.nationalId} مبلغ هزینه خدمات مصوب (${seekerFeeToman.toLocaleString('fa-IR')} تومان) را از طریق درگاه پرداخت سپال پرداخت نمود (کد رهگیری: ${refId}). لطفاً پس از بررسی، قفل دسترسی ایشان را در پنل مدیریت فعال فرمایید.`,
+            data: {
+              seekerId: currentSeeker.id,
+              paymentRefId: refId,
+              method: 'sepal',
+            },
           });
         }
         setIsReferredToAdmin(true);
-        showToast(`✅ پرداخت شما از درگاه شاپرک با کد رهگیری ${refId} ثبت و جهت فعال‌سازی قفل به مدیریت ارسال شد.`, 'success');
+        showToast(
+          `✅ پرداخت شما از درگاه رسمی سپال با کد رهگیری ${refId} ثبت و جهت فعال‌سازی قفل به مدیریت ارسال شد.`,
+          'success'
+        );
         // Clean URL query params
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (paymentStatus === 'failed') {
+        showToast('⚠️ تراکنش پرداخت در درگاه سپال لغو شد یا ناموفق بود.', 'error');
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     } catch {

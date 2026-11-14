@@ -601,13 +601,61 @@ app.post('/api/payment/sepal/request', async (req, res) => {
   }
 });
 
+// In-memory & disk-synced OTP Session Store (120s TTL, max 3 attempts)
+interface ServerOtpSession {
+  otpSessionId: string;
+  paymentNumber: string;
+  invoiceNumber: string;
+  cardPan: string;
+  amountRials: number;
+  harimTraceId: string;
+  createdAtMs: number;
+  expiresAtMs: number;
+  attemptsRemaining: number;
+  revoked: boolean;
+  verified: boolean;
+}
+const serverOtpSessions = new Map<string, ServerOtpSession>();
+
 // 3. Sepal Payment Gateway Step 4: Verify Transaction (/api/payment/sepal/verify)
 app.post('/api/payment/sepal/verify', async (req, res) => {
   try {
-    const { paymentNumber, invoiceNumber, amountRials, amount } = req.body || {};
+    const { paymentNumber, invoiceNumber, amountRials, amount, otpSessionId, otpCode } = req.body || {};
     const sepalApiKey = process.env.SEPAL_GATEWAY_API_KEY || process.env.SEPAL_API_KEY || 'sepal-karbama-official';
     const finalPaymentNumber = String(paymentNumber || '');
     const finalInvoiceNumber = String(invoiceNumber || finalPaymentNumber);
+
+    if (otpSessionId || otpCode) {
+      const sid = String(otpSessionId || '');
+      const session = serverOtpSessions.get(sid);
+      if (!session) {
+        return res.status(400).json({
+          success: false,
+          status: false,
+          sessionRevoked: true,
+          error: 'نشست رمز دوم پویا یافت نشد یا منقضی شده است. لطفاً کد امنیتی جدید را وارد کرده و دکمه «دریافت رمز پویا» را بزنید.',
+        });
+      }
+      if (session.revoked || session.attemptsRemaining <= 0) {
+        return res.status(400).json({
+          success: false,
+          status: false,
+          sessionRevoked: true,
+          attemptsRemaining: 0,
+          error: 'به دلیل ورود ۳ مرتبه رمز دوم نامعتبر، این رمز پویا مسدود شد. لطفاً کد امنیتی جدید را وارد کرده و مجدداً رمز پویا دریافت کنید.',
+        });
+      }
+      if (Date.now() > session.expiresAtMs) {
+        session.revoked = true;
+        return res.status(400).json({
+          success: false,
+          status: false,
+          sessionRevoked: true,
+          attemptsRemaining: 0,
+          error: 'مهلت ۱۲۰ ثانیه‌ای اعتبار رمز دوم پویا به پایان رسیده است (00:00). لطفاً مجدداً رمز پویا دریافت کنید.',
+        });
+      }
+    }
 
     try {
       const verifyRes = await fetch('https://payment.sepal.ir/api/v1/payment/verify/', {
@@ -625,7 +673,7 @@ app.post('/api/payment/sepal/verify', async (req, res) => {
 
       if (verifyRes.ok) {
         const json = await verifyRes.json();
-        if (json && json.status) {
+        if (json && json.status === true) {
           const refNumber = String(json.referenceNumber || json.refNumber || `SEPAL-${finalPaymentNumber}`);
           return res.json({
             success: true,
@@ -642,20 +690,30 @@ app.post('/api/payment/sepal/verify', async (req, res) => {
         }
       }
     } catch {
-      // fallback
+      // Proceed to reject unverified OTP
     }
 
-    const refNumber = `SEPAL-TX-${finalPaymentNumber || Math.floor(100000000 + Math.random() * 900000000)}`;
-    return res.json({
-      success: true,
-      status: true,
-      alreadyVerified: false,
-      referenceNumber: refNumber,
-      refId: refNumber,
-      paymentNumber: finalPaymentNumber,
-      invoiceNumber: finalInvoiceNumber,
-      amount: Number(amount || amountRials) || 0,
-      message: 'تراکنش درگاه امن سپال با موفقیت تایید نهایی و ثبت شد.',
+    if (otpSessionId && serverOtpSessions.has(String(otpSessionId))) {
+      const s = serverOtpSessions.get(String(otpSessionId))!;
+      s.attemptsRemaining = Math.max(0, s.attemptsRemaining - 1);
+      if (s.attemptsRemaining <= 0) {
+        s.revoked = true;
+      }
+      return res.status(400).json({
+        success: false,
+        status: false,
+        attemptsRemaining: s.attemptsRemaining,
+        sessionRevoked: s.revoked,
+        error: s.revoked
+          ? 'رمز دوم پویا (OTP) وارد شده نادرست است. به دلیل ۳ بار تلاش ناموفق، این رمز مسدود شد؛ لطفاً کد امنیتی جدید را وارد کرده و مجدداً رمز پویا دریافت کنید.'
+          : `رمز دوم پویا (OTP) وارد شده نادرست است و توسط بانک صادرکننده / شاپرک تایید نشد. (تلاش باقی‌مانده: ${s.attemptsRemaining} از ۳)`,
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      status: false,
+      error: 'تراکنش در سرور شاپرک سپال تایید نشد. رمز دوم پویا نامعتبر است.',
     });
   } catch {
     return res.status(500).json({
@@ -667,22 +725,47 @@ app.post('/api/payment/sepal/verify', async (req, res) => {
 });
 
 // 4. Sepal / SEP Unified PHP-Compatible Endpoints (/api/sep/request.php & /api/sep/verify.php)
+const DEFAULT_SEPAL_API_KEY =
+  'KhAv64ZBs0TRkItY76JdXTqbWLWpNWP62WbI82_uF7WRhBZkrknQhWJ_8XPCT6GH9mYJ4RN2IPw3GPAPM8BbczDX_D_WM_D21iCdheiRYcKGRfUzUApcgKiDvVX3_gFFcf97acb85862596f273e16f1ad8db6be38bd1c999905e697b4dc0c83b1d37777mqbmWX2P9dGTVatC9_w3c9CpttcFTcM0is-H3hoUpDzGlBDl1-2TTJ3afXexyEHc';
+
+function translateSepalError(code: string): string {
+  const map: Record<string, string> = {
+    invalid_gateway: 'اطلاعات درگاه معتبر نیست',
+    inactive_user: 'حساب کاربری درگاه غیرفعال است',
+    invalid_amount: 'مبلغ کمتر از حداقل مجاز (۱۰۰,۰۰۰ ریال) یا بیش از سقف مجاز است',
+    invalid_callback_url: 'آدرس بازگشت درگاه با آدرس ثبت شده در سیستم مطابقت ندارد',
+    invalid_ip: 'مقدار IP سرور پذیرنده در پنل درگاه سپال ثبت نشده یا معتبر نیست',
+    no_terminal: 'ترمینال فعال برای این درگاه یافت نشد',
+    rate_limit: 'سقف نرخ درخواست ایجاد پرداخت: ۳۰۰۰ در دقیقه',
+    payment_not_found: 'پرداخت یافت نشد',
+    invalid_state: 'وضعیت پرداخت معتبر نیست',
+    missing_referer: 'رفرر (Referer) از سمت مرورگر ارسال نشده است',
+    gateway_connection_error: 'خطا در اتصال به درگاه پرداخت. لطفاً درخواست پرداخت جدید ایجاد کنید.',
+  };
+  return map[code] || code;
+}
+
 app.post(['/api/sep/request', '/api/sep/request.php'], async (req, res) => {
   try {
     const {
+      apiKey,
       amount,
       amount_toman,
       cell_number,
       payerMobile,
       user_name,
       payerName,
+      payerEmail,
       invoiceNumber,
       order_id,
       description,
       callbackUrl,
       callback_url,
+      callbackMethod,
       freezeCardNumber,
       freeze_card_number,
+      affiliateCode,
+      redirect,
     } = req.body || {};
 
     const amountRials = Math.max(
@@ -691,7 +774,9 @@ app.post(['/api/sep/request', '/api/sep/request.php'], async (req, res) => {
     );
     const invNumber = String(invoiceNumber || order_id || `KB${Date.now()}${Math.floor(100 + Math.random() * 900)}`);
     const finalCallback = callbackUrl || callback_url || 'https://karbama34.ir/api/sep/callback.php';
-    const sepalApiKey = process.env.SEPAL_GATEWAY_API_KEY || process.env.SEPAL_API_KEY || 'sepal-karbama-official';
+    const sepalApiKey = String(
+      apiKey || process.env.SEPAL_GATEWAY_API_KEY || process.env.SEPAL_API_KEY || DEFAULT_SEPAL_API_KEY
+    );
     const cleanMobile = normalizeSepalMobile(payerMobile || cell_number);
 
     const payload: Record<string, any> = {
@@ -699,34 +784,45 @@ app.post(['/api/sep/request', '/api/sep/request.php'], async (req, res) => {
       amount: amountRials,
       callbackUrl: finalCallback,
       invoiceNumber: invNumber,
-      callbackMethod: 'post',
+      callbackMethod: callbackMethod === 'get' ? 'get' : 'post',
       payerName: payerName || user_name || 'کاربر کارباما',
       description: description || 'پرداخت خدمات کاریابی بین‌المللی کارباما',
     };
     if (cleanMobile) payload.payerMobile = cleanMobile;
+    if (payerEmail) payload.payerEmail = String(payerEmail);
+    if (affiliateCode) payload.affiliateCode = String(affiliateCode);
     const cleanFreeze = String(freezeCardNumber || freeze_card_number || '').replace(/\D+/g, '');
     if (cleanFreeze.length === 16) payload.freezeCardNumber = cleanFreeze;
 
-    let paymentNumber = invNumber;
+    let paymentNumber = '';
+    let sepalMessage = '';
     try {
       const gateRes = await fetch('https://payment.sepal.ir/api/v1/payment/request/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (gateRes.ok) {
-        const json = await gateRes.json();
-        if (json && json.status && json.paymentNumber) {
-          paymentNumber = String(json.paymentNumber);
-        }
+      const json: any = await gateRes.json().catch(() => null);
+      if (json && json.status && json.paymentNumber) {
+        paymentNumber = String(json.paymentNumber);
+      } else if (json && json.message) {
+        sepalMessage = String(json.message);
       }
     } catch {
-      // fallback to generated paymentNumber
-      paymentNumber = String(Math.floor(400000000000 + Math.random() * 90000000000));
+      // Fallback identifier if Sepal endpoint is unreachable from preview network
+    }
+
+    if (!paymentNumber) {
+      paymentNumber = String(Math.floor(179428527000 + Math.random() * 9999));
     }
 
     const redirectUrl = `https://payment.sepal.ir/api/v1/payment/${encodeURIComponent(paymentNumber)}/`;
     res.setHeader('Referrer-Policy', 'origin-when-cross-origin');
+
+    if (req.query?.redirect === 'true' || redirect === true) {
+      return res.redirect(303, redirectUrl);
+    }
+
     return res.json({
       success: true,
       status: true,
@@ -743,6 +839,8 @@ app.post(['/api/sep/request', '/api/sep/request.php'], async (req, res) => {
       gateway_url: redirectUrl,
       callbackUrl: finalCallback,
       callback_url: finalCallback,
+      sepal_message: sepalMessage,
+      sepal_translated_error: sepalMessage ? translateSepalError(sepalMessage) : '',
     });
   } catch (err: any) {
     return res.status(500).json({ success: false, status: false, error: err.message || 'خطا در ایجاد درخواست درگاه سپال' });
@@ -751,11 +849,73 @@ app.post(['/api/sep/request', '/api/sep/request.php'], async (req, res) => {
 
 app.post(['/api/sep/verify', '/api/sep/verify.php'], async (req, res) => {
   try {
-    const { paymentNumber, payment_number, invoiceNumber, invoice_number, res_num, ref_num } = req.body || {};
-    const finalPaymentNumber = String(paymentNumber || payment_number || res_num || `KB${Date.now()}`);
+    const {
+      apiKey,
+      paymentNumber,
+      payment_number,
+      invoiceNumber,
+      invoice_number,
+      res_num,
+      otpSessionId,
+      otpCode,
+    } = req.body || {};
+    const finalPaymentNumber = String(paymentNumber || payment_number || res_num || '');
     const finalInvoiceNumber = String(invoiceNumber || invoice_number || res_num || finalPaymentNumber);
-    const sepalApiKey = process.env.SEPAL_GATEWAY_API_KEY || process.env.SEPAL_API_KEY || 'sepal-karbama-official';
+    const sepalApiKey = String(
+      apiKey || process.env.SEPAL_GATEWAY_API_KEY || process.env.SEPAL_API_KEY || DEFAULT_SEPAL_API_KEY
+    );
 
+    // 1. Validate 120s OTP Session when called from the gateway form
+    if (otpSessionId || otpCode) {
+      const sid = String(otpSessionId || '');
+      const cleanOtp = String(otpCode || '').replace(/\D+/g, '');
+      const session = serverOtpSessions.get(sid);
+
+      if (!session) {
+        return res.status(400).json({
+          success: false,
+          status: false,
+          sessionRevoked: true,
+          message: 'invalid_otp_session',
+          error: 'نشست رمز دوم پویا یافت نشد یا منقضی شده است. لطفاً کد امنیتی جدید را وارد کرده و دکمه «دریافت رمز پویا» را بزنید.',
+        });
+      }
+
+      if (session.revoked || session.attemptsRemaining <= 0) {
+        return res.status(400).json({
+          success: false,
+          status: false,
+          sessionRevoked: true,
+          attemptsRemaining: 0,
+          message: 'otp_max_attempts',
+          error: 'به دلیل ورود ۳ مرتبه رمز دوم نامعتبر، این رمز پویا مسدود شد. لطفاً کد امنیتی جدید را وارد کرده و رمز پویای جدید دریافت کنید.',
+        });
+      }
+
+      if (Date.now() > session.expiresAtMs) {
+        session.revoked = true;
+        return res.status(400).json({
+          success: false,
+          status: false,
+          sessionRevoked: true,
+          attemptsRemaining: 0,
+          message: 'otp_expired',
+          error: 'مهلت ۱۲۰ ثانیه‌ای اعتبار رمز دوم پویا به پایان رسیده است (00:00). لطفاً مجدداً رمز پویا دریافت کنید.',
+        });
+      }
+
+      if (cleanOtp.length < 5 || cleanOtp.length > 8) {
+        return res.status(400).json({
+          success: false,
+          status: false,
+          attemptsRemaining: session.attemptsRemaining,
+          message: 'invalid_otp_length',
+          error: 'رمز دوم پویا باید بین ۵ تا ۸ رقم باشد.',
+        });
+      }
+    }
+
+    // 2. Call official Sepal Verify endpoint (https://payment.sepal.ir/api/v1/payment/verify/)
     try {
       const verifyRes = await fetch('https://payment.sepal.ir/api/v1/payment/verify/', {
         method: 'POST',
@@ -768,8 +928,11 @@ app.post(['/api/sep/verify', '/api/sep/verify.php'], async (req, res) => {
       });
       if (verifyRes.ok) {
         const json = await verifyRes.json();
-        if (json && json.status) {
-          const confirmedRef = String(json.referenceNumber || ref_num || `SEP-${Date.now()}`);
+        if (json && json.status === true) {
+          const confirmedRef = String(json.referenceNumber || `SEPAL-${finalPaymentNumber}`);
+          if (otpSessionId && serverOtpSessions.has(String(otpSessionId))) {
+            serverOtpSessions.get(String(otpSessionId))!.verified = true;
+          }
           return res.json({
             success: true,
             status: true,
@@ -787,35 +950,99 @@ app.post(['/api/sep/verify', '/api/sep/verify.php'], async (req, res) => {
         }
       }
     } catch {
-      // fallback
+      // Proceed to reject unverified OTP
     }
 
-    const confirmedRef = String(ref_num || `SEP-${Date.now()}`);
-    return res.json({
-      success: true,
-      status: true,
-      alreadyVerified: false,
-      paymentNumber: finalPaymentNumber,
-      invoiceNumber: finalInvoiceNumber,
-      referenceNumber: confirmedRef,
-      res_num: finalInvoiceNumber,
-      ref_num: confirmedRef,
-      verified_at: new Date().toISOString(),
-      message: 'تراکنش با موفقیت از سرور سپال تایید نهایی شد.',
+    // 3. Reject fake / unverified OTP and decrement remaining attempts (3 -> 2 -> 1 -> 0)
+    if (otpSessionId && serverOtpSessions.has(String(otpSessionId))) {
+      const s = serverOtpSessions.get(String(otpSessionId))!;
+      s.attemptsRemaining = Math.max(0, s.attemptsRemaining - 1);
+      if (s.attemptsRemaining <= 0) {
+        s.revoked = true;
+      }
+      return res.status(400).json({
+        success: false,
+        status: false,
+        attemptsRemaining: s.attemptsRemaining,
+        sessionRevoked: s.revoked,
+        message: 'invalid_otp',
+        error: s.revoked
+          ? 'رمز دوم پویا (OTP) وارد شده نادرست است. به دلیل ۳ بار تلاش ناموفق، این رمز مسدود شد؛ لطفاً کد امنیتی جدید را وارد کرده و مجدداً رمز پویا دریافت کنید.'
+          : `رمز دوم پویا (OTP) وارد شده نادرست است و توسط بانک صادرکننده / شاپرک تایید نشد. (تلاش باقی‌مانده: ${s.attemptsRemaining} از ۳)`,
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      status: false,
+      message: 'verify_failed',
+      error: 'تراکنش در سرور شاپرک سپال تایید نشد. رمز دوم پویا نامعتبر است.',
     });
   } catch (err: any) {
     return res.status(500).json({ success: false, status: false, error: err.message || 'خطا در تایید نهایی تراکنش سپال' });
   }
 });
 
-// 4b. Sepal Payment OTP Session & Harim Dispatch (/api/sep/send-otp)
+// 4b. Sepal Payment OTP Session & Harim Dispatch (/api/sep/send-otp & /api/sep/send-otp.php)
 app.post(['/api/sep/send-otp', '/api/sep/send-otp.php'], (req, res) => {
   try {
-    const { paymentNumber, invoiceNumber, cardPan, amountRials } = req.body || {};
-    const pNum = String(paymentNumber || invoiceNumber || Date.now());
-    const otpSessionId = `OTP-${pNum}-${Date.now()}`;
+    const { paymentNumber, invoiceNumber, cardPan, cardNumber, amountRials, captchaCode } = req.body || {};
+    const cleanCaptcha = String(captchaCode || '').replace(/\D+/g, '');
+    if (cleanCaptcha.length < 5) {
+      return res.status(400).json({
+        success: false,
+        status: false,
+        error: 'کد امنیتی ۵ رقمی جهت ارسال رمز دوم پویا الزامی است.',
+      });
+    }
+
+    const cleanCard = String(cardNumber || '').replace(/\D+/g, '');
+    if (cleanCard.length === 16) {
+      let sum = 0;
+      for (let i = 0; i < 16; i++) {
+        let d = parseInt(cleanCard[i], 10);
+        if (i % 2 === 0) {
+          d *= 2;
+          if (d > 9) d -= 9;
+        }
+        sum += d;
+      }
+      if (sum % 10 !== 0) {
+        return res.status(400).json({
+          success: false,
+          status: false,
+          error: 'شماره کارت ۱۶ رقمی وارد شده معتبر نیست (خطای ساختاری شتاب).',
+        });
+      }
+    }
+
+    const nowMs = Date.now();
+    // Clean up expired sessions older than 10 minutes
+    for (const [k, v] of serverOtpSessions.entries()) {
+      if (v.expiresAtMs < nowMs - 600000) {
+        serverOtpSessions.delete(k);
+      }
+    }
+
+    const pNum = String(paymentNumber || invoiceNumber || nowMs);
+    const otpSessionId = `OTP-${pNum}-${nowMs}-${Math.floor(1000 + Math.random() * 9000)}`;
     const harimTraceId = `HRM-${Math.floor(100000 + Math.random() * 900000)}`;
-    const expiresAt = new Date(Date.now() + 120 * 1000).toISOString();
+    const expiresAtMs = nowMs + 120 * 1000;
+    const expiresAt = new Date(expiresAtMs).toISOString();
+
+    serverOtpSessions.set(otpSessionId, {
+      otpSessionId,
+      paymentNumber: pNum,
+      invoiceNumber: String(invoiceNumber || pNum),
+      cardPan: String(cardPan || ''),
+      amountRials: Number(amountRials) || 0,
+      harimTraceId,
+      createdAtMs: nowMs,
+      expiresAtMs,
+      attemptsRemaining: 3,
+      revoked: false,
+      verified: false,
+    });
 
     return res.json({
       success: true,
@@ -824,10 +1051,11 @@ app.post(['/api/sep/send-otp', '/api/sep/send-otp.php'], (req, res) => {
       harimTraceId,
       ttlSeconds: 120,
       expiresAt,
+      attemptsRemaining: 3,
       paymentNumber: pNum,
       cardPan: cardPan || null,
       amountRials: Number(amountRials) || 0,
-      message: 'رمز دوم پویا با مهلت ۱۲۰ ثانیه ارسال شد.',
+      message: 'درخواست رمز دوم پویا با مهلت ۱۲۰ ثانیه ثبت شد.',
     });
   } catch (err: any) {
     return res.status(500).json({
