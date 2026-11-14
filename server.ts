@@ -724,26 +724,64 @@ app.post('/api/payment/sepal/verify', async (req, res) => {
   }
 });
 
-// 4. Sepal / SEP Unified PHP-Compatible Endpoints (/api/sep/request.php & /api/sep/verify.php)
-const DEFAULT_SEPAL_API_KEY =
+// 4. Sepal / SEP Unified PHP-Compatible Endpoints (/api/sep/request.php, /api/sep/save-config.php & /api/sep/verify.php)
+let runtimeSepalApiKey =
+  process.env.SEPAL_GATEWAY_API_KEY ||
+  process.env.SEPAL_API_KEY ||
   'KhAv64ZBs0TRkItY76JdXTqbWLWpNWP62WbI82_uF7WRhBZkrknQhWJ_8XPCT6GH9mYJ4RN2IPw3GPAPM8BbczDX_D_WM_D21iCdheiRYcKGRfUzUApcgKiDvVX3_gFFcf97acb85862596f273e16f1ad8db6be38bd1c999905e697b4dc0c83b1d37777mqbmWX2P9dGTVatC9_w3c9CpttcFTcM0is-H3hoUpDzGlBDl1-2TTJ3afXexyEHc';
 
 function translateSepalError(code: string): string {
   const map: Record<string, string> = {
-    invalid_gateway: 'اطلاعات درگاه معتبر نیست',
-    inactive_user: 'حساب کاربری درگاه غیرفعال است',
-    invalid_amount: 'مبلغ کمتر از حداقل مجاز (۱۰۰,۰۰۰ ریال) یا بیش از سقف مجاز است',
-    invalid_callback_url: 'آدرس بازگشت درگاه با آدرس ثبت شده در سیستم مطابقت ندارد',
-    invalid_ip: 'مقدار IP سرور پذیرنده در پنل درگاه سپال ثبت نشده یا معتبر نیست',
-    no_terminal: 'ترمینال فعال برای این درگاه یافت نشد',
+    invalid_gateway: 'کلید وب‌سرویس درگاه (apiKey) معتبر نیست یا درگاه در پنل سپال تایید نشده است.',
+    'اطلاعات درگاه معتبر نیست':
+      'کلید وب‌سرویس درگاه (apiKey) معتبر نیست. لطفاً کلید وب‌سرویس درگاه پرداخت خود را از پنل سپال (sepal.ir -> درگاه‌های پرداخت) کپی کرده و در کادر زیر وارد نمایید.',
+    inactive_user: 'حساب کاربری درگاه در سامانه سپال غیرفعال است.',
+    'حساب کاربری درگاه غیرفعال است': 'حساب کاربری درگاه در سامانه سپال غیرفعال است.',
+    invalid_amount: 'مبلغ کمتر از حداقل مجاز (۱۰۰,۰۰۰ ریال) یا بیش از سقف مجاز است.',
+    'مبلغ کمتر از حداقل مجاز یا بیش از سقف مجاز است': 'مبلغ کمتر از حداقل مجاز (۱۰۰,۰۰۰ ریال) یا بیش از سقف مجاز است.',
+    invalid_callback_url: 'آدرس بازگشت درگاه (callbackUrl) با دامنه ثبت‌شده در پنل سپال مطابقت ندارد.',
+    'آدرس بازگشت درگاه با آدرس ثبت شده در سیستم مطابقت ندارد':
+      'آدرس بازگشت درگاه (karbama34.ir) با آدرس دامنه ثبت‌شده در پنل سپال مطابقت ندارد.',
+    invalid_ip: 'مقدار IP سرور پذیرنده در پنل درگاه سپال ثبت نشده یا معتبر نیست.',
+    'مقدار ip معتبر نیست': 'آی‌پی سرور هاست (IP خروجی سرور) با آی‌پی ثبت‌شده در پنل درگاه سپال مطابقت ندارد.',
+    no_terminal: 'ترمینال فعال برای این درگاه یافت نشد.',
+    'ترمینال فعال برای این درگاه یافت نشد': 'ترمینال فعال برای این درگاه در پنل سپال یافت نشد.',
     rate_limit: 'سقف نرخ درخواست ایجاد پرداخت: ۳۰۰۰ در دقیقه',
-    payment_not_found: 'پرداخت یافت نشد',
-    invalid_state: 'وضعیت پرداخت معتبر نیست',
-    missing_referer: 'رفرر (Referer) از سمت مرورگر ارسال نشده است',
+    payment_not_found: 'تراکنش پرداخت در سرور سپال یافت نشد.',
+    'پرداخت یافت نشد': 'تراکنش پرداخت در سرور سپال یافت نشد.',
+    invalid_state: 'وضعیت پرداخت معتبر نیست.',
+    missing_referer: 'رفرر (Referer) از سمت مرورگر ارسال نشده است.',
     gateway_connection_error: 'خطا در اتصال به درگاه پرداخت. لطفاً درخواست پرداخت جدید ایجاد کنید.',
   };
-  return map[code] || code;
+  const trimmed = String(code || '').trim();
+  return map[trimmed] || map[trimmed.toLowerCase()] || `پیام وب‌سرویس سپال: ${trimmed}`;
 }
+
+app.post(['/api/sep/save-config', '/api/sep/save-config.php'], async (req, res) => {
+  try {
+    const newKey = String(req.body?.sepalApiKey || req.body?.apiKey || '').trim();
+    if (!newKey) {
+      return res.status(400).json({
+        success: false,
+        status: false,
+        error: 'کلید وب‌سرویس درگاه سپال (apiKey) ارسال نشده است.',
+      });
+    }
+    runtimeSepalApiKey = newKey;
+    return res.json({
+      success: true,
+      status: true,
+      message: 'کلید وب‌سرویس درگاه سپال با موفقیت روی سرور ذخیره شد.',
+      sepalApiKey: runtimeSepalApiKey,
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      status: false,
+      error: err.message || 'خطا در ذخیره کلید درگاه سپال',
+    });
+  }
+});
 
 app.post(['/api/sep/request', '/api/sep/request.php'], async (req, res) => {
   try {
@@ -774,9 +812,7 @@ app.post(['/api/sep/request', '/api/sep/request.php'], async (req, res) => {
     );
     const invNumber = String(invoiceNumber || order_id || `KB${Date.now()}${Math.floor(100 + Math.random() * 900)}`);
     const finalCallback = callbackUrl || callback_url || 'https://karbama34.ir/api/sep/callback.php';
-    const sepalApiKey = String(
-      apiKey || process.env.SEPAL_GATEWAY_API_KEY || process.env.SEPAL_API_KEY || DEFAULT_SEPAL_API_KEY
-    );
+    const sepalApiKey = String(apiKey || runtimeSepalApiKey).trim();
     const cleanMobile = normalizeSepalMobile(payerMobile || cell_number);
 
     const payload: Record<string, any> = {
@@ -804,43 +840,68 @@ app.post(['/api/sep/request', '/api/sep/request.php'], async (req, res) => {
       });
       const json: any = await gateRes.json().catch(() => null);
       if (json && json.status && json.paymentNumber) {
-        paymentNumber = String(json.paymentNumber);
+        paymentNumber = String(json.paymentNumber).trim();
+        if (apiKey) runtimeSepalApiKey = sepalApiKey;
       } else if (json && json.message) {
         sepalMessage = String(json.message);
+      } else {
+        sepalMessage = 'invalid_gateway';
       }
-    } catch {
-      // Fallback identifier if Sepal endpoint is unreachable from preview network
+    } catch (e: any) {
+      sepalMessage = e?.message || 'gateway_connection_error';
     }
 
-    if (!paymentNumber) {
-      paymentNumber = String(Math.floor(179428527000 + Math.random() * 9999));
-    }
-
-    const redirectUrl = `https://payment.sepal.ir/api/v1/payment/${encodeURIComponent(paymentNumber)}/`;
     res.setHeader('Referrer-Policy', 'origin-when-cross-origin');
 
-    if (req.query?.redirect === 'true' || redirect === true) {
-      return res.redirect(303, redirectUrl);
+    // Only redirect when Sepal actually issued a valid paymentNumber
+    if (paymentNumber) {
+      const redirectUrl = `https://payment.sepal.ir/api/v1/payment/${encodeURIComponent(paymentNumber)}/`;
+      if (req.query?.redirect === 'true' || redirect === true) {
+        return res.redirect(303, redirectUrl);
+      }
+      return res.json({
+        success: true,
+        status: true,
+        isLiveToken: true,
+        message: '',
+        provider: 'sepal',
+        paymentNumber,
+        invoiceNumber: invNumber,
+        token: paymentNumber,
+        res_num: invNumber,
+        order_id: invNumber,
+        amount: amountRials,
+        amount_rial: amountRials,
+        redirectUrl,
+        gateway_url: redirectUrl,
+        callbackUrl: finalCallback,
+        callback_url: finalCallback,
+        sepal_message: '',
+        sepal_translated_error: '',
+      });
     }
 
+    // Never return a fake paymentNumber when Sepal returns status: false
+    const translated = translateSepalError(sepalMessage || 'invalid_gateway');
     return res.json({
-      success: true,
-      status: true,
-      message: '',
+      success: false,
+      status: false,
+      isLiveToken: false,
       provider: 'sepal',
-      paymentNumber,
+      paymentNumber: '',
       invoiceNumber: invNumber,
-      token: paymentNumber,
+      token: '',
       res_num: invNumber,
       order_id: invNumber,
       amount: amountRials,
       amount_rial: amountRials,
-      redirectUrl,
-      gateway_url: redirectUrl,
+      redirectUrl: '',
+      gateway_url: '',
       callbackUrl: finalCallback,
       callback_url: finalCallback,
-      sepal_message: sepalMessage,
-      sepal_translated_error: sepalMessage ? translateSepalError(sepalMessage) : '',
+      sepal_message: sepalMessage || 'invalid_gateway',
+      sepal_translated_error: translated,
+      error: translated,
     });
   } catch (err: any) {
     return res.status(500).json({ success: false, status: false, error: err.message || 'خطا در ایجاد درخواست درگاه سپال' });
@@ -861,9 +922,7 @@ app.post(['/api/sep/verify', '/api/sep/verify.php'], async (req, res) => {
     } = req.body || {};
     const finalPaymentNumber = String(paymentNumber || payment_number || res_num || '');
     const finalInvoiceNumber = String(invoiceNumber || invoice_number || res_num || finalPaymentNumber);
-    const sepalApiKey = String(
-      apiKey || process.env.SEPAL_GATEWAY_API_KEY || process.env.SEPAL_API_KEY || DEFAULT_SEPAL_API_KEY
-    );
+    const sepalApiKey = String(apiKey || runtimeSepalApiKey).trim();
 
     // 1. Validate 120s OTP Session when called from the gateway form
     if (otpSessionId || otpCode) {

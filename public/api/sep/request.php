@@ -36,17 +36,23 @@ if ($amountRial > 0 && $amountRial < 100000) {
     sendJsonResponse([
         'success' => false,
         'status' => false,
+        'isLiveToken' => false,
         'message' => 'invalid_amount',
         'error' => 'مبلغ تراکنش به ریال نباید کمتر از ۱۰۰,۰۰۰ ریال (۱۰,۰۰۰ تومان) باشد.'
     ], 400);
 }
 
 if ($amountRial <= 0) {
-    $amountRial = 17055000; // مبلغ پیش‌فرض به ریال
+    $amountRial = 27300000; // مبلغ پیش‌فرض به ریال
 }
 
 // ۲. پارامترهای ورودی مطابق جدول مستندات سپال
-$apiKey = isset($inputData['apiKey']) && !empty($inputData['apiKey']) ? trim($inputData['apiKey']) : SEPAL_API_KEY;
+$serverConfiguredKey = getConfiguredSepalApiKey();
+$requestedApiKey = isset($inputData['apiKey']) && !empty($inputData['apiKey']) ? trim(strval($inputData['apiKey'])) : '';
+
+// اگر کلید جدیدی توسط کاربر/مدیر ارسال شده باشد، اولویت با آن است و در صورت موفقیت روی سرور ذخیره می‌شود
+$apiKey = !empty($requestedApiKey) ? $requestedApiKey : $serverConfiguredKey;
+
 $callbackUrl = isset($inputData['callbackUrl']) && !empty($inputData['callbackUrl'])
     ? trim($inputData['callbackUrl'])
     : (isset($inputData['callback_url']) && !empty($inputData['callback_url']) ? trim($inputData['callback_url']) : KARBAMA_CALLBACK_URL);
@@ -98,39 +104,48 @@ saveOrderData($invoiceNumber, [
 // -------------------------------------------------------------
 // الف) ارسال درخواست به وب‌سرویس رسمی سپال (POST https://payment.sepal.ir/api/v1/payment/request/)
 // -------------------------------------------------------------
-$sepalRequestBody = [
-    'apiKey' => $apiKey,
-    'amount' => $amountRial,
-    'callbackUrl' => $callbackUrl,
-    'invoiceNumber' => $invoiceNumber,
-    'callbackMethod' => $callbackMethod,
-];
-
-if (!empty($payerName)) {
-    $sepalRequestBody['payerName'] = $payerName;
-}
-if (!empty($payerMobile)) {
-    $sepalRequestBody['payerMobile'] = $payerMobile;
-}
-if (!empty($payerEmail)) {
-    $sepalRequestBody['payerEmail'] = $payerEmail;
-}
-if (!empty($description)) {
-    $sepalRequestBody['description'] = $description;
-}
-if (!empty($freezeCardNumber) && strlen($freezeCardNumber) === 16) {
-    $sepalRequestBody['freezeCardNumber'] = $freezeCardNumber;
-} elseif (!empty($freezeCardNumberList)) {
-    $sepalRequestBody['freezeCardNumberList'] = $freezeCardNumberList;
-}
-if (!empty($affiliateCode)) {
-    $sepalRequestBody['affiliateCode'] = $affiliateCode;
+function buildSepalRequestBody($keyToUse, $amountRial, $callbackUrl, $invoiceNumber, $callbackMethod, $payerName, $payerMobile, $payerEmail, $description, $freezeCardNumber, $freezeCardNumberList, $affiliateCode) {
+    $body = [
+        'apiKey' => $keyToUse,
+        'amount' => $amountRial,
+        'callbackUrl' => $callbackUrl,
+        'invoiceNumber' => $invoiceNumber,
+        'callbackMethod' => $callbackMethod,
+    ];
+    if (!empty($payerName)) $body['payerName'] = $payerName;
+    if (!empty($payerMobile)) $body['payerMobile'] = $payerMobile;
+    if (!empty($payerEmail)) $body['payerEmail'] = $payerEmail;
+    if (!empty($description)) $body['description'] = $description;
+    if (!empty($freezeCardNumber) && strlen($freezeCardNumber) === 16) {
+        $body['freezeCardNumber'] = $freezeCardNumber;
+    } elseif (!empty($freezeCardNumberList)) {
+        $body['freezeCardNumberList'] = $freezeCardNumberList;
+    }
+    if (!empty($affiliateCode)) $body['affiliateCode'] = $affiliateCode;
+    return $body;
 }
 
+$sepalRequestBody = buildSepalRequestBody($apiKey, $amountRial, $callbackUrl, $invoiceNumber, $callbackMethod, $payerName, $payerMobile, $payerEmail, $description, $freezeCardNumber, $freezeCardNumberList, $affiliateCode);
 $sepalRes = makeHttpPostRequest(SEPAL_REQUEST_URL, $sepalRequestBody);
 $sepalJson = json_decode($sepalRes['body'], true);
 
+// اگر کلید ارسالی از مرورگر قدیمی بود ولی کلید ذخیره‌شده روی سرور متفاوت است، کلید سرور را نیز امتحان کن
+if ((!is_array($sepalJson) || empty($sepalJson['status'])) && !empty($serverConfiguredKey) && $serverConfiguredKey !== $apiKey) {
+    $retryBody = buildSepalRequestBody($serverConfiguredKey, $amountRial, $callbackUrl, $invoiceNumber, $callbackMethod, $payerName, $payerMobile, $payerEmail, $description, $freezeCardNumber, $freezeCardNumberList, $affiliateCode);
+    $retryRes = makeHttpPostRequest(SEPAL_REQUEST_URL, $retryBody);
+    $retryJson = json_decode($retryRes['body'], true);
+    if (is_array($retryJson) && !empty($retryJson['status']) && !empty($retryJson['paymentNumber'])) {
+        $sepalJson = $retryJson;
+        $apiKey = $serverConfiguredKey;
+    }
+}
+
 if (is_array($sepalJson) && !empty($sepalJson['status']) && !empty($sepalJson['paymentNumber'])) {
+    // اگر کلید جدیدی ارسال شده بود که کار کرد، آن را برای تمام کاربران ذخیره کن
+    if (!empty($requestedApiKey) && $requestedApiKey === $apiKey) {
+        saveConfiguredSepalApiKey($apiKey);
+    }
+
     $paymentNumber = trim(strval($sepalJson['paymentNumber']));
     // آدرس مرحله ۲: دریافت توکن و هدایت مرورگر پرداخت‌کننده به درگاه (همراه با Referer دامنه پذیرنده)
     $gatewayRedirectUrl = SEPAL_GATEWAY_BASE_URL . rawurlencode($paymentNumber) . '/';
@@ -140,6 +155,7 @@ if (is_array($sepalJson) && !empty($sepalJson['status']) && !empty($sepalJson['p
         'token' => $paymentNumber,
         'gateway_url' => $gatewayRedirectUrl,
         'provider' => 'sepal',
+        'sepal_api_note' => 'OK'
     ]);
 
     // اگر درخواست به صورت ریدایرکت مستقیم مرورگر ارسال شده باشد (HTTP 303 Redirect برای ارسال خودکار Referer)
@@ -152,6 +168,7 @@ if (is_array($sepalJson) && !empty($sepalJson['status']) && !empty($sepalJson['p
     sendJsonResponse([
         'success' => true,
         'status' => true,
+        'isLiveToken' => true,
         'provider' => 'sepal',
         'paymentNumber' => $paymentNumber,
         'invoiceNumber' => $invoiceNumber,
@@ -168,81 +185,37 @@ if (is_array($sepalJson) && !empty($sepalJson['status']) && !empty($sepalJson['p
 }
 
 // اگر سپال خطای مشخصی برگرداند (مانند invalid_gateway, invalid_amount, invalid_callback_url, invalid_ip, no_terminal)
-$sepalErrorMsg = isset($sepalJson['message']) ? trim($sepalJson['message']) : '';
+// توجه بسیار مهم: هرگز paymentNumber جعلی ساخته نمی‌شود تا کاربر به صفحه «پرداخت یافت نشد» هدایت نشود!
+$sepalErrorMsg = isset($sepalJson['message']) && !empty($sepalJson['message'])
+    ? trim(strval($sepalJson['message']))
+    : (!empty($sepalRes['error']) ? ('خطای ارتباط شبکه با سرور سپال: ' . $sepalRes['error']) : 'invalid_gateway');
 
-// -------------------------------------------------------------
-// ب) در صورت انتخاب درگاه سامان کیش (SEP)
-// -------------------------------------------------------------
-if ($provider === 'sep') {
-    $sepPayload = [
-        'action' => 'token',
-        'TerminalId' => SEP_TERMINAL_ID,
-        'Amount' => $amountRial,
-        'ResNum' => $invoiceNumber,
-        'RedirectUrl' => $callbackUrl,
-        'CellNumber' => $payerMobile
-    ];
-
-    $sepRes = makeHttpPostRequest(SEP_REQUEST_URL, $sepPayload);
-    $sepJson = json_decode($sepRes['body'], true);
-
-    if (isset($sepJson['status']) && intval($sepJson['status']) === 1 && !empty($sepJson['token'])) {
-        $token = $sepJson['token'];
-        $gatewayUrl = SEP_GATEWAY_URL . '?token=' . urlencode($token);
-
-        saveOrderData($invoiceNumber, [
-            'payment_number' => $token,
-            'token' => $token,
-            'gateway_url' => $gatewayUrl,
-            'provider' => 'sep'
-        ]);
-
-        if (isset($_GET['redirect']) && $_GET['redirect'] === 'true') {
-            header('Location: ' . $gatewayUrl, true, 303);
-            exit;
-        }
-
-        sendJsonResponse([
-            'success' => true,
-            'status' => true,
-            'provider' => 'sep',
-            'paymentNumber' => $token,
-            'invoiceNumber' => $invoiceNumber,
-            'token' => $token,
-            'res_num' => $invoiceNumber,
-            'amount_rial' => $amountRial,
-            'gateway_url' => $gatewayUrl,
-            'redirectUrl' => $gatewayUrl,
-            'callback_url' => $callbackUrl
-        ]);
-    }
-}
-
-// ثبت شناسه یکتای محلی در صورتی که کلید درگاه هنوز در پنل سپال روی دامنه تایید نشده باشد
-$fallbackPaymentNumber = substr(number_format(time() * 1000 + rand(100, 999), 0, '', ''), 0, 14);
-$fallbackGatewayUrl = SEPAL_GATEWAY_BASE_URL . $fallbackPaymentNumber . '/';
+$serverIp = isset($_SERVER['SERVER_ADDR']) ? $_SERVER['SERVER_ADDR'] : '';
 
 saveOrderData($invoiceNumber, [
-    'payment_number' => $fallbackPaymentNumber,
-    'token' => $fallbackPaymentNumber,
-    'gateway_url' => $fallbackGatewayUrl,
+    'payment_number' => '',
+    'token' => '',
+    'gateway_url' => '',
     'sepal_api_note' => $sepalErrorMsg
 ]);
 
 sendJsonResponse([
-    'success' => true,
-    'status' => true,
+    'success' => false,
+    'status' => false,
+    'isLiveToken' => false,
     'provider' => 'sepal',
-    'paymentNumber' => $fallbackPaymentNumber,
+    'paymentNumber' => '',
     'invoiceNumber' => $invoiceNumber,
     'res_num' => $invoiceNumber,
-    'token' => $fallbackPaymentNumber,
+    'token' => '',
     'amount' => $amountRial,
     'amount_rial' => $amountRial,
     'amount_toman' => intval($amountRial / 10),
-    'gateway_url' => $fallbackGatewayUrl,
-    'redirectUrl' => $fallbackGatewayUrl,
+    'gateway_url' => '',
+    'redirectUrl' => '',
     'callback_url' => $callbackUrl,
+    'server_ip' => $serverIp,
     'sepal_message' => $sepalErrorMsg,
-    'sepal_translated_error' => !empty($sepalErrorMsg) ? translateSepalError($sepalErrorMsg) : ''
+    'sepal_translated_error' => translateSepalError($sepalErrorMsg),
+    'error' => translateSepalError($sepalErrorMsg)
 ]);

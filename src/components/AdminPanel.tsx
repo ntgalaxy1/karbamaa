@@ -1778,6 +1778,8 @@ export const AdminPanel: React.FC = () => {
           <div className="flex justify-end pt-2">
             <button
               onClick={() => {
+                const cleanApiKey = sepalApiKeyInput.trim();
+                const cleanUniqueCode = sepalUniqueCodeInput.trim();
                 updatePaymentSettings({
                   feeTL: Number(feeTLInput) || 500,
                   exchangeRateToman: Number(exchangeRateInput) || 2300,
@@ -1787,9 +1789,19 @@ export const AdminPanel: React.FC = () => {
                   iranBankName: iranBankInput.trim(),
                   iranCardNumber: iranCardInput.trim(),
                   iranCardHolder: iranHolderInput.trim(),
-                  sepalApiKey: sepalApiKeyInput.trim(),
-                  sepalUniqueCode: sepalUniqueCodeInput.trim(),
+                  sepalApiKey: cleanApiKey,
+                  sepalUniqueCode: cleanUniqueCode,
                 });
+                if (cleanApiKey) {
+                  fetch('/api/sep/save-config.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      sepalApiKey: cleanApiKey,
+                      sepalUniqueCode: cleanUniqueCode,
+                    }),
+                  }).catch(() => {});
+                }
               }}
               className="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold shadow-lg transition"
             >

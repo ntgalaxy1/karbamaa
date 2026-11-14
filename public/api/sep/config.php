@@ -24,9 +24,49 @@ define('KARBAMA_RETURN_APP_URL', 'https://karbama34.ir/#/payment-result');
 // نوع درگاه پیش‌فرض: 'sepal' (درگاه رسمی سپال) یا 'sep' (سامان کیش)
 define('DEFAULT_GATEWAY_PROVIDER', 'sepal');
 
+// مسیر فایل ذخیره پویا تنظیمات کلید درگاه سپال روی سرور
+define('GATEWAY_SETTINGS_FILE', __DIR__ . '/gateway_settings.json');
+
+/**
+ * خواندن کلید وب‌سرویس درگاه سپال (apiKey) ذخیره شده روی سرور یا مقدار پیش‌فرض
+ */
+function getConfiguredSepalApiKey() {
+    if (file_exists(GATEWAY_SETTINGS_FILE)) {
+        $raw = @file_get_contents(GATEWAY_SETTINGS_FILE);
+        $json = @json_decode($raw, true);
+        if (is_array($json) && !empty($json['sepalApiKey'])) {
+            return trim(strval($json['sepalApiKey']));
+        }
+    }
+    return 'KhAv64ZBs0TRkItY76JdXTqbWLWpNWP62WbI82_uF7WRhBZkrknQhWJ_8XPCT6GH9mYJ4RN2IPw3GPAPM8BbczDX_D_WM_D21iCdheiRYcKGRfUzUApcgKiDvVX3_gFFcf97acb85862596f273e16f1ad8db6be38bd1c999905e697b4dc0c83b1d37777mqbmWX2P9dGTVatC9_w3c9CpttcFTcM0is-H3hoUpDzGlBDl1-2TTJ3afXexyEHc';
+}
+
+/**
+ * ذخیره کلید وب‌سرویس درگاه سپال (apiKey) روی سرور هاست
+ */
+function saveConfiguredSepalApiKey($apiKey, $uniqueCode = '') {
+    $current = [];
+    if (file_exists(GATEWAY_SETTINGS_FILE)) {
+        $raw = @file_get_contents(GATEWAY_SETTINGS_FILE);
+        $decoded = @json_decode($raw, true);
+        if (is_array($decoded)) {
+            $current = $decoded;
+        }
+    }
+    if (!empty($apiKey)) {
+        $current['sepalApiKey'] = trim(strval($apiKey));
+    }
+    if (!empty($uniqueCode)) {
+        $current['sepalUniqueCode'] = trim(strval($uniqueCode));
+    }
+    $current['updated_at'] = date('Y-m-d H:i:s');
+    @file_put_contents(GATEWAY_SETTINGS_FILE, json_encode($current, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
+    return true;
+}
+
 // اطلاعات رسمی وب‌سرویس درگاه پرداخت سپال (Sepal API v1)
 // مرجع: https://payment.sepal.ir/api/v1/payment/
-define('SEPAL_API_KEY', 'KhAv64ZBs0TRkItY76JdXTqbWLWpNWP62WbI82_uF7WRhBZkrknQhWJ_8XPCT6GH9mYJ4RN2IPw3GPAPM8BbczDX_D_WM_D21iCdheiRYcKGRfUzUApcgKiDvVX3_gFFcf97acb85862596f273e16f1ad8db6be38bd1c999905e697b4dc0c83b1d37777mqbmWX2P9dGTVatC9_w3c9CpttcFTcM0is-H3hoUpDzGlBDl1-2TTJ3afXexyEHc');
+define('SEPAL_API_KEY', getConfiguredSepalApiKey());
 define('SEPAL_UNIQUE_CODE', '2930311446');
 define('SEPAL_REQUEST_URL', 'https://payment.sepal.ir/api/v1/payment/request/');
 define('SEPAL_GATEWAY_BASE_URL', 'https://payment.sepal.ir/api/v1/payment/');
@@ -73,14 +113,21 @@ function normalizeIranMobile($rawMobile) {
  */
 function translateSepalError($errorCode) {
     $map = [
-        'invalid_gateway' => 'اطلاعات درگاه معتبر نیست (کلید apiKey درگاه را بررسی نمایید).',
-        'inactive_user' => 'حساب کاربری درگاه غیرفعال است.',
+        'invalid_gateway' => 'کلید وب‌سرویس درگاه (apiKey) معتبر نیست یا درگاه در پنل سپال تایید نشده است.',
+        'اطلاعات درگاه معتبر نیست' => 'کلید وب‌سرویس درگاه (apiKey) معتبر نیست. لطفاً کلید وب‌سرویس درگاه پرداخت خود را از پنل سپال (sepal.ir -> درگاه‌های پرداخت) کپی کرده و در کادر زیر وارد نمایید.',
+        'inactive_user' => 'حساب کاربری درگاه در سامانه سپال غیرفعال است.',
+        'حساب کاربری درگاه غیرفعال است' => 'حساب کاربری درگاه در سامانه سپال غیرفعال است.',
         'invalid_amount' => 'مبلغ کمتر از حداقل مجاز (۱۰۰,۰۰۰ ریال) یا بیش از سقف مجاز است.',
+        'مبلغ کمتر از حداقل مجاز یا بیش از سقف مجاز است' => 'مبلغ کمتر از حداقل مجاز (۱۰۰,۰۰۰ ریال) یا بیش از سقف مجاز است.',
         'invalid_callback_url' => 'آدرس بازگشت درگاه (callbackUrl) با دامنه ثبت‌شده در پنل سپال مطابقت ندارد.',
-        'invalid_ip' => 'آی‌پی سرور پذیرنده با IP ثبت‌شده در پنل درگاه سپال مطابقت ندارد.',
-        'no_terminal' => 'ترمینال فعال برای این درگاه یافت نشد.',
+        'آدرس بازگشت درگاه با آدرس ثبت شده در سیستم مطابقت ندارد' => 'آدرس بازگشت درگاه (karbama34.ir) با آدرس دامنه ثبت‌شده در پنل سپال مطابقت ندارد.',
+        'invalid_ip' => 'آی‌پی سرور هاست با IP ثبت‌شده در پنل درگاه سپال مطابقت ندارد.',
+        'مقدار ip معتبر نیست' => 'آی‌پی سرور هاست (IP خروجی سرور) با آی‌پی ثبت‌شده در پنل درگاه سپال مطابقت ندارد.',
+        'no_terminal' => 'ترمینال فعال برای این درگاه در سپال یافت نشد.',
+        'ترمینال فعال برای این درگاه یافت نشد' => 'ترمینال فعال برای این درگاه در پنل سپال یافت نشد.',
         'rate_limit' => 'سقف مجاز درخواست ایجاد پرداخت (۳۰۰۰ در دقیقه) تکمیل شده است.',
-        'payment_not_found' => 'تراکنش پرداخت آنلاین یافت نشد.',
+        'payment_not_found' => 'تراکنش پرداخت در سرور سپال یافت نشد (ابتدا باید paymentNumber معتبر از request دریافت شود).',
+        'پرداخت یافت نشد' => 'تراکنش پرداخت در سرور سپال یافت نشد (کلید درگاه apiKey در مرحله ایجاد تراکنش معتبر نبوده است).',
         'invalid_state' => 'وضعیت پرداخت برای دریافت توکن معتبر نیست.',
         'missing_referer' => 'هدر Referer از سمت مرورگر ارسال نشده است.',
         'gateway_connection_error' => 'خطا در اتصال به درگاه پرداخت. لطفاً درخواست پرداخت جدید ایجاد کنید.',
@@ -89,8 +136,11 @@ function translateSepalError($errorCode) {
         'invoice_mismatch' => 'شماره فاکتور (invoiceNumber) با فاکتور ثبت‌شده مطابقت ندارد.',
         'verify_failed' => 'متاسفانه تراکنش پرداخت توسط بانک تایید نشد.',
     ];
-    $key = strtolower(trim(strval($errorCode)));
-    return isset($map[$key]) ? $map[$key] : ('خطای درگاه: ' . $errorCode);
+    $key = trim(strval($errorCode));
+    $lowerKey = strtolower($key);
+    if (isset($map[$key])) return $map[$key];
+    if (isset($map[$lowerKey])) return $map[$lowerKey];
+    return 'پیام وب‌سرویس سپال: ' . $errorCode;
 }
 
 /**
@@ -270,7 +320,7 @@ function makeHttpPostRequest($url, $payload, $headers = []) {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $mergedHeaders);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);

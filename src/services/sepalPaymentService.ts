@@ -17,6 +17,7 @@ export interface SepalGatewaySessionResult {
   redirectUrl: string;
   sepalMessage?: string;
   sepalTranslatedError?: string;
+  serverIp?: string;
   isLiveToken: boolean;
 }
 
@@ -58,6 +59,9 @@ async function fetchWithTimeout(
  * Calls POST /api/sep/request.php -> POST https://payment.sepal.ir/api/v1/payment/request/
  * Obtains paymentNumber and returns the direct Sepal gateway redirect URL:
  * https://payment.sepal.ir/api/v1/payment/{paymentNumber}/
+ *
+ * IMPORTANT: Never generates a fake paymentNumber if Sepal returns status: false,
+ * preventing the browser from landing on Sepal's "پرداخت یافت نشد" error page.
  */
 export async function requestSepalGatewayRedirectAsync(
   params: SepalGatewayRequestParams,
@@ -77,7 +81,7 @@ export async function requestSepalGatewayRedirectAsync(
           Accept: 'application/json',
         },
         body: JSON.stringify({
-          apiKey: params.apiKey || undefined,
+          apiKey: params.apiKey ? params.apiKey.trim() : undefined,
           amount: amountRials,
           amount_toman: params.amountToman,
           invoiceNumber: generatedInvoice,
@@ -89,39 +93,84 @@ export async function requestSepalGatewayRedirectAsync(
           description: params.description || 'پرداخت هزینه خدمات سامانه کاریابی کارباما',
         }),
       },
-      6000,
+      10000,
       signal
     );
 
     const data = await res.json();
-    const pNum = String(data.paymentNumber || data.token || data.res_num || generatedInvoice);
+    const hasRealPaymentNumber =
+      Boolean(data.status || data.success) &&
+      Boolean(data.paymentNumber) &&
+      !data.sepal_message;
+
+    const pNum = hasRealPaymentNumber ? String(data.paymentNumber).trim() : '';
     const invNum = String(data.invoiceNumber || data.res_num || generatedInvoice);
-    const redirectUrl =
-      data.redirectUrl ||
-      data.gateway_url ||
-      `https://payment.sepal.ir/api/v1/payment/${encodeURIComponent(pNum)}/`;
+    const redirectUrl = pNum
+      ? data.redirectUrl ||
+        data.gateway_url ||
+        `https://payment.sepal.ir/api/v1/payment/${encodeURIComponent(pNum)}/`
+      : '';
 
     return {
-      success: Boolean(data.status || data.success),
-      status: Boolean(data.status || data.success),
+      success: hasRealPaymentNumber,
+      status: hasRealPaymentNumber,
       paymentNumber: pNum,
       invoiceNumber: invNum,
       amountRials,
       redirectUrl,
       sepalMessage: data.sepal_message || data.message || '',
-      sepalTranslatedError: data.sepal_translated_error || data.error || '',
-      isLiveToken: !data.sepal_message,
+      sepalTranslatedError:
+        data.sepal_translated_error ||
+        data.error ||
+        (hasRealPaymentNumber ? '' : 'کلید وب‌سرویس درگاه (apiKey) در پنل سپال تایید نشد.'),
+      serverIp: data.server_ip || '',
+      isLiveToken: hasRealPaymentNumber,
     };
-  } catch {
-    const fallbackPNum = String(Math.floor(400000000000 + Math.random() * 90000000000));
+  } catch (err: any) {
     return {
-      success: true,
-      status: true,
-      paymentNumber: fallbackPNum,
+      success: false,
+      status: false,
+      paymentNumber: '',
       invoiceNumber: generatedInvoice,
       amountRials,
-      redirectUrl: `https://payment.sepal.ir/api/v1/payment/${fallbackPNum}/`,
+      redirectUrl: '',
+      sepalMessage: 'network_error',
+      sepalTranslatedError:
+        'خطا در ارتباط با وب‌سرویس درگاه سپال. لطفاً اتصال اینترنت را بررسی کرده و مجدداً تلاش کنید.',
       isLiveToken: false,
+    };
+  }
+}
+
+/**
+ * Saves the Sepal payment gateway apiKey on the server (/api/sep/save-config.php)
+ */
+export async function saveSepalGatewayApiKeyOnServer(
+  sepalApiKey: string,
+  sepalUniqueCode?: string
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  try {
+    const res = await fetch('/api/sep/save-config.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        sepalApiKey: sepalApiKey.trim(),
+        sepalUniqueCode: sepalUniqueCode?.trim() || '',
+      }),
+    });
+    const data = await res.json();
+    return {
+      success: Boolean(data.success || data.status),
+      message: data.message,
+      error: data.error,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || 'خطا در ذخیره کلید وب‌سرویس درگاه سپال روی سرور',
     };
   }
 }
@@ -131,6 +180,7 @@ export async function requestSepalGatewayRedirectAsync(
  * (https://payment.sepal.ir/api/v1/payment/{paymentNumber}/) while preserving the Referer header.
  */
 export function navigateToSepalGateway(redirectUrl: string): void {
+  if (!redirectUrl) return;
   try {
     // Ensure Referrer-Policy meta allows sending origin Referer to payment.sepal.ir
     let metaReferrer = document.querySelector('meta[name="referrer"]') as HTMLMetaElement | null;
