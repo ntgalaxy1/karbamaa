@@ -101,6 +101,7 @@ export interface JobSeeker {
   seekerPaymentStatus?: 'paid' | 'partial' | 'unpaid'; // وضعیت پرداخت کارجو
   seekerPaymentMethod?: PaymentMethod; // روش پرداخت کارجو (سپال، زرین‌پال، حساب ترکیه، کارت ایران)
   seekerPaymentRefId?: string;        // کد پیگیری / شماره ارجاع تراکنش بانکی
+  seekerPaymentReceiptUrl?: string;   // تصویر فیش واریزی کارجو
 
   // بخش ۳: شغل‌ها، تخصص‌ها و زبان‌ها
   selectedJobs?: string[];      // شغل‌ها و تخصص‌های انتخابی کارجو از لیست

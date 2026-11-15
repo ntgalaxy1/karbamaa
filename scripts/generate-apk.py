@@ -16,9 +16,9 @@ def get_package_version():
     try:
         with open("package.json", "r", encoding="utf-8") as f:
             data = json.load(f)
-            return data.get("version", "10.0.0.42")
+            return data.get("version", "10.0.0.44")
     except Exception:
-        return "10.0.0.42"
+        return "10.0.0.44"
 
 
 def build_string_pool_utf16(strings):
@@ -987,11 +987,11 @@ def build_standalone_apk_and_aab(version=None, version_code=None, package_name="
     os.makedirs("public", exist_ok=True)
     os.makedirs("public/downloads", exist_ok=True)
 
-    # Clean old versioned APKs and AABs
+    # Clean old or duplicate APKs, AABs, and ZIPs in root and public
     for folder in [".", "public", "public/downloads"]:
         if os.path.exists(folder):
             for f in os.listdir(folder):
-                if (f.endswith(".apk") or f.endswith(".aab")) and "v10.0.0." in f and version not in f:
+                if f.endswith(".apk") or f.endswith(".aab") or f.endswith(".zip"):
                     try:
                         os.remove(os.path.join(folder, f))
                     except Exception:
@@ -1016,8 +1016,9 @@ def build_standalone_apk_and_aab(version=None, version_code=None, package_name="
     }
     web_asset_entries = {}
 
-    if os.path.exists("public/logo.png"):
-        with open("public/logo.png", "rb") as f:
+    icon_source = "public/pwa-192x192.png" if os.path.exists("public/pwa-192x192.png") else "public/logo.png"
+    if os.path.exists(icon_source):
+        with open(icon_source, "rb") as f:
             logo_bytes = f.read()
         apk_entries["res/mipmap-mdpi-v4/ic_launcher.png"] = logo_bytes
         apk_entries["res/mipmap-hdpi-v4/ic_launcher.png"] = logo_bytes
@@ -1031,17 +1032,22 @@ def build_standalone_apk_and_aab(version=None, version_code=None, package_name="
         web_asset_entries["base/assets/www/logo.png"] = logo_bytes
         web_asset_entries["base/assets/www/pwa-192x192.png"] = logo_bytes
 
-    # Add Web App Assets (excluding nested packages, downloads folder, or temporary screenshots)
+    # Add Web App Assets (excluding nested packages, downloads folder, or heavy unreferenced images)
     if os.path.exists("dist"):
         for root, _, files in os.walk("dist"):
             rel_root = os.path.relpath(root, "dist")
-            if rel_root.startswith("downloads") or rel_root.startswith("assets/aistudio"):
+            if (
+                rel_root.startswith("downloads")
+                or rel_root.startswith("assets/aistudio")
+                or rel_root.startswith("api")
+            ):
                 continue
             for file in files:
                 if (
                     file.endswith(".apk")
                     or file.endswith(".aab")
                     or file.endswith(".zip")
+                    or file in ("logo.png", "pwa-1024x1024.png", "pwa-512x512.png", "pwa-maskable-512x512.png")
                 ):
                     continue
                 full_p = os.path.join(root, file)
@@ -1078,13 +1084,11 @@ def build_standalone_apk_and_aab(version=None, version_code=None, package_name="
 
             # Prepare optimized base64 logo for in-app rendering
             logo_b64 = ""
-            icon_file = "public/pwa-192x192.png" if os.path.exists("public/pwa-192x192.png") else "public/logo.png"
-            if os.path.exists(icon_file):
-                with open(icon_file, "rb") as lf:
+            if os.path.exists(icon_source):
+                with open(icon_source, "rb") as lf:
                     logo_b64 = "data:image/png;base64," + base64.b64encode(lf.read()).decode("ascii")
 
             if logo_b64:
-                # 1. Replace in JS chunks (covering double quotes, single quotes, and backtick template literals)
                 js_chunks = [
                     j.replace('"/logo.png"', f'"{logo_b64}"')
                      .replace("'/logo.png'", f"'{logo_b64}'")
@@ -1132,7 +1136,6 @@ def build_standalone_apk_and_aab(version=None, version_code=None, package_name="
                 html_str = html_str.replace("<head>", "<head>" + image_interceptor_script, 1)
 
             import re
-            # Remove external module script & stylesheet tags that point to /assets/
             html_str = re.sub(r'<script[^>]+src=["\']/assets/[^"\']+["\'][^>]*>\s*</script>', '', html_str)
             html_str = re.sub(r'<link[^>]+href=["\']/assets/[^"\']+\.css["\'][^>]*/?>', '', html_str)
 
@@ -1167,7 +1170,7 @@ def build_standalone_apk_and_aab(version=None, version_code=None, package_name="
         "base/dex/classes.dex": dex_bytes,
         "base/resources.pb": arsc_bytes,
     }
-    if os.path.exists("public/logo.png"):
+    if os.path.exists(icon_source):
         aab_entries["base/res/mipmap-hdpi-v4/ic_launcher.png"] = logo_bytes
         aab_entries["base/res/mipmap-xxhdpi-v4/ic_launcher.png"] = logo_bytes
     aab_entries.update(web_asset_entries)
@@ -1180,36 +1183,24 @@ def build_standalone_apk_and_aab(version=None, version_code=None, package_name="
     aab_path = os.path.join(build_dir, f"karbama-v{version}.aab")
     write_zipaligned_zip(aab_path, aab_entries, uncompressed_names=set())
 
-    # Copy APK & AAB to target locations
+    # Copy APK & AAB to canonical download locations
     apk_targets = [
-        "karbama-latest.apk",
-        f"karbama-v{version}.apk",
-        os.path.join("public", f"karbama-v{version}.apk"),
         os.path.join("public/downloads", f"karbama-v{version}.apk"),
-        os.path.join("public", "karbama-latest.apk"),
         os.path.join("public/downloads", "karbama-latest.apk"),
     ]
     aab_targets = [
-        "karbama-latest.aab",
-        f"karbama-v{version}.aab",
-        os.path.join("public", f"karbama-v{version}.aab"),
         os.path.join("public/downloads", f"karbama-v{version}.aab"),
-        os.path.join("public", "karbama-latest.aab"),
         os.path.join("public/downloads", "karbama-latest.aab"),
     ]
 
     if os.path.exists("dist"):
         os.makedirs("dist/downloads", exist_ok=True)
         apk_targets.extend([
-            os.path.join("dist", f"karbama-v{version}.apk"),
             os.path.join("dist/downloads", f"karbama-v{version}.apk"),
-            os.path.join("dist", "karbama-latest.apk"),
             os.path.join("dist/downloads", "karbama-latest.apk"),
         ])
         aab_targets.extend([
-            os.path.join("dist", f"karbama-v{version}.aab"),
             os.path.join("dist/downloads", f"karbama-v{version}.aab"),
-            os.path.join("dist", "karbama-latest.aab"),
             os.path.join("dist/downloads", "karbama-latest.aab"),
         ])
 

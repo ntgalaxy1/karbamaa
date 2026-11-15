@@ -1267,15 +1267,21 @@ app.get('/icon.svg', (req, res) => sendStaticFile(res, 'icon.svg', 'image/svg+xm
 // Explicit Web App Zip Build Download Route for cPanel/DirectAdmin deployment
 app.get(['/karbama-dist.zip', '/dist.zip', '/karbama-latest-build.zip', '/*.zip', '/downloads/*.zip'], (req, res) => {
   const filename = path.basename(req.path) || 'karbama-dist.zip';
+  const isBazaar = filename.includes('cafebazaar');
+  const dlDir = path.resolve(__dirname, 'public', 'downloads');
   const candidates = [
+    path.resolve(dlDir, filename),
     path.resolve(__dirname, 'public', filename),
-    path.resolve(__dirname, 'public', 'downloads', filename),
-    path.resolve(__dirname, 'dist', filename),
     path.resolve(__dirname, 'dist', 'downloads', filename),
-    path.resolve(__dirname, filename),
-    path.resolve(__dirname, 'public', 'karbama-dist.zip'),
-    path.resolve(__dirname, 'dist', 'karbama-dist.zip'),
+    path.resolve(__dirname, 'dist', filename),
+    path.resolve(dlDir, 'karbama-dist.zip'),
   ];
+  if (isBazaar && fs.existsSync(dlDir)) {
+    const bazaarFiles = fs.readdirSync(dlDir).filter((f) => f.startsWith('karbama-cafebazaar') && f.endsWith('.zip'));
+    if (bazaarFiles.length > 0) {
+      candidates.unshift(path.resolve(dlDir, bazaarFiles[0]));
+    }
+  }
   for (const c of candidates) {
     if (fs.existsSync(c)) {
       res.setHeader('Content-Type', 'application/zip');
@@ -1291,12 +1297,11 @@ app.get(['/karbama-dist.zip', '/dist.zip', '/karbama-latest-build.zip', '/*.zip'
 app.get(['/*.aab', '/downloads/*.aab'], (req, res) => {
   const filename = path.basename(req.path) || 'karbama-latest.aab';
   const candidates = [
-    path.resolve(__dirname, 'public', filename),
     path.resolve(__dirname, 'public', 'downloads', filename),
-    path.resolve(__dirname, 'dist', filename),
+    path.resolve(__dirname, 'public', filename),
     path.resolve(__dirname, 'dist', 'downloads', filename),
-    path.resolve(__dirname, filename),
-    path.resolve(__dirname, 'public', 'karbama-latest.aab'),
+    path.resolve(__dirname, 'dist', filename),
+    path.resolve(__dirname, 'public', 'downloads', 'karbama-latest.aab'),
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) {
@@ -1313,13 +1318,11 @@ app.get(['/*.aab', '/downloads/*.aab'], (req, res) => {
 app.get(['/karbama.apk', '/karbama-latest.apk', '/*.apk', '/downloads/*.apk'], (req, res) => {
   const filename = path.basename(req.path) || 'karbama-latest.apk';
   const candidates = [
-    path.resolve(__dirname, filename),
-    path.resolve(__dirname, 'public', filename),
     path.resolve(__dirname, 'public', 'downloads', filename),
-    path.resolve(__dirname, 'dist', filename),
+    path.resolve(__dirname, 'public', filename),
     path.resolve(__dirname, 'dist', 'downloads', filename),
-    path.resolve(__dirname, 'karbama-latest.apk'),
-    path.resolve(__dirname, 'public', 'karbama-latest.apk'),
+    path.resolve(__dirname, 'dist', filename),
+    path.resolve(__dirname, 'public', 'downloads', 'karbama-latest.apk'),
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) {
@@ -1342,20 +1345,17 @@ app.use(express.static(path.resolve(__dirname, 'public'), {
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-// In development mode, ALWAYS mount Vite middleware for instant live compilation
+// Bind port 3000 immediately so container pre-warming succeeds without waiting for Vite initialization
+let viteMiddleware: any = null;
+
 if (!isProduction) {
-  const { createServer: createViteServer } = await import('vite');
-  const vite = await createViteServer({
-    server: {
-      middlewareMode: true,
-      hmr: false,
-      ws: false,
-    },
-    appType: 'spa',
+  app.use((req, res, next) => {
+    if (viteMiddleware) {
+      return viteMiddleware(req, res, next);
+    }
+    res.status(200).setHeader('Content-Type', 'text/html; charset=utf-8').sendFile(path.resolve(__dirname, 'index.html'));
   });
-  app.use(vite.middlewares);
 } else {
-  // In production mode, serve pre-built files from dist/
   if (fs.existsSync(path.resolve(__dirname, 'dist'))) {
     app.use(express.static(path.resolve(__dirname, 'dist'), {
       maxAge: '1d',
@@ -1365,9 +1365,7 @@ if (!isProduction) {
     }));
   }
 
-  // Production SPA fallback for HTML pages ONLY
   app.get('*', (req, res) => {
-    // If the path looks like a missing file/asset, return 404 text/plain instead of index.html
     if (path.extname(req.path)) {
       return res.status(404).setHeader('Content-Type', 'text/plain').send('Asset not found');
     }
@@ -1382,6 +1380,23 @@ if (!isProduction) {
   });
 }
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`Karbama server running on http://0.0.0.0:${PORT}`);
+  if (!isProduction) {
+    try {
+      const { createServer: createViteServer } = await import('vite');
+      const vite = await createViteServer({
+        server: {
+          middlewareMode: true,
+          hmr: false,
+          ws: false,
+        },
+        appType: 'spa',
+      });
+      viteMiddleware = vite.middlewares;
+    } catch (err) {
+      console.error('Vite middleware init error:', err);
+    }
+  }
 });
+

@@ -333,13 +333,17 @@ export const JobSearch: React.FC = () => {
   const verifyReceiptWithAI = async (base64Data: string) => {
     setIsVerifyingReceipt(true);
     setReceiptAiResult(null);
+    let visualFeatures = { width: 100, height: 100, aspectRatio: 1, skinRatio: 0, docPatternScore: 50, edgeEnergy: 20 };
     try {
-      const visualFeatures = await extractVisualMetrics(base64Data);
+      visualFeatures = await extractVisualMetrics(base64Data);
       const res = await fetch('/api/ai/verify-bank-receipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: base64Data, visualFeatures }),
       });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
       const isBank = Boolean(data.isBankReceipt);
       setReceiptAiResult({
@@ -352,18 +356,27 @@ export const JobSearch: React.FC = () => {
       });
 
       if (isBank) {
-        showToast('✅ اصالت فیش بانکی توسط هوش مصنوعی کارباما تایید شد.', 'success');
+        showToast('✅ اصالت فیش بانکی توسط سامانه هوشمند کارباما تایید شد.', 'success');
       } else {
-        showToast('⚠️ تصویر ارسالی شبیه فیش بانکی نیست! لطفاً فیش صحیح را مجدداً ارسال فرمایید.', 'error');
+        showToast('⚠️ تصویر ارسالی شبیه فیش بانکی نیست! لطفاً فیش صحیح را ارسال فرمایید.', 'error');
       }
-    } catch (err) {
-      console.error('Receipt verification failed:', err);
+    } catch {
+      // On PHP/cPanel hosting where /api/ai/verify-bank-receipt is unavailable, use client-side visual analysis
+      const isLikelySelfie = visualFeatures.skinRatio > 0.38;
+      const isBank = !isLikelySelfie;
       setReceiptAiResult({
         tested: true,
-        isBankReceipt: false,
-        reason: 'خطا در ارتباط با سامانه هوش مصنوعی. لطفاً تصویر واضح از فیش بانکی را مجدداً ارسال فرمایید.',
+        isBankReceipt: isBank,
+        confidence: 'medium',
+        reason: isBank
+          ? 'تصویر فیش واریزی دریافت شد و آماده ارسال به مدیریت جهت بررسی نهایی است.'
+          : 'تصویر انتخاب‌شده شبیه عکس پرسنلی/چهره است. لطفاً اسکرین‌شات یا عکس فیش واریزی بانکی را انتخاب نمایید.',
       });
-      showToast('خطا در ارزیابی هوش مصنوعی؛ لطفاً مجدداً تصویر فیش را ارسال فرمایید.', 'error');
+      if (isBank) {
+        showToast('✅ تصویر فیش واریزی بارگذاری شد. اکنون روی دکمه ثبت و ارجاع کلیک کنید.', 'success');
+      } else {
+        showToast('⚠️ لطفاً تصویر فیش واریزی بانکی را بارگذاری فرمایید.', 'error');
+      }
     } finally {
       setIsVerifyingReceipt(false);
     }
@@ -839,31 +852,45 @@ export const JobSearch: React.FC = () => {
 
   const handleReferPaymentToAdmin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!paymentReceiptPhoto) {
-      showToast('لطفاً ابتدا تصویر فیش واریزی هزینه خدمات را بارگذاری نمایید.', 'error');
+    if (!paymentReceiptPhoto && paymentRefNote.trim().length < 4) {
+      showToast('لطفاً تصویر فیش واریزی را بارگذاری کنید یا شماره پیگیری تراکنش را در کادر توضیحات وارد نمایید.', 'error');
       return;
     }
     if (isVerifyingReceipt) {
-      showToast('بررسی هوش مصنوعی در حال انجام است، لطفاً چند لحظه شکیبا باشید...', 'info');
+      showToast('بررسی تصویر در حال انجام است، لطفاً چند لحظه شکیبا باشید...', 'info');
       return;
     }
-    if (receiptAiResult?.tested && !receiptAiResult.isBankReceipt) {
-      showToast('⚠️ این تصویر فیش بانکی نیست! هوش مصنوعی آن را نپذیرفت. لطفاً فیش واریز واقعی بارگذاری کنید.', 'error');
+    if (paymentReceiptPhoto && receiptAiResult?.tested && !receiptAiResult.isBankReceipt) {
+      showToast('⚠️ این تصویر فیش بانکی نیست! لطفاً فیش واریز واقعی بارگذاری کنید.', 'error');
       return;
+    }
+    const refTracking = paymentRefNote.trim() || `RECEIPT-${Date.now().toString().slice(-6)}`;
+    if (currentSeeker) {
+      updateProfile({
+        seekerPaymentStatus: 'paid',
+        seekerPaymentMethod: 'iran_card',
+        seekerPaymentRefId: refTracking,
+        seekerPaymentReceiptUrl: paymentReceiptPhoto || undefined,
+        seekerPaidAmount: `${seekerFeeToman.toLocaleString('fa-IR')} تومان`,
+        seekerPaymentCurrency: 'IRT',
+        verificationStatus: 'pending',
+        isPaymentVerified: false,
+        adminVerificationNote: `ثبت فیش / کد پیگیری توسط کارجو | پیگیری: ${refTracking} | تاریخ: ${new Date().toLocaleDateString('fa-IR')}`,
+      });
     }
     addAdminNotification({
       type: 'seeker_payment_referred',
-      title: 'ارجاع تصویر فیش واریزی کارجو جهت فعال‌سازی امکانات',
-      message: `کارجو «${currentSeeker?.fullName}» با کد ملی ${currentSeeker?.nationalId} تصویر فیش واریزی هزینه مصوب را جهت بررسی و فعال‌سازی حساب ارسال کرد.${receiptAiResult?.isBankReceipt ? ' (تایید شده توسط هوش مصنوعی کارباما)' : ''}`,
+      title: 'ارجاع فیش واریزی / کد پیگیری کارجو جهت فعال‌سازی امکانات',
+      message: `کارجو «${currentSeeker?.fullName}» با کد ملی ${currentSeeker?.nationalId} فیش واریزی / کد پیگیری (${refTracking}) هزینه مصوب را جهت بررسی و فعال‌سازی حساب ارسال کرد.`,
       data: {
         receiptPhotoUrl: paymentReceiptPhoto,
-        paymentNote: paymentRefNote,
+        paymentNote: refTracking,
         seekerId: currentSeeker?.id,
         aiVerification: receiptAiResult,
       },
     });
     setIsReferredToAdmin(true);
-    showToast('تصویر فیش واریزی با موفقیت به مدیریت ارجاع شد. به محض تایید، حساب شما فعال می‌گردد.', 'success');
+    showToast('✅ اطلاعات واریز و فیش شما با موفقیت ثبت و به مدیریت ارجاع شد. پس از تایید مدیر، حساب شما فعال می‌گردد.', 'success');
   };
 
   const handleSepalSeekerSuccess = (refId: string) => {
@@ -1091,15 +1118,37 @@ export const JobSearch: React.FC = () => {
 
             {/* Verification Warning Notice if unapproved */}
             {currentSeeker.verificationStatus !== 'approved' && (
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 flex items-start gap-3 text-xs text-amber-200">
-                <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-bold text-white">
-                    وضعیت حساب کارجو: در انتظار پرداخت هزینه خدمات و تایید مدیریت
-                  </p>
-                  <p className="text-slate-300 leading-relaxed">
-                    کارجوی گرامی، اطلاعات شما ثبت شده است. جهت فعال‌سازی کامل امکان ارسال درخواست شغل، مشاهده تماس کارفرمایان و رزومه‌ساز آنلاین، لطفاً هزینه خدمات به مبلغ {seekerFeeToman.toLocaleString('fa-IR')} تومان ({seekerFeeRial.toLocaleString('fa-IR')} ریال) را پرداخت نمایید یا منتظر تایید پنل بمانید.
-                  </p>
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold text-white">
+                      وضعیت حساب کارجو: در انتظار پرداخت هزینه خدمات و تایید مدیریت
+                    </p>
+                    <p className="text-slate-300 leading-relaxed">
+                      کارجوی گرامی، اطلاعات شما ثبت شده است. جهت فعال‌سازی کامل امکان ارسال درخواست شغل، مشاهده تماس کارفرمایان و رزومه‌ساز آنلاین، لطفاً هزینه خدمات به مبلغ {seekerFeeToman.toLocaleString('fa-IR')} تومان ({seekerFeeRial.toLocaleString('fa-IR')} ریال) را پرداخت نمایید.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsSepalModalOpen(true)}
+                    className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs shadow-lg transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>پرداخت آنلاین (درگاه سپال)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById('seeker-payment-section');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="px-3.5 py-2 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-400/40 text-amber-200 font-bold rounded-xl text-xs transition cursor-pointer"
+                  >
+                    ثبت فیش / کارت به کارت
+                  </button>
                 </div>
               </div>
             )}
@@ -1839,7 +1888,7 @@ export const JobSearch: React.FC = () => {
 
       {/* ACCESS GATE: After registration, NO advertisements are displayed until payment is made and referred to admin */}
       {!isAccessUnlocked ? (
-        <div className="bg-slate-900 border-2 border-red-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+        <div id="seeker-payment-section" className="bg-slate-900 border-2 border-red-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
           {currentSeeker ? (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
@@ -2182,11 +2231,11 @@ export const JobSearch: React.FC = () => {
                       />
                     </div>
 
-                    {/* Optional Payment Note */}
+                    {/* Payment Note / Tracking Code */}
                     <div>
                       <input
                         type="text"
-                        placeholder="توضیحات اختیاری (مثلاً ۴ رقم آخر کارت، نام صاحب حساب یا بانک واریزی)..."
+                        placeholder="شماره پیگیری تراکنش یا ۴ رقم آخر کارت واریزکننده (یا توضیحات واریز)..."
                         value={paymentRefNote}
                         onChange={(e) => setPaymentRefNote(e.target.value)}
                         className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-500"
@@ -2196,12 +2245,12 @@ export const JobSearch: React.FC = () => {
                     <button
                       type="submit"
                       disabled={
-                        !paymentReceiptPhoto ||
+                        (!paymentReceiptPhoto && paymentRefNote.trim().length < 4) ||
                         isVerifyingReceipt ||
-                        (receiptAiResult?.tested === true && !receiptAiResult.isBankReceipt)
+                        Boolean(paymentReceiptPhoto && receiptAiResult?.tested === true && !receiptAiResult.isBankReceipt)
                       }
-                      className={`w-full sm:w-auto px-6 py-3 rounded-xl text-xs font-bold shadow-lg transition flex items-center justify-center gap-2 ${
-                        receiptAiResult?.tested && !receiptAiResult.isBankReceipt
+                      className={`w-full sm:w-auto px-6 py-3 rounded-xl text-xs font-bold shadow-lg transition flex items-center justify-center gap-2 cursor-pointer ${
+                        paymentReceiptPhoto && receiptAiResult?.tested && !receiptAiResult.isBankReceipt
                           ? 'bg-slate-800 text-red-400 border border-red-500/40 cursor-not-allowed opacity-80'
                           : isVerifyingReceipt
                           ? 'bg-slate-800 text-amber-400 border border-amber-500/40 cursor-wait'
@@ -2211,9 +2260,9 @@ export const JobSearch: React.FC = () => {
                       {isVerifyingReceipt ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
-                          <span>در حال بررسی هوش مصنوعی...</span>
+                          <span>در حال بررسی تصویر...</span>
                         </>
-                      ) : receiptAiResult?.tested && !receiptAiResult.isBankReceipt ? (
+                      ) : paymentReceiptPhoto && receiptAiResult?.tested && !receiptAiResult.isBankReceipt ? (
                         <>
                           <AlertTriangle className="w-4 h-4 text-red-400" />
                           <span>⚠️ تصویر فیش بانکی نیست (ارسال غیرفعال است)</span>
@@ -2221,7 +2270,7 @@ export const JobSearch: React.FC = () => {
                       ) : (
                         <>
                           <Send className="w-4 h-4" />
-                          <span>ثبت تصویر فیش و ارجاع به مدیر جهت فعال‌سازی</span>
+                          <span>ثبت فیش / کد پیگیری و ارجاع به مدیر جهت فعال‌سازی</span>
                         </>
                       )}
                     </button>
@@ -3007,11 +3056,26 @@ export const JobSearch: React.FC = () => {
                         <button
                           onClick={() => {
                             setSelectedJob(null);
-                            setActiveTab('settings');
+                            setIsSepalModalOpen(true);
                           }}
-                          className="w-full sm:flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition"
+                          className="w-full sm:flex-1 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          مشاهده پروفایل و اطلاعات تسویه حساب
+                          <CreditCard className="w-4 h-4" />
+                          <span>پرداخت آنلاین هزینه خدمات (درگاه سپال)</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setSelectedJob(null);
+                            setTimeout(() => {
+                              const el = document.getElementById('seeker-payment-section');
+                              if (el) el.scrollIntoView({ behavior: 'smooth' });
+                              else setActiveTab('settings');
+                            }, 100);
+                          }}
+                          className="w-full sm:w-auto px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition cursor-pointer"
+                        >
+                          ارسال فیش / کارت به کارت
                         </button>
 
                         <button
