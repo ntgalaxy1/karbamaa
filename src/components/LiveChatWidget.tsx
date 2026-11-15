@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { ZarinPalGatewayModal } from './ZarinPalGatewayModal';
 import {
   MessageCircle,
   X,
@@ -28,10 +27,6 @@ export const LiveChatWidget: React.FC = () => {
   } = useApp();
 
   const [isOpen, setIsOpen] = useState(false);
-
-  // ZarinPal Payment Flow States
-  const [zarinpalModalOpen, setZarinpalModalOpen] = useState(false);
-  const [zarinpalRefId, setZarinpalRefId] = useState<string | null>(null);
 
   // Message input
   const [messageText, setMessageText] = useState('');
@@ -143,15 +138,17 @@ export const LiveChatWidget: React.FC = () => {
                     </ul>
                   </div>
 
-                  {/* Payment Trigger Button */}
-                  <button
-                    type="button"
-                    onClick={() => setZarinpalModalOpen(true)}
-                    className="w-full py-2 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black rounded-xl shadow-lg shadow-amber-600/30 transition flex items-center justify-center gap-1.5 text-[10px] cursor-pointer"
-                  >
-                    <CreditCard className="w-3.5 h-3.5 text-slate-950" />
-                    <span>پرداخت آنلاین حق مشاوره (۷۵۰,۰۰۰ تومان)</span>
-                  </button>
+                  {/* Payment Trigger Form */}
+                  <form action="https://karbama34.ir/pay.php" method="POST">
+                    <input type="hidden" name="amount" value={7500000} />
+                    <button
+                      type="submit"
+                      className="w-full py-2 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black rounded-xl shadow-lg shadow-amber-600/30 transition flex items-center justify-center gap-1.5 text-[10px] cursor-pointer"
+                    >
+                      <CreditCard className="w-3.5 h-3.5 text-slate-950" />
+                      <span>پرداخت آنلاین</span>
+                    </button>
+                  </form>
                 </div>
               ) : activeSeekerChat.status === 'pending' ? (
                 /* STATE 2: PAID, WAITING FOR ADMIN APPROVAL */
@@ -171,21 +168,6 @@ export const LiveChatWidget: React.FC = () => {
                       حق مشاوره (۷۵۰,۰۰۰ تومان) پرداخت شد. لطفاً منتظر تایید مدیر بمانید تا چت باز شود.
                     </p>
                   </div>
-
-                  {zarinpalRefId && (
-                    <div className="bg-slate-800/80 border border-slate-700 rounded-xl p-2 text-right text-[9px] space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-400">کد رهگیری:</span>
-                        <span className="font-mono font-black text-emerald-400" dir="ltr">
-                          {zarinpalRefId}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-400">مبلغ واریزی:</span>
-                        <span className="font-mono font-bold text-white">۷۵۰,۰۰۰ تومان</span>
-                      </div>
-                    </div>
-                  )}
                 </div>
               ) : (
                 /* STATE 3: APPROVED BY ADMIN */
@@ -450,30 +432,6 @@ export const LiveChatWidget: React.FC = () => {
           )}
         </button>
       </div>
-
-      {/* ZarinPal Gateway Modal */}
-      <ZarinPalGatewayModal
-        isOpen={zarinpalModalOpen}
-        onClose={() => setZarinpalModalOpen(false)}
-        amountToman={750000}
-        description="حق مشاوره تخصصی کاریابی، اسکان و اقامت کارباما"
-        onSuccess={(refId) => {
-          setZarinpalRefId(refId);
-          setZarinpalModalOpen(false);
-
-          const fName = currentSeeker?.firstName || currentSeeker?.fullName?.split(' ')[0] || 'کارجو';
-          const lName = currentSeeker?.lastName || currentSeeker?.fullName?.split(' ').slice(1).join(' ') || 'عزیز';
-          const phoneNum = currentSeeker?.phone || '۰۹۱۲۰۰۰۰۰۰۰';
-          const natId = currentSeeker?.nationalId || '۰۰۰۰۰۰۰۰۰۰';
-
-          requestLiveChat({
-            firstName: fName,
-            lastName: lName,
-            phone: phoneNum,
-            nationalId: natId,
-          });
-        }}
-      />
     </div>
   );
 };

@@ -59,7 +59,6 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { JobImagePicker } from './JobImagePicker';
-import { SepalGatewayModal } from './SepalGatewayModal';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 import { ALL_TURKEY_CITIES_FA, CITIES_WITH_ALL } from '../data/turkeyCities';
 import { getDistrictsForCity } from '../data/turkeyData';
@@ -163,13 +162,19 @@ export const JobSearch: React.FC = () => {
   const seekerFeeToman = (paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460);
   const seekerFeeRial = seekerFeeToman * 10;
 
-  // Handle Official Sepal Gateway Callback URL parameters (?payment=success&provider=sepal&refId=...)
+  // Handle Payment Callback URL parameters (?payment=success&ref=... or ?payment=failed)
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const paymentStatus = params.get('payment');
-      const refId = params.get('refId') || params.get('RefNum') || params.get('paymentNumber');
-      if (paymentStatus === 'success' && refId) {
+      const refId =
+        params.get('ref') ||
+        params.get('refId') ||
+        params.get('RefNum') ||
+        params.get('paymentNumber') ||
+        '';
+      if (paymentStatus === 'success') {
+        const displayRef = refId || 'ثبت‌شده';
         const pendingJobRaw = localStorage.getItem('karbama_pending_sepal_job');
         if (pendingJobRaw) {
           try {
@@ -179,13 +184,12 @@ export const JobSearch: React.FC = () => {
               ...pendingJob,
               paymentMethod: 'sepal',
               paymentStatus: 'pending_approval',
-              paymentReferenceId: refId,
+              paymentReferenceId: displayRef,
             });
             showToast(
-              `✅ پرداخت آگهی شما در درگاه سپال با کد رهگیری ${refId} تایید و جهت انتشار به مدیریت ارجاع شد.`,
+              `✅ پرداخت آنلاین شما با موفقیت انجام شد. شماره پیگیری: ${displayRef}`,
               'success'
             );
-            window.history.replaceState({}, document.title, window.location.pathname);
             return;
           } catch {
             // fallback to seeker flow
@@ -196,34 +200,31 @@ export const JobSearch: React.FC = () => {
           updateProfile({
             seekerPaymentStatus: 'paid',
             seekerPaymentMethod: 'sepal',
-            seekerPaymentRefId: refId,
+            seekerPaymentRefId: displayRef,
             seekerPaidAmount: `${seekerFeeToman.toLocaleString('fa-IR')} تومان`,
             seekerPaymentCurrency: 'IRT',
             verificationStatus: 'pending',
             isPaymentVerified: false,
-            adminVerificationNote: `پرداخت موفق درگاه رسمی سپال | کد رهگیری: ${refId} | تاریخ: ${new Date().toLocaleDateString('fa-IR')}`,
+            adminVerificationNote: `پرداخت آنلاین موفق | شماره پیگیری: ${displayRef} | تاریخ: ${new Date().toLocaleDateString('fa-IR')}`,
           });
           addAdminNotification({
             type: 'seeker_payment_referred',
-            title: '💳 پرداخت آنلاین هزینه خدمات توسط کارجو (درگاه رسمی سپال)',
-            message: `کارجو «${currentSeeker.fullName}» با کد ملی ${currentSeeker.nationalId} مبلغ هزینه خدمات مصوب (${seekerFeeToman.toLocaleString('fa-IR')} تومان) را از طریق درگاه پرداخت سپال پرداخت نمود (کد رهگیری: ${refId}). لطفاً پس از بررسی، قفل دسترسی ایشان را در پنل مدیریت فعال فرمایید.`,
+            title: '💳 پرداخت آنلاین هزینه خدمات توسط کارجو',
+            message: `کارجو «${currentSeeker.fullName}» با کد ملی ${currentSeeker.nationalId} مبلغ هزینه خدمات مصوب (${seekerFeeToman.toLocaleString('fa-IR')} تومان) را به صورت آنلاین پرداخت نمود (شماره پیگیری: ${displayRef}). لطفاً پس از بررسی، قفل دسترسی ایشان را در پنل مدیریت فعال فرمایید.`,
             data: {
               seekerId: currentSeeker.id,
-              paymentRefId: refId,
+              paymentRefId: displayRef,
               method: 'sepal',
             },
           });
         }
         setIsReferredToAdmin(true);
         showToast(
-          `✅ پرداخت شما از درگاه رسمی سپال با کد رهگیری ${refId} ثبت و جهت فعال‌سازی قفل به مدیریت ارسال شد.`,
+          `✅ پرداخت شما با موفقیت انجام شد. شماره پیگیری: ${displayRef}`,
           'success'
         );
-        // Clean URL query params
-        window.history.replaceState({}, document.title, window.location.pathname);
       } else if (paymentStatus === 'failed') {
-        showToast('⚠️ تراکنش پرداخت در درگاه سپال لغو شد یا ناموفق بود.', 'error');
-        window.history.replaceState({}, document.title, window.location.pathname);
+        showToast('⚠️ پرداخت ناموفق بود یا توسط کاربر لغو گردید.', 'error');
       }
     } catch {
       // ignore
@@ -235,7 +236,6 @@ export const JobSearch: React.FC = () => {
   const [paymentReceiptPhoto, setPaymentReceiptPhoto] = useState<string | null>(null);
   const [paymentRefNote, setPaymentRefNote] = useState('');
   const [isReferredToAdmin, setIsReferredToAdmin] = useState(false);
-  const [isSepalModalOpen, setIsSepalModalOpen] = useState(false);
   const [isVerifyingReceipt, setIsVerifyingReceipt] = useState(false);
   const [receiptAiResult, setReceiptAiResult] = useState<{
     tested: boolean;
@@ -893,34 +893,6 @@ export const JobSearch: React.FC = () => {
     showToast('✅ اطلاعات واریز و فیش شما با موفقیت ثبت و به مدیریت ارجاع شد. پس از تایید مدیر، حساب شما فعال می‌گردد.', 'success');
   };
 
-  const handleSepalSeekerSuccess = (refId: string) => {
-    setIsSepalModalOpen(false);
-    if (currentSeeker) {
-      updateProfile({
-        seekerPaymentStatus: 'paid',
-        seekerPaymentMethod: 'sepal',
-        seekerPaymentRefId: refId,
-        seekerPaidAmount: `${seekerFeeToman.toLocaleString('fa-IR')} تومان`,
-        seekerPaymentCurrency: 'IRT',
-        verificationStatus: 'pending',
-        isPaymentVerified: false,
-        adminVerificationNote: `پرداخت موفق درگاه شاپرک سپال | کد رهگیری: ${refId} | مبلغ: ${seekerFeeToman.toLocaleString('fa-IR')} تومان | تاریخ: ${new Date().toLocaleDateString('fa-IR')}`,
-      });
-      addAdminNotification({
-        type: 'seeker_payment_referred',
-        title: '💳 پرداخت آنلاین هزینه خدمات توسط کارجو (درگاه شاپرک)',
-        message: `کارجو «${currentSeeker?.fullName}» با کد ملی ${currentSeeker?.nationalId} مبلغ هزینه خدمات مصوب (${seekerFeeToman.toLocaleString('fa-IR')} تومان) را از طریق درگاه پرداخت شاپرک پرداخت نمود (کد رهگیری: ${refId}). لطفاً پس از بررسی، قفل دسترسی ایشان را در پنل مدیریت فعال فرمایید.`,
-        data: {
-          seekerId: currentSeeker?.id,
-          paymentRefId: refId,
-          method: 'sepal',
-        },
-      });
-      setIsReferredToAdmin(true);
-      showToast(`پرداخت شما با شناسه ارجاع سپال ${refId} با موفقیت ثبت شد و به مدیریت ارجاع گردید. پس از بررسی و تایید مدیریت، قفل دسترسی شما فعال خواهد شد.`, 'success');
-    }
-  };
-
   const hasActiveFilters =
     selectedCity !== 'همه شهرها' ||
     selectedCategory !== 'all' ||
@@ -1131,14 +1103,16 @@ export const JobSearch: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setIsSepalModalOpen(true)}
-                    className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs shadow-lg transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    <span>پرداخت آنلاین (درگاه سپال)</span>
-                  </button>
+                  <form action="https://karbama34.ir/pay.php" method="POST">
+                    <input type="hidden" name="amount" value={seekerFeeRial} />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs shadow-lg transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      <span>پرداخت آنلاین</span>
+                    </button>
+                  </form>
                   <button
                     type="button"
                     onClick={() => {
@@ -1940,36 +1914,38 @@ export const JobSearch: React.FC = () => {
                 </div>
               </div>
 
-              {/* Instant Sepal Online Payment Option */}
+              {/* Direct Online Payment Form (POST to https://karbama34.ir/pay.php) */}
               <div className="p-5 bg-gradient-to-r from-teal-950/70 via-slate-900 to-emerald-950/70 border-2 border-teal-500/50 rounded-2xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="space-y-1 text-right w-full sm:w-auto">
                   <div className="flex items-center gap-2">
                     <span className="w-8 h-8 rounded-xl bg-teal-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-md">
-                      سپال
+                      شاپرک
                     </span>
                     <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
-                      <span>پرداخت آنلاین شاپرک سپال (ارسال فوری به مدیر جهت تایید و بازگشایی)</span>
+                      <span>پرداخت آنلاین از طریق درگاه بانکی</span>
                       <span className="text-[10px] bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded-full font-bold">
-                        شاپرک شتاب
+                        شتاب
                       </span>
                     </h4>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    با پرداخت آنلاین از طریق درگاه رسمی شاپرک سپال، شناسه ارجاع بانکی ثبت شده و به پنل مدیریت ارجاع می‌گردد تا پس از بررسی مدیر، قفل حساب شما فعال و باز شود.
+                    با کلیک روی دکمه زیر، مستقیماً به درگاه پرداخت بانکی منتقل می‌شوید و پس از تکمیل پرداخت به سایت کارباما بازخواهید گشت.
                   </p>
                   <div className="text-xs text-teal-300 font-bold font-mono">
-                    مبلغ مصوب (به‌روزرسانی روزانه): {seekerFeeToman.toLocaleString('fa-IR')} تومان ({seekerFeeRial.toLocaleString('fa-IR')} ریال)
+                    مبلغ مصوب: {seekerFeeToman.toLocaleString('fa-IR')} تومان ({seekerFeeRial.toLocaleString('fa-IR')} ریال)
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsSepalModalOpen(true)}
-                  className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer transition"
-                >
-                  <CreditCard className="w-4 h-4 text-slate-950" />
-                  <span>ورود به درگاه پرداخت شاپرک و ارسال به مدیر</span>
-                </button>
+                <form action="https://karbama34.ir/pay.php" method="POST" className="w-full sm:w-auto shrink-0">
+                  <input type="hidden" name="amount" value={seekerFeeRial} />
+                  <button
+                    type="submit"
+                    className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 cursor-pointer transition"
+                  >
+                    <CreditCard className="w-4 h-4 text-slate-950" />
+                    <span>پرداخت آنلاین</span>
+                  </button>
+                </form>
               </div>
 
               {/* Payment Details Card */}
@@ -3053,16 +3029,16 @@ export const JobSearch: React.FC = () => {
                         </span>
                       </div>
                       <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
-                        <button
-                          onClick={() => {
-                            setSelectedJob(null);
-                            setIsSepalModalOpen(true);
-                          }}
-                          className="w-full sm:flex-1 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <CreditCard className="w-4 h-4" />
-                          <span>پرداخت آنلاین هزینه خدمات (درگاه سپال)</span>
-                        </button>
+                        <form action="https://karbama34.ir/pay.php" method="POST" className="w-full sm:flex-1">
+                          <input type="hidden" name="amount" value={seekerFeeRial} />
+                          <button
+                            type="submit"
+                            className="w-full py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                            <span>پرداخت آنلاین</span>
+                          </button>
+                        </form>
 
                         <button
                           onClick={() => {
@@ -3585,17 +3561,6 @@ export const JobSearch: React.FC = () => {
           accommodationOnly,
           workPermitOnly,
         }}
-      />
-
-      {/* Sepal IPG Modal for Instant Seeker Membership Activation */}
-      <SepalGatewayModal
-        isOpen={isSepalModalOpen}
-        onClose={() => setIsSepalModalOpen(false)}
-        amountToman={seekerFeeToman}
-        description="تسویه حق عضویت و فعال‌سازی فوری حساب کاربری در سامانه کارباما"
-        payerName={currentSeeker?.fullName || ''}
-        payerMobile={currentSeeker?.phone || currentSeeker?.phoneNumber || ''}
-        onSuccess={handleSepalSeekerSuccess}
       />
     </div>
   );

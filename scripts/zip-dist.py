@@ -9,9 +9,9 @@ def get_package_version():
     try:
         with open("package.json", "r", encoding="utf-8") as f:
             data = json.load(f)
-            return data.get("version", "10.0.0.46")
+            return data.get("version", "10.0.0.47")
     except Exception:
-        return "10.0.0.46"
+        return "10.0.0.47"
 
 
 def zip_dist():

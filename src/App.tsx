@@ -95,10 +95,46 @@ const MainContent: React.FC = () => {
     currentSeeker,
     currentPartner,
     appLanguage,
+    showToast,
   } = useApp();
   const [adminLoginModalOpen, setAdminLoginModalOpen] = useState(false);
   const [aboutUsModalOpen, setAboutUsModalOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  const [paymentCallbackResult, setPaymentCallbackResult] = useState<{
+    status: 'success' | 'failed';
+    ref: string;
+  } | null>(null);
+
+  // Handle callback URL query parameters on main page load (?payment=success&ref=... or ?payment=failed)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const payment = params.get('payment');
+      const ref =
+        params.get('ref') ||
+        params.get('refId') ||
+        params.get('RefNum') ||
+        params.get('paymentNumber') ||
+        '';
+
+      if (payment === 'success') {
+        setPaymentCallbackResult({ status: 'success', ref });
+        showToast(
+          ref
+            ? `✅ پرداخت شما با موفقیت انجام شد. شماره پیگیری: ${ref}`
+            : '✅ پرداخت شما با موفقیت انجام شد.',
+          'success'
+        );
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (payment === 'failed') {
+        setPaymentCallbackResult({ status: 'failed', ref: '' });
+        showToast('⚠️ پرداخت ناموفق بود یا توسط کاربر لغو گردید.', 'error');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // Strict check: No guest direct entry into the app without registration/login (except for /privacy-policy)
   const isUserAuthenticated = Boolean(currentSeeker || isAdminLoggedIn || currentPartner);
@@ -143,6 +179,61 @@ const MainContent: React.FC = () => {
   return (
     <>
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+
+      {/* Payment Callback Result Modal (?payment=success&ref=... or ?payment=failed) */}
+      {paymentCallbackResult && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4" dir="rtl">
+          <div className="bg-slate-900 border-2 border-slate-700 rounded-3xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl">
+            {paymentCallbackResult.status === 'success' ? (
+              <>
+                <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-9 h-9" />
+                </div>
+                <h2 className="text-lg font-black text-emerald-400">
+                  پرداخت آنلاین شما با موفقیت انجام شد
+                </h2>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  تراکنش شما با موفقیت ثبت گردید و جهت فعال‌سازی حساب در سامانه کارباما ثبت شد.
+                </p>
+                {paymentCallbackResult.ref && (
+                  <div className="p-3.5 rounded-2xl bg-slate-950 border border-emerald-500/40 flex items-center justify-between text-xs">
+                    <span className="text-slate-400">شماره پیگیری (Ref):</span>
+                    <span className="font-mono font-black text-emerald-300 text-sm select-all" dir="ltr">
+                      {paymentCallbackResult.ref}
+                    </span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPaymentCallbackResult(null)}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs transition cursor-pointer"
+                >
+                  متوجه شدم
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 rounded-full bg-red-500/20 border-2 border-red-500 text-red-400 flex items-center justify-center mx-auto">
+                  <AlertCircle className="w-9 h-9" />
+                </div>
+                <h2 className="text-lg font-black text-red-400">
+                  پرداخت ناموفق بود یا لغو گردید
+                </h2>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  عملیات پرداخت تکمیل نشد. در صورت کسر وجه از حساب بانکی شما، مبلغ حداکثر ظرف ۷۲ ساعت به صورت خودکار به حساب شما بازگردانده می‌شود.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPaymentCallbackResult(null)}
+                  className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl text-xs transition cursor-pointer"
+                >
+                  بستن و تلاش مجدد
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {!isUserAuthenticated && !isPrivacyPolicyPage ? (
         <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center">

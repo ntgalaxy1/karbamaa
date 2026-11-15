@@ -29,7 +29,6 @@ import { JobCategory, ContractType, PayFrequency, TurkishLevel, PaymentMethod } 
 import { TURKEY_PROVINCES_AND_DISTRICTS } from '../data/turkeyCities';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 import { getDistrictsForCity } from '../data/turkeyData';
-import { SepalGatewayModal } from './SepalGatewayModal';
 import { validatePhoneNumber } from '../utils/validators';
 
 export const PostJobSection: React.FC = () => {
@@ -66,7 +65,6 @@ export const PostJobSection: React.FC = () => {
 
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('sepal');
-  const [isSepalModalOpen, setIsSepalModalOpen] = useState(false);
   const [receiptImage, setReceiptImage] = useState<string>('');
   const [referenceId, setReferenceId] = useState('');
   const [payerName, setPayerName] = useState('');
@@ -154,62 +152,6 @@ export const PostJobSection: React.FC = () => {
     }
     const subcatString = selectedSubcategories.join('، ');
 
-    if (paymentMethod === 'sepal' || paymentMethod === 'zarinpal') {
-      try {
-        localStorage.setItem(
-          'karbama_pending_sepal_job',
-          JSON.stringify({
-            title: title.trim(),
-            company: company.trim(),
-            city,
-            district: district.trim() || 'مرکز شهر',
-            category,
-            subcategory: subcatString || undefined,
-            contractType,
-            payFrequency,
-            keywords: [
-              title,
-              company,
-              city,
-              district,
-              currentCatData?.label || '',
-              ...selectedSubcategories,
-              accommodation ? 'جای خواب' : '',
-              meals ? 'غذا' : '',
-            ].filter(Boolean),
-            salaryMin: Number(salaryMin) || 0,
-            salaryMax: Number(salaryMax) || 0,
-            currency: 'TRY' as const,
-            accommodation,
-            accommodationDetails: accommodation ? accommodationDetails : undefined,
-            meals,
-            mealDetails: meals ? mealDetails : undefined,
-            hasLeave,
-            leaveDetails: hasLeave ? leaveDetails : undefined,
-            workPermitSupport,
-            turkishRequired,
-            gender,
-            description: description.trim(),
-            requirements: requirements
-              .split('\n')
-              .map((r) => r.trim())
-              .filter(Boolean),
-            contactPhone: contactPhone.trim(),
-            contactWhatsapp: contactWhatsapp.trim(),
-            imageUrl: imageUrl.trim() || undefined,
-            paymentAmountTL: feeTL,
-            paymentAmountToman: feeToman,
-            paymentPayerName: payerName.trim() || undefined,
-            paymentPayerPhone: payerPhone.trim() || undefined,
-          })
-        );
-      } catch {
-        // ignore storage error
-      }
-      setIsSepalModalOpen(true);
-      return;
-    }
-
     if (!receiptImage && !referenceId) {
       showToast('لطفاً تصویر فیش واریزی یا شماره پیگیری را وارد نمایید.', 'error');
       return;
@@ -268,68 +210,6 @@ export const PostJobSection: React.FC = () => {
     if (res.success) {
       setCreatedJobId(res.jobId);
       setStep(3);
-    }
-  };
-
-  const handleSepalSuccess = (refId: string) => {
-    setIsSepalModalOpen(false);
-    const subcatString = selectedSubcategories.join('، ');
-
-    const jobData = {
-      title: title.trim(),
-      company: company.trim(),
-      city,
-      district: district.trim() || 'مرکز شهر',
-      category,
-      subcategory: subcatString || undefined,
-      contractType,
-      payFrequency,
-      keywords: [
-        title,
-        company,
-        city,
-        district,
-        currentCatData?.label || '',
-        ...selectedSubcategories,
-        accommodation ? 'جای خواب' : '',
-        meals ? 'غذا' : '',
-      ].filter(Boolean),
-      salaryMin: Number(salaryMin) || 0,
-      salaryMax: Number(salaryMax) || 0,
-      currency: 'TRY' as const,
-      accommodation,
-      accommodationDetails: accommodation ? accommodationDetails : undefined,
-      meals,
-      mealDetails: meals ? mealDetails : undefined,
-      hasLeave,
-      leaveDetails: hasLeave ? leaveDetails : undefined,
-      workPermitSupport,
-      turkishRequired,
-      gender,
-      description: description.trim(),
-      requirements: requirements
-        .split('\n')
-        .map((r) => r.trim())
-        .filter(Boolean),
-      contactPhone: contactPhone.trim(),
-      contactWhatsapp: contactWhatsapp.trim(),
-      imageUrl: imageUrl.trim() || undefined,
-      paymentMethod: 'sepal' as const,
-      paymentStatus: 'pending_approval' as const,
-      paymentAmountTL: feeTL,
-      paymentAmountToman: feeToman,
-      paymentReceiptUrl: undefined,
-      paymentReferenceId: refId,
-      paymentPayerName: payerName.trim() || undefined,
-      paymentPayerPhone: payerPhone.trim() || undefined,
-    };
-
-    const res = submitJobWithPayment(jobData);
-    if (res.success) {
-      setCreatedJobId(res.jobId);
-      setReferenceId(refId);
-      setStep(3);
-      showToast('پرداخت از طریق درگاه شاپرک سپال با موفقیت ثبت شد و آگهی جهت بررسی و انتشار به مدیریت ارجاع گردید.', 'success');
     }
   };
 
@@ -997,23 +877,83 @@ export const PostJobSection: React.FC = () => {
               <span>بازگشت به ویرایش مشخصات</span>
             </button>
 
-            <button
-              onClick={handleSubmit}
-              className={`px-7 py-3 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xl transition cursor-pointer ${
-                paymentMethod === 'sepal'
-                  ? 'bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500'
-                  : 'bg-red-600 hover:bg-red-500'
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>
-                {paymentMethod === 'sepal'
-                  ? `پرداخت آنلاین با سپال (${feeToman.toLocaleString('fa-IR')} تومان) و انتشار آنی`
-                  : paymentMethod === 'zarinpal'
-                  ? `پرداخت آنلاین با زرین‌پال (${feeToman.toLocaleString('fa-IR')} تومان) و انتشار`
-                  : 'ثبت نهایی آگهی و ارسال فیش برای تایید مدیر'}
-              </span>
-            </button>
+            {paymentMethod === 'sepal' || paymentMethod === 'zarinpal' ? (
+              <form
+                action="https://karbama34.ir/pay.php"
+                method="POST"
+                onSubmit={() => {
+                  try {
+                    const subcatString = selectedSubcategories.join('، ');
+                    localStorage.setItem(
+                      'karbama_pending_sepal_job',
+                      JSON.stringify({
+                        title: title.trim(),
+                        company: company.trim(),
+                        city,
+                        district: district.trim() || 'مرکز شهر',
+                        category,
+                        subcategory: subcatString || undefined,
+                        contractType,
+                        payFrequency,
+                        keywords: [
+                          title,
+                          company,
+                          city,
+                          district,
+                          currentCatData?.label || '',
+                          ...selectedSubcategories,
+                          accommodation ? 'جای خواب' : '',
+                          meals ? 'غذا' : '',
+                        ].filter(Boolean),
+                        salaryMin: Number(salaryMin) || 0,
+                        salaryMax: Number(salaryMax) || 0,
+                        currency: 'TRY' as const,
+                        accommodation,
+                        accommodationDetails: accommodation ? accommodationDetails : undefined,
+                        meals,
+                        mealDetails: meals ? mealDetails : undefined,
+                        hasLeave,
+                        leaveDetails: hasLeave ? leaveDetails : undefined,
+                        workPermitSupport,
+                        turkishRequired,
+                        gender,
+                        description: description.trim(),
+                        requirements: requirements
+                          .split('\n')
+                          .map((r) => r.trim())
+                          .filter(Boolean),
+                        contactPhone: contactPhone.trim(),
+                        contactWhatsapp: contactWhatsapp.trim(),
+                        imageUrl: imageUrl.trim() || undefined,
+                        paymentAmountTL: feeTL,
+                        paymentAmountToman: feeToman,
+                        paymentPayerName: payerName.trim() || undefined,
+                        paymentPayerPhone: payerPhone.trim() || undefined,
+                      })
+                    );
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
+                <input type="hidden" name="amount" value={feeToman * 10} />
+                <button
+                  type="submit"
+                  className="px-7 py-3 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xl transition cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>پرداخت آنلاین</span>
+                </button>
+              </form>
+            ) : (
+              <button
+                onClick={handleSubmit}
+                className="px-7 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xl transition cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>ثبت نهایی آگهی و ارسال فیش برای تایید مدیر</span>
+              </button>
+            )}
           </div>
 
         </div>
@@ -1102,18 +1042,6 @@ export const PostJobSection: React.FC = () => {
 
         </div>
       )}
-
-      {/* Sepal IPG Modal */}
-      <SepalGatewayModal
-        isOpen={isSepalModalOpen}
-        onClose={() => setIsSepalModalOpen(false)}
-        amountToman={feeToman}
-        description={`تعرفه ثبت آگهی استخدام «${title || 'فرصت شغلی'}» در کارباما`}
-        payerName={payerName || company}
-        payerMobile={payerPhone || contactPhone}
-        onSuccess={handleSepalSuccess}
-      />
-
     </div>
   );
 };

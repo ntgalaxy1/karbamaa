@@ -5,7 +5,6 @@ import { AuthModal } from './AuthModal';
 import { ResumeBuilder } from './ResumeBuilder';
 import { CVBuilder } from './CVBuilder';
 import { PWAInstallBanner } from './PWAInstallBanner';
-import { SepalGatewayModal } from './SepalGatewayModal';
 import {
   User,
   Users,
@@ -51,7 +50,6 @@ export const SettingsProfile: React.FC = () => {
   } = useApp();
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [isSepalModalOpen, setIsSepalModalOpen] = useState(false);
   const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
   const [trackingNote, setTrackingNote] = useState('');
   const [copiedCard, setCopiedCard] = useState(false);
@@ -262,14 +260,16 @@ export const SettingsProfile: React.FC = () => {
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsSepalModalOpen(true)}
-              className="px-5 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-2xl text-xs shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer transition"
-            >
-              <CreditCard className="w-4 h-4" />
-              <span>پرداخت آنلاین با درگاه سپال</span>
-            </button>
+            <form action="https://karbama34.ir/pay.php" method="POST">
+              <input type="hidden" name="amount" value={seekerFeeRial} />
+              <button
+                type="submit"
+                className="px-5 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-2xl text-xs shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer transition"
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>پرداخت آنلاین</span>
+              </button>
+            </form>
           </div>
 
           {isPaymentSubmitted || currentSeeker.seekerPaymentStatus === 'paid' || Boolean(currentSeeker.seekerPaymentRefId) ? (
@@ -813,41 +813,6 @@ export const SettingsProfile: React.FC = () => {
           )}
         </div>
       )}
-
-      {/* Sepal Gateway Modal inside Profile */}
-      <SepalGatewayModal
-        isOpen={isSepalModalOpen}
-        onClose={() => setIsSepalModalOpen(false)}
-        amountToman={seekerFeeToman}
-        description={`پرداخت هزینه خدمات و فعال‌سازی پرونده کارجو (${currentSeeker.fullName})`}
-        payerName={currentSeeker.fullName}
-        payerMobile={currentSeeker.phone}
-        onSuccess={(refId) => {
-          setIsSepalModalOpen(false);
-          updateProfile({
-            seekerPaymentStatus: 'paid',
-            seekerPaymentMethod: 'sepal',
-            seekerPaymentRefId: refId,
-            seekerPaidAmount: `${seekerFeeToman.toLocaleString('fa-IR')} تومان`,
-            seekerPaymentCurrency: 'IRT',
-            verificationStatus: 'pending',
-            isPaymentVerified: false,
-            adminVerificationNote: `پرداخت آنلاین درگاه سپال | کد رهگیری: ${refId} | تاریخ: ${new Date().toLocaleDateString('fa-IR')}`,
-          });
-          addAdminNotification({
-            type: 'seeker_payment_referred',
-            title: '💳 پرداخت آنلاین هزینه خدمات توسط کارجو (درگاه سپال)',
-            message: `کارجو «${currentSeeker.fullName}» با کد ملی ${currentSeeker.nationalId} مبلغ ${seekerFeeToman.toLocaleString('fa-IR')} تومان را با کد رهگیری ${refId} پرداخت نمود.`,
-            data: {
-              seekerId: currentSeeker.id,
-              paymentRefId: refId,
-              method: 'sepal',
-            },
-          });
-          setIsPaymentSubmitted(true);
-          showToast(`✅ پرداخت شما با کد رهگیری ${refId} ثبت و جهت فعال‌سازی به مدیریت ارسال شد.`, 'success');
-        }}
-      />
     </div>
   );
 };
