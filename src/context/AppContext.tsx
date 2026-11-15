@@ -290,6 +290,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const DEFAULT_PAYMENT_SETTINGS: PaymentGatewaySettings = {
   feeTL: 500,
   exchangeRateToman: 5460, // معادل ریالی روز: ۲,۷۳۰,۰۰۰ تومان (۲۷,۳۰۰,۰۰۰ ریال)
+  paymentAmountUnit: 'toman',
   lastRateUpdateDate: new Date().toISOString().split('T')[0],
   autoUpdateDaily: true,
   turkeyBankName: 'Ziraat Bankası (زراعت بانک ترکیه)',
@@ -789,16 +790,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [role, setRole] = useState<UserRole>(() => (isAdminLoggedIn ? 'admin' : 'jobseeker'));
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
-    if (typeof window !== 'undefined' && window.location.pathname === '/privacy-policy') {
-      return 'privacy-policy';
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname.startsWith('/admin')) {
+        return 'admin';
+      }
+      if (window.location.pathname === '/privacy-policy') {
+        return 'privacy-policy';
+      }
     }
     return 'jobs';
   });
 
   useEffect(() => {
     const handlePopState = () => {
-      if (window.location.pathname === '/privacy-policy') {
+      if (window.location.pathname.startsWith('/admin')) {
+        setActiveTab('admin');
+      } else if (window.location.pathname === '/privacy-policy') {
         setActiveTab('privacy-policy');
+      } else {
+        setActiveTab((prev) => (prev === 'admin' || prev === 'privacy-policy' ? 'jobs' : prev));
       }
     };
     window.addEventListener('popstate', handlePopState);
@@ -854,10 +864,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [jobNotifications, setJobNotifications] = useState<JobNotification[]>(() => {
     try {
+      const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
+      const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
       const stored = safeStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
       const parsed: JobNotification[] = stored ? JSON.parse(stored) : [];
       return Array.isArray(parsed)
-        ? parsed.filter((n) => n.id !== 'notif-welcome' && !String(n.message || '').includes('تست'))
+        ? parsed
+            .filter((n) => n.id !== 'notif-welcome' && !String(n.message || '').includes('تست'))
+            .map((n) => (readIds.has(n.id) ? { ...n, read: true } : n))
         : [];
     } catch {
       return [];
@@ -1234,11 +1248,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
 
           if (firestoreNotifs.length > 0) {
+            let readIds = new Set<string>();
+            try {
+              const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
+              if (readRaw) {
+                const parsedIds = JSON.parse(readRaw);
+                if (Array.isArray(parsedIds)) readIds = new Set<string>(parsedIds);
+              }
+            } catch {
+              // ignore
+            }
+
             setJobNotifications((prev) => {
               const map = new Map<string, JobNotification>();
               prev.forEach((n) => map.set(n.id, n));
-              firestoreNotifs.forEach((n) => map.set(n.id, n));
-              return Array.from(map.values());
+              firestoreNotifs.forEach((n) => {
+                const existing = map.get(n.id);
+                const isAlreadyRead = Boolean(existing?.read || readIds.has(n.id) || n.read);
+                map.set(n.id, { ...n, read: isAlreadyRead });
+              });
+              return Array.from(map.values()).sort(
+                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              );
             });
           }
         }
@@ -1892,7 +1923,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logoutAdmin = () => {
     setIsAdminLoggedIn(false);
     setRole('jobseeker');
-    setActiveTab('jobs');
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+      setActiveTab('admin');
+    } else {
+      setActiveTab('jobs');
+    }
     showToast('از حالت مدیریت خارج شدید و بخش مدیریت قفل شد.', 'info');
   };
 
@@ -2242,9 +2277,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Employer Job Posting with 500 TL Fee Payment
+  // Employer Job Posting with Fee Payment
   const submitJobWithPayment = (jobData: Omit<JobVacancy, 'id' | 'postedAt' | 'isActive'>): { success: boolean; jobId: string } => {
-    const isOnlinePaid = jobData.paymentMethod === 'zarinpal';
+    const isOnlinePaid = jobData.paymentMethod === 'zarinpal' || jobData.paymentMethod === 'sepal';
     const status: JobPaymentStatus = isOnlinePaid ? 'paid' : 'pending_approval';
     const id = 'job-' + Date.now();
 
@@ -2260,39 +2295,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setJobs((prev) => [newJob, ...prev]);
+    syncJobToFirestore(newJob);
+
+    // Automated notification trigger: whenever a new job posting is created/published by an employer,
+    // dispatch an automatic notification to registered job seekers
+    checkJobAlerts(newJob);
+
+    const notifItem: JobNotification = {
+      id: 'notif-job-' + Date.now(),
+      alertId: 'system-new-job',
+      jobId: newJob.id,
+      jobTitle: newJob.title,
+      company: newJob.company,
+      city: newJob.city,
+      salaryText: `${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
+      imageUrl: newJob.imageUrl,
+      message: `آگهی جدید استخدام: ${newJob.title} در ${newJob.city} (${newJob.company})`,
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    setJobNotifications((prev) => [notifItem, ...prev]);
+    syncNotificationToFirestore(notifItem);
+    playNewJobHotelDingSound();
 
     if (isOnlinePaid) {
-      showToast('پرداخت آنلاین تعرفه تایید شد و آگهی شما بلافاصله در سایت منتشر گردید.', 'success');
-      checkJobAlerts(newJob);
-
-      const notifItem: JobNotification = {
-        id: 'notif-job-' + Date.now(),
-        alertId: 'system-new-job',
-        jobId: newJob.id,
-        jobTitle: newJob.title,
-        company: newJob.company,
-        city: newJob.city,
-        salaryText: `${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
-        imageUrl: newJob.imageUrl,
-        message: `آگهی جدید استخدام: ${newJob.title} در ${newJob.city} (${newJob.company})`,
-        read: false,
-        createdAt: new Date().toISOString(),
-      };
-
-      setJobNotifications((prev) => [notifItem, ...prev]);
-      syncNotificationToFirestore(notifItem);
-
-      // Play single distinct 4-tone ascending ding sound
-      playNewJobHotelDingSound();
+      showToast('پرداخت آنلاین تعرفه تایید شد و آگهی شما بلافاصله در سایت منتشر گردید و به کارجویان اطلاع‌رسانی شد.', 'success');
     } else {
       // Notify Admin panel specifically about employer payment submission
       addAdminNotification({
         type: 'employer_payment',
-        title: '💳 فیش واریزی آگهی استخدام کارفرما',
-        message: `کارفرما فیش واریزی تعرفه آگهی را برای عنوان «${newJob.title}» جهت تایید ثبت نمود.`,
+        title: '💳 ثبت آگهی استخدام کارفرما',
+        message: `کارفرما آگهی استخدام «${newJob.title}» را جهت بررسی و تایید ثبت نمود.`,
         data: { jobId: newJob.id },
       });
-      showToast('آگهی و فیش واریز شما با موفقیت ثبت شد و پس از بررسی و تایید مدیر منتشر خواهد شد.', 'success');
+      showToast('آگهی شما با موفقیت ثبت شد و پس از بررسی مدیر منتشر خواهد شد.', 'success');
     }
 
     return { success: true, jobId: id };
@@ -2308,6 +2345,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             paymentStatus: 'paid',
             paymentAdminNote: adminNote || 'پرداخت تعرفه تایید شد و آگهی فعال گردید.',
           };
+          syncJobToFirestore(updated);
           checkJobAlerts(updated);
 
           const notifItem: JobNotification = {
@@ -2601,11 +2639,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const markNotificationAsRead = (id: string) => {
-    setJobNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    try {
+      const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
+      const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
+      readIds.add(id);
+      safeStorage.setItem('karbama_read_notifications_v1', JSON.stringify(Array.from(readIds)));
+    } catch {
+      // ignore
+    }
+
+    setJobNotifications((prev) => {
+      const next = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
+      safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
+      return next;
+    });
   };
 
   const markAllNotificationsAsRead = () => {
-    setJobNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setJobNotifications((prev) => {
+      const next = prev.map((n) => ({ ...n, read: true }));
+      try {
+        const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
+        const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
+        next.forEach((n) => readIds.add(n.id));
+        safeStorage.setItem('karbama_read_notifications_v1', JSON.stringify(Array.from(readIds)));
+        safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
     showToast('تمام اعلان‌ها به عنوان خوانده شده علامت‌گذاری شدند.', 'info');
   };
 
@@ -2745,6 +2808,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const selectedPlan =
+      (input.planId ? partnerPlans.find((pl) => pl.id === input.planId) : undefined) ||
+      partnerPlans[0] ||
+      DEFAULT_PARTNER_PLANS[0];
+
     const newPartner: PartnerAccount = {
       id: 'partner-' + Date.now(),
       partnerCode: `PART-${randomNum}`,
@@ -2755,8 +2823,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       username: cleanUser,
       password: input.password,
       city: input.city?.trim() || 'استانبول',
-      subscriptionStatus: 'active',
-      daysRemaining: 365,
+      subscriptionStatus: 'unpaid',
+      planId: selectedPlan.id,
+      planTitle: selectedPlan.title,
+      paymentAmountTL: selectedPlan.priceTL,
+      paymentAmountToman: selectedPlan.priceToman,
+      daysRemaining: 0,
       createdAt: new Date().toISOString(),
     };
 
@@ -2768,11 +2840,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     addAdminNotification({
       type: 'partner_registered',
-      title: 'همکار جدید در سامانه ثبت‌نام کرد',
-      message: `همکار جدید «${newPartner.companyName}» با مدیریت ${newPartner.fullName} و کد همکاری ${newPartner.partnerCode} در کارباما ثبت شد.`,
+      title: 'همکار جدید در سامانه ثبت‌نام کرد (در انتظار پرداخت)',
+      message: `همکار جدید «${newPartner.companyName}» با مدیریت ${newPartner.fullName} و کد همکاری ${newPartner.partnerCode} ثبت‌نام کرد و در انتظار پرداخت آنلاین و تایید مدیریت است.`,
     });
 
-    showToast(`حساب همکاری با موفقیت ایجاد شد! کد همکاری شما: ${newPartner.partnerCode}`, 'success');
+    showToast(
+      `حساب همکاری شما با کد ${newPartner.partnerCode} ایجاد شد. لطفاً جهت فعال‌سازی پنل، حق اشتراک را به صورت آنلاین پرداخت نمایید.`,
+      'success'
+    );
     return { success: true };
   };
 

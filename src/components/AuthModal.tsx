@@ -238,8 +238,11 @@ const getMiladiDateString = (): string => {
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 'login' }) => {
   const {
     registerSeeker,
+    registerPartner,
+    partnerPlans,
     checkDuplicateSeekerField,
     loginSeeker,
+    loginPartner,
     loginAdmin,
     recoverPassword,
     brokerSettings,
@@ -247,7 +250,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     setActiveTab,
   } = useApp();
 
-  const [mode, setMode] = useState<'login' | 'register' | 'admin'>(defaultMode);
+  const [mode, setMode] = useState<'login' | 'register' | 'partner' | 'admin'>(defaultMode === 'admin' ? 'login' : defaultMode);
+  const [loginUserRole, setLoginUserRole] = useState<'seeker' | 'partner'>('seeker');
+
+  // Partner Registration Form State
+  const [partnerCompanyName, setPartnerCompanyName] = useState('');
+  const [partnerFullName, setPartnerFullName] = useState('');
+  const [partnerPhone, setPartnerPhone] = useState('');
+  const [partnerEmail, setPartnerEmail] = useState('');
+  const [partnerCity, setPartnerCity] = useState('استانبول');
+  const [partnerUsername, setPartnerUsername] = useState('');
+  const [partnerPassword, setPartnerPassword] = useState('');
+  const [showPartnerPassword, setShowPartnerPassword] = useState(false);
+  const [partnerPlanId, setPartnerPlanId] = useState<'1_month' | '3_months' | '6_months' | '1_year'>('1_month');
 
   // Duplicate validation state
   const [duplicateErrors, setDuplicateErrors] = useState<{
@@ -829,6 +844,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
       } else {
         setError(res.error || 'ورود به عنوان مدیر ناموفق بود');
       }
+    } else if (loginUserRole === 'partner') {
+      const res = loginPartner(loginUsername, loginPassword);
+      if (res.success) {
+        onClose();
+      } else {
+        setError(res.error || 'ورود به حساب همکار ناموفق بود');
+      }
     } else {
       const res = loginSeeker(loginUsername, loginPassword);
       if (res.success) {
@@ -836,6 +858,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
       } else {
         setError(res.error || 'ورود کارجو ناموفق بود');
       }
+    }
+  };
+
+  const handlePartnerRegisterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const res = registerPartner({
+      companyName: partnerCompanyName,
+      fullName: partnerFullName,
+      phone: partnerPhone,
+      email: partnerEmail,
+      city: partnerCity,
+      username: partnerUsername,
+      password: partnerPassword,
+      planId: partnerPlanId,
+    });
+    if (res.success) {
+      onClose();
+    } else {
+      setError(res.error || 'خطا در ثبت‌نام همکار');
     }
   };
 
@@ -853,8 +895,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
             <div>
               <h2 className="text-lg font-black text-white">
                 {mode === 'register' && 'ثبت‌نام رسمی کارجو در کارباما (۴ بخش تخصصی)'}
-                {mode === 'login' && 'ورود کارجو به سامانه کارباما'}
-                {mode === 'admin' && 'ورود مدیر به سامانه کارباما'}
+                {mode === 'partner' && 'ثبت‌نام اختصاصی همکاران و کارفرمایان کارباما'}
+                {mode === 'login' && 'ورود کارجو و همکار به سامانه کارباما'}
               </h2>
               <p className="text-xs text-slate-400">سامانه جامع کاریابی، اعزام و اقامت ایرانیان در ترکیه، ارمنستان، عراق و آلمان</p>
             </div>
@@ -867,7 +909,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
           </button>
         </div>
 
-        {/* Tab switchers */}
+        {/* Tab switchers: Login | Job Seeker Registration | Partner Registration */}
         <div className="grid grid-cols-3 p-1.5 mx-6 mt-4 bg-slate-950/70 border border-slate-800 rounded-2xl gap-1 text-xs font-semibold shrink-0">
           <button
             type="button"
@@ -875,14 +917,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
               setMode('login');
               setError(null);
             }}
-            className={`py-2 px-2 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 transition ${
+            className={`py-2 px-2 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer ${
               mode === 'login'
                 ? 'bg-red-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
             <LogIn className="w-3.5 h-3.5" />
-            <span className="truncate">ورود کارجو</span>
+            <span className="truncate">ورود به حساب</span>
           </button>
           <button
             type="button"
@@ -890,29 +932,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
               setMode('register');
               setError(null);
             }}
-            className={`py-2 px-2 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 transition ${
+            className={`py-2 px-2 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer ${
               mode === 'register'
                 ? 'bg-red-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
             <UserPlus className="w-3.5 h-3.5" />
-            <span className="truncate">ثبت‌نام جدید</span>
+            <span className="truncate">ثبت‌نام کارجو</span>
           </button>
           <button
             type="button"
             onClick={() => {
-              setMode('admin');
+              setMode('partner');
               setError(null);
             }}
-            className={`py-2 px-2 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 transition ${
-              mode === 'admin'
-                ? 'bg-amber-600 text-white shadow-md'
+            className={`py-2 px-2 sm:px-3 rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              mode === 'partner'
+                ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span className="truncate">بخش مدیر</span>
+            <Briefcase className="w-3.5 h-3.5" />
+            <span className="truncate">ثبت‌نام همکار</span>
           </button>
         </div>
 
@@ -2405,23 +2447,196 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                 </div>
               )}
             </div>
+          ) : mode === 'partner' ? (
+            /* Independent Partner Registration Form */
+            <div className="max-w-xl w-full mx-auto py-1">
+              <form onSubmit={handlePartnerRegisterSubmit} className="space-y-4">
+                <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/40 space-y-1.5">
+                  <h3 className="text-xs sm:text-sm font-black text-indigo-300 flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-indigo-400 shrink-0" />
+                    <span>ثبت‌نام اختصاصی همکاران و دفاتر کاریابی</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    پس از تکمیل ثبت‌نام همکار، جهت فعال‌سازی پنل و دسترسی به امکانات ثبت و مدیریت کارجویان، پرداخت آنلاین حق اشتراک از طریق درگاه بانکی و تایید مدیریت الزامی است.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">نام شرکت / دفتر کاریابی یا کارگاه *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="مثلاً: آژانس کاریابی امید"
+                      value={partnerCompanyName}
+                      onChange={(e) => setPartnerCompanyName(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-hidden focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">نام و نام خانوادگی مدیر / نماینده *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="نام کامل نماینده"
+                      value={partnerFullName}
+                      onChange={(e) => setPartnerFullName(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-hidden focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">شماره موبایل و واتساپ *</label>
+                    <input
+                      type="text"
+                      required
+                      dir="ltr"
+                      placeholder="09123456789 / +905..."
+                      value={partnerPhone}
+                      onChange={(e) => setPartnerPhone(toEnglishDigits(e.target.value))}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">شهر محل فعالیت *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="استانبول، تهران، آنکارا..."
+                      value={partnerCity}
+                      onChange={(e) => setPartnerCity(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-hidden focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-slate-300 font-medium">آدرس ایمیل (جهت بازیابی رمز عبور) *</label>
+                    <input
+                      type="email"
+                      required
+                      dir="ltr"
+                      placeholder="partner@gmail.com"
+                      value={partnerEmail}
+                      onChange={(e) => setPartnerEmail(e.target.value.trim())}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-slate-300 font-medium">انتخاب پلن اشتراک همکاری (قابل پرداخت آنلاین پس از ثبت‌نام)</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {partnerPlans.map((pl) => (
+                        <button
+                          key={pl.id}
+                          type="button"
+                          onClick={() => setPartnerPlanId(pl.id)}
+                          className={`p-3 rounded-xl border text-right transition flex items-center justify-between cursor-pointer ${
+                            partnerPlanId === pl.id
+                              ? 'bg-indigo-600/25 border-indigo-400 text-white font-bold'
+                              : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:border-slate-600'
+                          }`}
+                        >
+                          <div>
+                            <p className="text-xs font-bold text-white">{pl.title}</p>
+                            <p className="text-[10px] text-indigo-300 font-mono mt-0.5">
+                              {pl.priceToman.toLocaleString('fa-IR')} تومان ({pl.priceTL.toLocaleString('fa-IR')} لیر)
+                            </p>
+                          </div>
+                          {partnerPlanId === pl.id && <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">نام کاربری همکار (انگلیسی) *</label>
+                    <input
+                      type="text"
+                      required
+                      dir="ltr"
+                      placeholder="partner_agency"
+                      value={partnerUsername}
+                      onChange={(e) =>
+                        setPartnerUsername(
+                          toEnglishDigits(e.target.value)
+                            .replace(/[^a-zA-Z0-9_.-]/g, '')
+                            .toLowerCase()
+                        )
+                      }
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">رمز عبور همکار *</label>
+                    <div className="relative">
+                      <input
+                        type={showPartnerPassword ? 'text' : 'password'}
+                        required
+                        dir="ltr"
+                        placeholder="Abc12345"
+                        value={partnerPassword}
+                        onChange={(e) => setPartnerPassword(toEnglishDigits(e.target.value))}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-indigo-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPartnerPassword(!showPartnerPassword)}
+                        className="absolute left-2.5 top-3 text-slate-400 hover:text-white"
+                      >
+                        {showPartnerPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black rounded-2xl text-xs sm:text-sm shadow-xl shadow-indigo-600/30 transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Briefcase className="w-4 h-4" />
+                  <span>ثبت‌نام همکار و ادامه جهت پرداخت آنلاین اشتراک</span>
+                </button>
+              </form>
+            </div>
           ) : (
-            /* Login Form (Seeker or Admin) */
+            /* Login Form (Seeker or Partner) */
             <div className="min-h-full flex flex-col justify-center max-w-md w-full mx-auto py-2">
               <form onSubmit={handleLoginSubmit} className="space-y-4">
-                {mode === 'admin' ? (
-                  <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-200">
-                    بخش ورود امن مدیریت سامانه کارباما. لطفاً نام کاربری و رمز عبور مدیریت را وارد نمایید.
-                  </div>
-                ) : (
-                  <div className="p-3.5 bg-slate-800/80 border border-slate-700 rounded-2xl text-xs text-slate-300 leading-relaxed">
-                    جهت ورود به پنل کارجو، می‌توانید <strong>نام کاربری (یوزرنیم)</strong>، <strong>ایمیل</strong>، <strong>شماره موبایل</strong> یا <strong>کد ملی</strong> خود را به همراه <strong>رمز عبور</strong> وارد نمایید.
-                  </div>
-                )}
+                <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setLoginUserRole('seeker')}
+                    className={`py-2 rounded-lg transition cursor-pointer ${
+                      loginUserRole === 'seeker' ? 'bg-red-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    ورود کارجو
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLoginUserRole('partner')}
+                    className={`py-2 rounded-lg transition cursor-pointer ${
+                      loginUserRole === 'partner' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    ورود همکار / کارفرما
+                  </button>
+                </div>
+
+                <div className="p-3.5 bg-slate-800/80 border border-slate-700 rounded-2xl text-xs text-slate-300 leading-relaxed">
+                  {loginUserRole === 'partner' ? (
+                    <>جهت ورود به پنل همکاران، <strong>نام کاربری</strong>، <strong>ایمیل</strong> یا <strong>شماره موبایل</strong> همکار را به همراه <strong>رمز عبور</strong> وارد نمایید.</>
+                  ) : (
+                    <>جهت ورود به پنل کارجو، می‌توانید <strong>نام کاربری (یوزرنیم)</strong>، <strong>ایمیل</strong>، <strong>شماره موبایل</strong> یا <strong>کد ملی</strong> خود را به همراه <strong>رمز عبور</strong> وارد نمایید.</>
+                  )}
+                </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    {mode === 'admin' ? 'نام کاربری مدیر (یوزرنیم)' : 'نام کاربری / ایمیل / شماره موبایل / کد ملی'}
+                    {loginUserRole === 'partner' ? 'نام کاربری / ایمیل / شماره تماس همکار' : 'نام کاربری / ایمیل / شماره موبایل / کد ملی'}
                   </label>
                   <div className="relative">
                     <User className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
@@ -2429,7 +2644,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                       type="text"
                       required
                       dir="ltr"
-                      placeholder={mode === 'admin' ? 'admin' : 'username / 0912... / email'}
+                      placeholder="username / 0912... / email"
                       value={loginUsername}
                       onChange={(e) => setLoginUsername(toEnglishDigits(e.target.value))}
                       className="w-full bg-slate-800/90 border border-slate-700 rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-red-500 text-left font-mono"
@@ -2440,20 +2655,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-semibold text-slate-300">رمز عبور (پسوورد)</label>
-                    {mode === 'login' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowForgotPasswordModal(true);
-                          setRecoverResult(null);
-                          setRecoverInput(loginUsername || '');
-                        }}
-                        className="text-xs text-amber-400 hover:text-amber-300 font-bold transition flex items-center gap-1"
-                      >
-                        <KeyRound className="w-3.5 h-3.5" />
-                        فراموشی یا مشاهده رمز عبور؟
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowForgotPasswordModal(true);
+                        setRecoverResult(null);
+                        setRecoverInput(loginUsername || '');
+                      }}
+                      className="text-xs text-amber-400 hover:text-amber-300 font-bold transition flex items-center gap-1"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      فراموشی یا مشاهده رمز عبور؟
+                    </button>
                   </div>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
@@ -2478,14 +2691,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
 
                 <button
                   type="submit"
-                  className={`w-full py-3 text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 ${
-                    mode === 'admin'
-                      ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-700/30'
+                  className={`w-full py-3 text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer ${
+                    loginUserRole === 'partner'
+                      ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-700/30'
                       : 'bg-red-600 hover:bg-red-500 shadow-red-700/30'
                   }`}
                 >
                   <LogIn className="w-4 h-4" />
-                  {mode === 'admin' ? 'ورود به پنل مدیریت' : 'ورود به حساب کارجو'}
+                  {loginUserRole === 'partner' ? 'ورود به پنل همکار' : 'ورود به حساب کارجو'}
                 </button>
               </form>
             </div>

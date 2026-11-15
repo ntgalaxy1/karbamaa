@@ -111,7 +111,12 @@ export const BottomNav: React.FC = () => {
         {isAdminLoggedIn && (
           <button
             type="button"
-            onClick={() => setActiveTab('admin')}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.history.pushState({}, '', '/admin');
+              }
+              setActiveTab('admin');
+            }}
             className={`flex flex-col items-center justify-center gap-1 py-1 transition-colors ${
               activeTab === 'admin'
                 ? 'text-amber-400 font-bold'

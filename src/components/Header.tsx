@@ -101,7 +101,12 @@ export const Header: React.FC = () => {
             {/* Logo & App Brand - کارباما */}
             <div className="flex items-center gap-1.5 sm:gap-3 shrink min-w-0">
               <div
-                onClick={() => setActiveTab('jobs')}
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+                    window.history.pushState({}, '', '/');
+                  }
+                  setActiveTab('jobs');
+                }}
                 className="cursor-pointer flex items-center gap-1.5 sm:gap-2.5 group shrink min-w-0"
               >
                 <div className="relative shrink-0">
@@ -238,11 +243,14 @@ export const Header: React.FC = () => {
 
                             <button
                               onClick={() => {
+                                if (typeof window !== 'undefined') {
+                                  window.history.pushState({}, '', '/admin');
+                                }
                                 setActiveTab('admin');
                                 setToolsDropdown(false);
                               }}
                               className="px-2 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 shadow-sm transition"
-                              title="ورود به پنل مدیریت جامع"
+                              title="ورود به پنل مدیریت جامع (/admin)"
                             >
                               <ShieldCheck className="w-3.5 h-3.5 text-white" />
                               <span>پنل مدیریت</span>
@@ -478,7 +486,12 @@ export const Header: React.FC = () => {
               {isAdminLoggedIn ? (
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
-                    onClick={() => setActiveTab('admin')}
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.history.pushState({}, '', '/admin');
+                      }
+                      setActiveTab('admin');
+                    }}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition shadow-md shadow-amber-700/30"
                   >
                     <ShieldCheck className="w-4 h-4" />

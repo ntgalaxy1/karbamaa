@@ -226,14 +226,29 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                       {notif.company} • {notif.city}
                     </p>
 
-                    <div className="flex items-center justify-between text-[10px] pt-1">
+                    <div className="flex items-center justify-between text-[10px] pt-1 gap-2">
                       <span className="text-emerald-400 font-mono font-bold">
                         {notif.salaryText}
                       </span>
-                      <span className="text-slate-500 flex items-center gap-1 group-hover:text-red-400 transition">
-                        مشاهده آگهی
-                        <ExternalLink className="w-3 h-3" />
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {!notif.read && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markNotificationAsRead(notif.id);
+                            }}
+                            className="px-2 py-0.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center gap-1 transition"
+                          >
+                            <Check className="w-2.5 h-2.5" />
+                            خوانده شد
+                          </button>
+                        )}
+                        <span className="text-slate-500 flex items-center gap-1 group-hover:text-red-400 transition">
+                          مشاهده آگهی
+                          <ExternalLink className="w-3 h-3" />
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

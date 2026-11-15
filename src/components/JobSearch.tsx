@@ -159,8 +159,31 @@ export const JobSearch: React.FC = () => {
     submitJobWithPayment,
   } = useApp();
 
-  const seekerFeeToman = (paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460);
-  const seekerFeeRial = seekerFeeToman * 10;
+  const computedFeeToman = (paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460);
+  const adminAmountUnit = paymentSettings.paymentAmountUnit || 'toman';
+  const adminConfiguredAmount =
+    paymentSettings.directPaymentAmount && paymentSettings.directPaymentAmount > 0
+      ? paymentSettings.directPaymentAmount
+      : adminAmountUnit === 'rial'
+        ? computedFeeToman * 10
+        : computedFeeToman;
+  const seekerFeeToman =
+    adminAmountUnit === 'rial' ? Math.round(adminConfiguredAmount / 10) : adminConfiguredAmount;
+  const seekerFeeRial =
+    adminAmountUnit === 'rial' ? adminConfiguredAmount : adminConfiguredAmount * 10;
+
+  const handleOnlinePaymentRedirect = () => {
+    try {
+      localStorage.setItem('karbama_pending_seeker_payment', 'true');
+    } catch {
+      // ignore
+    }
+    if (adminAmountUnit === 'toman') {
+      window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}&unit=toman`;
+    } else {
+      window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}`;
+    }
+  };
 
   // Handle Payment Callback URL parameters (?payment=success&ref=... or ?payment=failed)
   useEffect(() => {
@@ -1103,25 +1126,13 @@ export const JobSearch: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <form action="https://karbama34.ir/pay.php" method="POST">
-                    <input type="hidden" name="amount" value={seekerFeeRial} />
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs shadow-lg transition flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      <span>پرداخت آنلاین</span>
-                    </button>
-                  </form>
                   <button
                     type="button"
-                    onClick={() => {
-                      const el = document.getElementById('seeker-payment-section');
-                      if (el) el.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    className="px-3.5 py-2 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-400/40 text-amber-200 font-bold rounded-xl text-xs transition cursor-pointer"
+                    onClick={handleOnlinePaymentRedirect}
+                    className="px-5 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs shadow-lg transition flex items-center gap-1.5 cursor-pointer"
                   >
-                    ثبت فیش / کارت به کارت
+                    <CreditCard className="w-4 h-4" />
+                    <span>پرداخت آنلاین</span>
                   </button>
                 </div>
               </div>
@@ -1936,61 +1947,23 @@ export const JobSearch: React.FC = () => {
                   </div>
                 </div>
 
-                <form action="https://karbama34.ir/pay.php" method="POST" className="w-full sm:w-auto shrink-0">
-                  <input type="hidden" name="amount" value={seekerFeeRial} />
-                  <button
-                    type="submit"
-                    className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 cursor-pointer transition"
-                  >
-                    <CreditCard className="w-4 h-4 text-slate-950" />
-                    <span>پرداخت آنلاین</span>
-                  </button>
-                </form>
+                <button
+                  type="button"
+                  onClick={handleOnlinePaymentRedirect}
+                  className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer transition"
+                >
+                  <CreditCard className="w-4 h-4 text-slate-950" />
+                  <span>پرداخت آنلاین</span>
+                </button>
               </div>
 
-              {/* Payment Details Card */}
-              <div className="p-5 bg-gradient-to-br from-red-950/40 to-slate-850/80 border border-red-500/30 rounded-2xl space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-emerald-400" />
-                    یا واریز دستی به حساب و بارگذاری فیش
-                  </h4>
-                  <span className="px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-black font-mono self-start sm:self-auto">
-                    مبلغ مصوب: {seekerFeeToman.toLocaleString('fa-IR')} تومان ({seekerFeeRial.toLocaleString('fa-IR')} ریال)
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl space-y-1.5">
-                    <span className="text-slate-400 block text-[11px] font-semibold">حساب رسمی ترکیه (Ziraat Bankası):</span>
-                    <p className="font-mono text-emerald-300 font-bold tracking-wider text-xs select-all" dir="ltr">
-                      TR56 0001 0090 1234 5678 9050 01
-                    </p>
-                    <p className="text-[11px] text-slate-300">به نام: Karbama Danışmanlık ve İnsan Kaynakları</p>
-                  </div>
-
-                  <div className="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl space-y-1.5">
-                    <span className="text-slate-400 block text-[11px] font-semibold">شماره کارت ایران (بانک ملت):</span>
-                    <p className="font-mono text-amber-300 font-bold tracking-wider text-sm select-all" dir="ltr">
-                      ۶۱۰۴-۳۳۷۸-۹۰۱۲-۳۴۵۶
-                    </p>
-                    <p className="text-[11px] text-slate-300">به نام: مدیریت امور مالی کارباما</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Interactive Photo Upload Referral Form */}
-              <div className="p-5 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-3">
-                <h4 className="text-xs font-bold text-white flex items-center gap-2">
-                  <Camera className="w-4 h-4 text-amber-400" />
-                  بارگذاری عکس فیش واریزی و ارجاع به مدیر جهت فعال‌سازی قفل
-                </h4>
-
-                {isReferredToAdmin || currentSeeker.seekerPaymentStatus === 'paid' || Boolean(currentSeeker.seekerPaymentRefId) ? (
+              {/* Online Payment Status Box (Manual Card-to-Card disabled) */}
+              {(isReferredToAdmin || currentSeeker.seekerPaymentStatus === 'paid' || Boolean(currentSeeker.seekerPaymentRefId)) && (
+                <div className="p-5 bg-slate-950/80 border border-emerald-500/40 rounded-2xl space-y-3">
                   <div className="p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-xl text-emerald-200 text-xs space-y-2.5">
                     <div className="flex items-center gap-2 font-bold text-emerald-300">
                       <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-                      <span>اطلاعات واریز هزینه خدمات ثبت و به مدیریت ارجاع گردید!</span>
+                      <span>اطلاعات پرداخت آنلاین هزینه خدمات ثبت و به مدیریت ارجاع گردید!</span>
                     </div>
                     {currentSeeker.seekerPaymentRefId && (
                       <div className="p-2.5 bg-slate-900/80 rounded-xl border border-teal-500/30 flex items-center justify-between">
@@ -2000,259 +1973,12 @@ export const JobSearch: React.FC = () => {
                         </span>
                       </div>
                     )}
-                    {paymentReceiptPhoto && (
-                      <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-emerald-500/50 shadow-md">
-                        <img
-                          src={paymentReceiptPhoto}
-                          alt="عکس فیش واریزی ارسالی"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
                     <p className="text-[11px] text-slate-300 leading-relaxed">
                       پرونده و تراکنش شما در نوبت بررسی مدیریت کارباما قرار دارد. پس از بررسی و تایید مدیر، قفل حساب شما به صورت خودکار باز شده و دسترسی کامل به شماره تماس کارفرمایان و ارسال رزومه آزاد خواهد شد.
                     </p>
                   </div>
-                ) : (
-                  <form onSubmit={handleReferPaymentToAdmin} className="space-y-3.5">
-                    {/* Photo Upload Area */}
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold text-slate-300">
-                        تصویر فیش واریزی هزینه مصوب (عکس با دوربین یا گالری) *
-                      </label>
-
-                      {paymentReceiptPhoto ? (
-                        <div className="space-y-3">
-                          <div className={`relative w-full max-w-xs h-44 rounded-2xl overflow-hidden border-2 ${
-                            receiptAiResult?.tested
-                              ? receiptAiResult.isBankReceipt
-                                ? 'border-emerald-500/80 shadow-emerald-500/10'
-                                : 'border-red-500/80 shadow-red-500/10'
-                              : 'border-amber-500/60'
-                          } shadow-xl bg-slate-900 group`}>
-                            <img
-                              src={paymentReceiptPhoto}
-                              alt="پیش‌نمایش فیش واریزی"
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPaymentReceiptPhoto(null);
-                                  setReceiptAiResult(null);
-                                }}
-                                className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs shadow-md transition flex items-center gap-1.5"
-                              >
-                                <RotateCcw className="w-3.5 h-3.5" />
-                                حذف و انتخاب عکس جدید
-                              </button>
-                            </div>
-
-                            {/* Status Pill on Photo */}
-                            <div className="absolute bottom-2 right-2">
-                              {isVerifyingReceipt ? (
-                                <span className="bg-amber-600 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg shadow-md flex items-center gap-1.5">
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  بررسی هوش مصنوعی...
-                                </span>
-                              ) : receiptAiResult?.tested ? (
-                                receiptAiResult.isBankReceipt ? (
-                                  <span className="bg-emerald-600 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg shadow-md flex items-center gap-1.5">
-                                    <CheckCircle className="w-3 h-3" />
-                                    فیش بانکی تایید شد
-                                  </span>
-                                ) : (
-                                  <span className="bg-red-600 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg shadow-md flex items-center gap-1.5">
-                                    <AlertTriangle className="w-3 h-3" />
-                                    فیش بانکی نیست
-                                  </span>
-                                )
-                              ) : (
-                                <span className="bg-slate-800 text-slate-200 font-bold text-[10px] px-2.5 py-1 rounded-lg shadow-md">
-                                  تصویر بارگذاری شده
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* AI Scanning State Card */}
-                          {isVerifyingReceipt && (
-                            <div className="p-3.5 bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-indigo-500/10 border border-amber-500/30 rounded-2xl flex items-center gap-3 animate-pulse">
-                              <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                              </div>
-                              <div className="space-y-0.5">
-                                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
-                                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                                  در حال بررسی هوشمند فیش توسط هوش مصنوعی کارباما...
-                                </div>
-                                <p className="text-[11px] text-slate-300">
-                                  هوش مصنوعی در حال اعتبارسنجی ارکان رسید بانکی، کد پیگیری و صحت سند است.
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* AI Rejection Card (NOT A BANK RECEIPT) */}
-                          {!isVerifyingReceipt && receiptAiResult?.tested && !receiptAiResult.isBankReceipt && (
-                            <div className="p-4 bg-red-950/60 border-2 border-red-500 rounded-2xl space-y-3 animate-fadeIn shadow-lg shadow-red-950/50">
-                              <div className="flex items-start gap-3">
-                                <div className="p-2.5 rounded-xl bg-red-500/20 text-red-400 shrink-0 border border-red-500/30">
-                                  <AlertTriangle className="w-6 h-6 text-red-400 animate-pulse" />
-                                </div>
-                                <div className="space-y-1.5 flex-1">
-                                  <div className="flex items-center justify-between flex-wrap gap-2">
-                                    <h5 className="text-xs font-black text-red-300 flex items-center gap-1.5">
-                                      <span>⚠️ خطا: تصویر بارگذاری‌شده اشتباه است و شبیه فیش بانکی نمی‌باشد!</span>
-                                    </h5>
-                                    <span className="px-2 py-0.5 bg-red-900/60 text-red-300 border border-red-500/40 rounded-md text-[10px] font-bold">
-                                      رد شده توسط هوش مصنوعی
-                                    </span>
-                                  </div>
-                                  <p className="text-xs text-red-100 font-medium leading-relaxed bg-red-900/30 p-2.5 rounded-xl border border-red-500/20">
-                                    {receiptAiResult.reason}
-                                  </p>
-                                  <p className="text-[11px] text-slate-300 leading-relaxed pt-0.5">
-                                    کارجوی گرامی، لطفاً تصویر صحیح فیش واریز هزینه مصوب را مجدداً ارسال فرمایید. عکس چهره، سلفی، اسکرین‌شات‌های نامربوط یا مدارک هویتی به عنوان فیش بانکی مورد قبول نمی‌باشند.
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="pt-1 flex flex-wrap items-center gap-2.5">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setPaymentReceiptPhoto(null);
-                                    setReceiptAiResult(null);
-                                    setTimeout(() => receiptFileInputRef.current?.click(), 50);
-                                  }}
-                                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black rounded-xl text-xs shadow-md transition flex items-center gap-2 cursor-pointer"
-                                >
-                                  <Camera className="w-4 h-4" />
-                                  <span>📸 ارسال مجدد فیش بانکی (انتخاب عکس جدید)</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setPaymentReceiptPhoto(null);
-                                    setReceiptAiResult(null);
-                                  }}
-                                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition border border-slate-700 flex items-center gap-1.5"
-                                >
-                                  <RotateCcw className="w-3.5 h-3.5" />
-                                  حذف تصویر
-                                </button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* AI Approval Card (GENUINE BANK RECEIPT) */}
-                          {!isVerifyingReceipt && receiptAiResult?.tested && receiptAiResult.isBankReceipt && (
-                            <div className="p-4 bg-emerald-950/40 border-2 border-emerald-500/50 rounded-2xl space-y-2 animate-fadeIn">
-                              <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs">
-                                <CheckCircle className="w-4 h-4 text-emerald-400" />
-                                <span>✅ اصالت فیش بانکی توسط هوش مصنوعی تایید گردید</span>
-                              </div>
-                              <p className="text-xs text-slate-300 leading-relaxed">
-                                {receiptAiResult.reason}
-                              </p>
-                              {receiptAiResult.extractedInfo && (
-                                <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
-                                  {receiptAiResult.extractedInfo.bankName && (
-                                    <span className="px-2.5 py-1 bg-slate-900 border border-slate-700 text-emerald-300 rounded-lg">
-                                      🏛️ بانک: {receiptAiResult.extractedInfo.bankName}
-                                    </span>
-                                  )}
-                                  {receiptAiResult.extractedInfo.amount && (
-                                    <span className="px-2.5 py-1 bg-slate-900 border border-slate-700 text-amber-300 rounded-lg">
-                                      💰 مبلغ: {receiptAiResult.extractedInfo.amount}
-                                    </span>
-                                  )}
-                                  {receiptAiResult.extractedInfo.trackingCode && (
-                                    <span className="px-2.5 py-1 bg-slate-900 border border-slate-700 text-cyan-300 rounded-lg font-mono">
-                                      🔢 پیگیری: {receiptAiResult.extractedInfo.trackingCode}
-                                    </span>
-                                  )}
-                                  {receiptAiResult.extractedInfo.dateTime && (
-                                    <span className="px-2.5 py-1 bg-slate-900 border border-slate-700 text-slate-300 rounded-lg">
-                                      📅 تاریخ: {receiptAiResult.extractedInfo.dateTime}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-700 hover:border-amber-400 rounded-2xl cursor-pointer bg-slate-900/80 hover:bg-slate-900 transition p-4 text-center group">
-                          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mb-1 group-hover:scale-110 transition">
-                            <Camera className="w-5 h-5" />
-                          </div>
-                          <p className="text-xs font-bold text-slate-200">
-                            کلیک کنید یا عکس فیش واریزی را انتخاب/گرفتن عکس فرمایید
-                          </p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            تصویر فیش ارسالی به صورت هوشمند بررسی و اعتبارسنجی می‌شود (حداکثر ۱۰ مگابایت)
-                          </p>
-                        </label>
-                      )}
-
-                      {/* Always available hidden file input */}
-                      <input
-                        ref={receiptFileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePaymentReceiptPhotoUpload}
-                        className="hidden"
-                      />
-                    </div>
-
-                    {/* Payment Note / Tracking Code */}
-                    <div>
-                      <input
-                        type="text"
-                        placeholder="شماره پیگیری تراکنش یا ۴ رقم آخر کارت واریزکننده (یا توضیحات واریز)..."
-                        value={paymentRefNote}
-                        onChange={(e) => setPaymentRefNote(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-500"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={
-                        (!paymentReceiptPhoto && paymentRefNote.trim().length < 4) ||
-                        isVerifyingReceipt ||
-                        Boolean(paymentReceiptPhoto && receiptAiResult?.tested === true && !receiptAiResult.isBankReceipt)
-                      }
-                      className={`w-full sm:w-auto px-6 py-3 rounded-xl text-xs font-bold shadow-lg transition flex items-center justify-center gap-2 cursor-pointer ${
-                        paymentReceiptPhoto && receiptAiResult?.tested && !receiptAiResult.isBankReceipt
-                          ? 'bg-slate-800 text-red-400 border border-red-500/40 cursor-not-allowed opacity-80'
-                          : isVerifyingReceipt
-                          ? 'bg-slate-800 text-amber-400 border border-amber-500/40 cursor-wait'
-                          : 'bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 disabled:opacity-50 text-white shadow-red-700/30'
-                      }`}
-                    >
-                      {isVerifyingReceipt ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
-                          <span>در حال بررسی تصویر...</span>
-                        </>
-                      ) : paymentReceiptPhoto && receiptAiResult?.tested && !receiptAiResult.isBankReceipt ? (
-                        <>
-                          <AlertTriangle className="w-4 h-4 text-red-400" />
-                          <span>⚠️ تصویر فیش بانکی نیست (ارسال غیرفعال است)</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4" />
-                          <span>ثبت فیش / کد پیگیری و ارجاع به مدیر جهت فعال‌سازی</span>
-                        </>
-                      )}
-                    </button>
-                  </form>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-10 space-y-4 max-w-md mx-auto">
@@ -3029,29 +2755,13 @@ export const JobSearch: React.FC = () => {
                         </span>
                       </div>
                       <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
-                        <form action="https://karbama34.ir/pay.php" method="POST" className="w-full sm:flex-1">
-                          <input type="hidden" name="amount" value={seekerFeeRial} />
-                          <button
-                            type="submit"
-                            className="w-full py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-                          >
-                            <CreditCard className="w-4 h-4" />
-                            <span>پرداخت آنلاین</span>
-                          </button>
-                        </form>
-
                         <button
-                          onClick={() => {
-                            setSelectedJob(null);
-                            setTimeout(() => {
-                              const el = document.getElementById('seeker-payment-section');
-                              if (el) el.scrollIntoView({ behavior: 'smooth' });
-                              else setActiveTab('settings');
-                            }, 100);
-                          }}
-                          className="w-full sm:w-auto px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition cursor-pointer"
+                          type="button"
+                          onClick={handleOnlinePaymentRedirect}
+                          className="w-full sm:flex-1 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                          ارسال فیش / کارت به کارت
+                          <CreditCard className="w-4 h-4" />
+                          <span>پرداخت آنلاین</span>
                         </button>
 
                         <button

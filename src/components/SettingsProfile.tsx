@@ -55,8 +55,18 @@ export const SettingsProfile: React.FC = () => {
   const [copiedCard, setCopiedCard] = useState(false);
   const [isPaymentSubmitted, setIsPaymentSubmitted] = useState(false);
 
-  const seekerFeeToman = (paymentSettings?.feeTL || 500) * (paymentSettings?.exchangeRateToman || 5460);
-  const seekerFeeRial = seekerFeeToman * 10;
+  const computedFeeToman = (paymentSettings?.feeTL || 500) * (paymentSettings?.exchangeRateToman || 5460);
+  const adminAmountUnit = paymentSettings?.paymentAmountUnit || 'toman';
+  const adminConfiguredAmount =
+    paymentSettings?.directPaymentAmount && paymentSettings.directPaymentAmount > 0
+      ? paymentSettings.directPaymentAmount
+      : adminAmountUnit === 'rial'
+        ? computedFeeToman * 10
+        : computedFeeToman;
+  const seekerFeeToman =
+    adminAmountUnit === 'rial' ? Math.round(adminConfiguredAmount / 10) : adminConfiguredAmount;
+  const seekerFeeRial =
+    adminAmountUnit === 'rial' ? adminConfiguredAmount : adminConfiguredAmount * 10;
 
   // Tab inside Profile
   const [profileTab, setProfileTab] = useState<'turkish-cv' | 'resume' | 'profile' | 'applications'>(
@@ -243,40 +253,49 @@ export const SettingsProfile: React.FC = () => {
       {/* Mobile Version / PWA Install Banner transferred to Settings */}
       <PWAInstallBanner />
 
-      {/* Pending Verification & Direct Payment Section if Unapproved */}
+      {/* Pending Verification & Direct Online Payment Section if Unapproved */}
       {currentSeeker.verificationStatus !== 'approved' && (
-        <div className="bg-slate-900 border-2 border-amber-500/40 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5 text-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div className="bg-slate-900 border-2 border-amber-500/40 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center shrink-0 font-bold text-lg">
                 🔒
               </div>
               <div className="space-y-1">
                 <p className="font-bold text-white text-sm">
-                  بخش پرداخت هزینه خدمات و فعال‌سازی حساب کارجو ({paymentSettings?.feeTL || 500} لیر / {seekerFeeToman.toLocaleString('fa-IR')} تومان)
+                  بخش پرداخت آنلاین هزینه خدمات و فعال‌سازی حساب کارجو ({paymentSettings?.feeTL || 500} لیر / {seekerFeeToman.toLocaleString('fa-IR')} تومان)
                 </p>
                 <p className="text-slate-300 leading-relaxed">
-                  جهت فعال‌سازی کامل حساب کاربری، بازگشایی اطلاعات تماس کارفرمایان و ارسال رزومه، می‌توانید از طریق درگاه آنلاین سپال و یا کارت به کارت اقدام فرمایید.
+                  جهت فعال‌سازی کامل حساب کاربری، بازگشایی اطلاعات تماس کارفرمایان و ارسال رزومه، لطفاً از طریق درگاه پرداخت آنلاین شاپرک اقدام فرمایید.
                 </p>
               </div>
             </div>
-            <form action="https://karbama34.ir/pay.php" method="POST">
-              <input type="hidden" name="amount" value={seekerFeeRial} />
-              <button
-                type="submit"
-                className="px-5 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-2xl text-xs shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer transition"
-              >
-                <CreditCard className="w-4 h-4" />
-                <span>پرداخت آنلاین</span>
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.setItem('karbama_pending_seeker_payment', 'true');
+                } catch {
+                  // ignore
+                }
+                if (adminAmountUnit === 'toman') {
+                  window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}&unit=toman`;
+                } else {
+                  window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}`;
+                }
+              }}
+              className="px-6 py-3.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-2xl text-xs shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer transition"
+            >
+              <CreditCard className="w-4 h-4" />
+              <span>پرداخت آنلاین</span>
+            </button>
           </div>
 
-          {isPaymentSubmitted || currentSeeker.seekerPaymentStatus === 'paid' || Boolean(currentSeeker.seekerPaymentRefId) ? (
+          {(isPaymentSubmitted || currentSeeker.seekerPaymentStatus === 'paid' || Boolean(currentSeeker.seekerPaymentRefId)) && (
             <div className="p-4 bg-emerald-950/50 border border-emerald-500/40 rounded-2xl text-emerald-200 space-y-2">
               <div className="flex items-center gap-2 font-bold text-emerald-300 text-sm">
                 <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-                <span>اطلاعات پرداخت شما ثبت و به پنل مدیریت ارجاع گردید!</span>
+                <span>اطلاعات پرداخت آنلاین شما ثبت و به پنل مدیریت ارجاع گردید!</span>
               </div>
               {currentSeeker.seekerPaymentRefId && (
                 <p className="text-xs text-slate-300">
@@ -286,109 +305,6 @@ export const SettingsProfile: React.FC = () => {
               <p className="text-[11px] text-slate-300">
                 پس از بررسی و تایید مدیریت، قفل حساب شما به صورت خودکار باز خواهد شد.
               </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Official Bank Card Details */}
-              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-amber-300">شماره کارت رسمی کارباما ({paymentSettings?.iranBankName || 'بانک ملت'}):</span>
-                  <span className="text-[11px] text-slate-400">{paymentSettings?.iranCardHolder || 'مدیریت امور مالی کارباما'}</span>
-                </div>
-                <div className="flex items-center justify-between bg-slate-900 p-3 rounded-xl border border-slate-800">
-                  <span className="font-mono font-black text-sm text-emerald-300 tracking-wider select-all" dir="ltr">
-                    {paymentSettings?.iranCardNumber || '۶۱۰۴-۳۳۷۸-۹۰۱۲-۳۴۵۶'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText((paymentSettings?.iranCardNumber || '6104337890123456').replace(/\D/g, ''));
-                      setCopiedCard(true);
-                      setTimeout(() => setCopiedCard(false), 2000);
-                    }}
-                    className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[10px] font-bold flex items-center gap-1 transition cursor-pointer"
-                  >
-                    {copiedCard ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copiedCard ? 'کپی شد' : 'کپی کارت'}</span>
-                  </button>
-                </div>
-                <div className="text-[11px] text-slate-400">
-                  شماره شبا / ایبان ترکیه (Ziraat): <span className="font-mono text-slate-200 select-all" dir="ltr">{paymentSettings?.turkeyIban || 'TR56 0001 0090 1234 5678 9050 01'}</span>
-                </div>
-              </div>
-
-              {/* Quick Receipt / Tracking Code Submission Form */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (!receiptPhoto && trackingNote.trim().length < 4) {
-                    showToast('لطفاً تصویر فیش واریزی را انتخاب کنید یا شماره پیگیری تراکنش را وارد نمایید.', 'error');
-                    return;
-                  }
-                  const refCode = trackingNote.trim() || `RECEIPT-${Date.now().toString().slice(-6)}`;
-                  updateProfile({
-                    seekerPaymentStatus: 'paid',
-                    seekerPaymentMethod: 'iran_card',
-                    seekerPaymentRefId: refCode,
-                    seekerPaymentReceiptUrl: receiptPhoto || undefined,
-                    seekerPaidAmount: `${seekerFeeToman.toLocaleString('fa-IR')} تومان`,
-                    seekerPaymentCurrency: 'IRT',
-                    verificationStatus: 'pending',
-                    isPaymentVerified: false,
-                    adminVerificationNote: `ثبت فیش / کد پیگیری از پروفایل کارجو | پیگیری: ${refCode}`,
-                  });
-                  addAdminNotification({
-                    type: 'seeker_payment_referred',
-                    title: '💳 ثبت فیش / کد پیگیری واریز توسط کارجو',
-                    message: `کارجو «${currentSeeker.fullName}» با کد ملی ${currentSeeker.nationalId} اطلاعات پرداخت (${refCode}) را ثبت و ارسال نمود.`,
-                    data: {
-                      seekerId: currentSeeker.id,
-                      receiptPhotoUrl: receiptPhoto,
-                      paymentNote: refCode,
-                    },
-                  });
-                  setIsPaymentSubmitted(true);
-                  showToast('✅ اطلاعات پرداخت شما با موفقیت ثبت و برای تایید به مدیریت ارسال شد.', 'success');
-                }}
-                className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl space-y-3"
-              >
-                <div className="flex items-center gap-2">
-                  <label className="flex-1 border border-dashed border-slate-700 hover:border-amber-400 rounded-xl p-2.5 flex items-center justify-center gap-2 cursor-pointer bg-slate-900/70 transition">
-                    <Upload className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span className="text-[11px] font-bold text-slate-200 truncate">
-                      {receiptPhoto ? '✓ تصویر فیش انتخاب شد (تغییر)' : 'انتخاب عکس فیش واریزی (اختیاری)'}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(ev) => {
-                        const f = ev.target.files?.[0];
-                        if (!f) return;
-                        const reader = new FileReader();
-                        reader.onload = (re) => {
-                          if (re.target?.result) setReceiptPhoto(re.target.result as string);
-                        };
-                        reader.readAsDataURL(f);
-                      }}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-                <input
-                  type="text"
-                  value={trackingNote}
-                  onChange={(e) => setTrackingNote(e.target.value)}
-                  placeholder="شماره پیگیری تراکنش یا ۴ رقم آخر کارت واریزکننده..."
-                  className="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-xl px-3 py-2 text-xs text-white outline-hidden"
-                />
-                <button
-                  type="submit"
-                  className="w-full py-2.5 px-4 bg-gradient-to-r from-amber-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white font-bold rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>ثبت فیش / کد پیگیری و ارسال به مدیریت</span>
-                </button>
-              </form>
             </div>
           )}
         </div>

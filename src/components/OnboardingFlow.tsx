@@ -62,9 +62,10 @@ export const OnboardingFlow: React.FC = () => {
     setAppLanguage,
     setHasCompletedOnboarding,
     registerSeeker,
+    registerPartner,
+    partnerPlans,
     checkDuplicateSeekerField,
     loginSeeker,
-    loginAdmin,
     loginPartner,
     recoverPassword,
     showToast,
@@ -73,6 +74,20 @@ export const OnboardingFlow: React.FC = () => {
 
   // Mode: 'language' | 'register' | 'login'
   const [viewMode, setViewMode] = useState<'language' | 'register' | 'login'>('language');
+  // Independent registration type: 'seeker' (کارجو) vs 'partner' (همکار)
+  const [regAccountType, setRegAccountType] = useState<'seeker' | 'partner'>('seeker');
+
+  // Partner Registration Form State
+  const [partnerCompanyName, setPartnerCompanyName] = useState('');
+  const [partnerFullName, setPartnerFullName] = useState('');
+  const [partnerPhone, setPartnerPhone] = useState('');
+  const [partnerEmail, setPartnerEmail] = useState('');
+  const [partnerCity, setPartnerCity] = useState('استانبول');
+  const [partnerUsername, setPartnerUsername] = useState('');
+  const [partnerPassword, setPartnerPassword] = useState('');
+  const [showPartnerPassword, setShowPartnerPassword] = useState(false);
+  const [partnerPlanId, setPartnerPlanId] = useState<'1_month' | '3_months' | '6_months' | '1_year'>('1_month');
+  const [partnerRegError, setPartnerRegError] = useState<string | null>(null);
 
   // Duplicate field validation errors
   const [duplicateErrors, setDuplicateErrors] = useState<{
@@ -173,7 +188,7 @@ export const OnboardingFlow: React.FC = () => {
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [loginRole, setLoginRole] = useState<'seeker' | 'admin' | 'partner'>('seeker');
+  const [loginRole, setLoginRole] = useState<'seeker' | 'partner'>('seeker');
   const [loginError, setLoginError] = useState<string | null>(null);
 
   // Forgot password modal state
@@ -182,6 +197,7 @@ export const OnboardingFlow: React.FC = () => {
   const [recoverResult, setRecoverResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const passCheck = checkPasswordStrength(password);
+  const partnerPassCheck = checkPasswordStrength(partnerPassword);
 
   const languages: { code: AppLanguage; label: string; nativeName: string; flag: string; welcome: string; desc: string }[] = [
     {
@@ -421,14 +437,7 @@ export const OnboardingFlow: React.FC = () => {
     e.preventDefault();
     setLoginError(null);
 
-    if (loginRole === 'admin') {
-      const res = loginAdmin(loginUsername, loginPassword);
-      if (res.success) {
-        setHasCompletedOnboarding(true);
-      } else {
-        setLoginError(res.error || 'ورود مدیر ناموفق بود.');
-      }
-    } else if (loginRole === 'partner') {
+    if (loginRole === 'partner') {
       const res = loginPartner(loginUsername, loginPassword);
       if (res.success) {
         setHasCompletedOnboarding(true);
@@ -442,6 +451,26 @@ export const OnboardingFlow: React.FC = () => {
       } else {
         setLoginError(res.error || 'نام کاربری یا رمز عبور کارجو اشتباه است.');
       }
+    }
+  };
+
+  const handlePartnerRegisterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPartnerRegError(null);
+    const res = registerPartner({
+      companyName: partnerCompanyName,
+      fullName: partnerFullName,
+      phone: partnerPhone,
+      email: partnerEmail,
+      city: partnerCity,
+      username: partnerUsername,
+      password: partnerPassword,
+      planId: partnerPlanId,
+    });
+    if (res.success) {
+      setHasCompletedOnboarding(true);
+    } else {
+      setPartnerRegError(res.error || 'خطا در ثبت‌نام همکار.');
     }
   };
 
@@ -560,21 +589,39 @@ export const OnboardingFlow: React.FC = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-4 flex flex-col sm:flex-row items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('register')}
-                  className="w-full py-3 sm:py-3.5 px-6 bg-red-600 hover:bg-red-500 text-white font-black text-sm rounded-2xl shadow-xl shadow-red-700/30 transition flex items-center justify-center gap-2 group"
-                >
-                  <UserCheck className="w-4 h-4" />
-                  <span>{t('startSeekerRegBtn', appLanguage)}</span>
-                  <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                </button>
+              <div className="pt-4 space-y-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegAccountType('seeker');
+                      setViewMode('register');
+                    }}
+                    className="w-full py-3 sm:py-3.5 px-4 bg-red-600 hover:bg-red-500 text-white font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-red-700/30 transition flex items-center justify-center gap-2 group cursor-pointer"
+                  >
+                    <UserCheck className="w-4 h-4 shrink-0" />
+                    <span>ثبت‌نام کارجو</span>
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegAccountType('partner');
+                      setViewMode('register');
+                    }}
+                    className="w-full py-3 sm:py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-indigo-700/30 transition flex items-center justify-center gap-2 group cursor-pointer"
+                  >
+                    <Building2 className="w-4 h-4 shrink-0" />
+                    <span>ثبت‌نام همکار / کارفرما</span>
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform shrink-0" />
+                  </button>
+                </div>
 
                 <button
                   type="button"
                   onClick={() => setViewMode('login')}
-                  className="w-full sm:w-auto py-3 sm:py-3.5 px-5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-2xl border border-slate-700 transition flex items-center justify-center gap-2 shrink-0"
+                  className="w-full py-3 px-5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-2xl border border-slate-700 transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <LogIn className="w-4 h-4 text-amber-400" />
                   <span>{t('existingAccountLoginBtn', appLanguage)}</span>
@@ -583,47 +630,256 @@ export const OnboardingFlow: React.FC = () => {
             </div>
           )}
 
-          {/* SCREEN 2: 4-STEP REGISTRATION WIZARD */}
+          {/* SCREEN 2: SEPARATE REGISTRATION FLOWS (JOB SEEKER VS PARTNER) */}
           {viewMode === 'register' && (
             <div className="space-y-5 pb-4">
-              {/* Wizard Steps Progress Indicator */}
-              <div className="sticky -top-5 sm:-top-7 z-10 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 pb-3 pt-1">
-                <div className="flex items-center justify-between text-xs mb-2 font-bold">
-                  <span className="text-white flex items-center gap-1.5">
-                    <UserCheck className="w-4 h-4 text-emerald-400" />
-                    <span>
-                      {regStep === 5
-                        ? 'مرحله نهایی: صدور پرونده رسمی کارجو'
-                        : `${t('regStepOfFour', appLanguage)} ${regStep} ${t('regStepOfFourSuffix', appLanguage)}`}
-                    </span>
-                  </span>
-                  <span className="text-amber-400">
-                    {regStep === 1 && t('regStep1Title', appLanguage)}
-                    {regStep === 2 && t('regStep2Title', appLanguage)}
-                    {regStep === 3 && t('regStep3Title', appLanguage)}
-                    {regStep === 4 && t('regStep4Title', appLanguage)}
-                    {regStep === 5 && 'تاییدیه و پرونده صادر شده ✓'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-5 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-[10px] text-center font-bold">
-                  <div className={`py-1.5 rounded-lg transition ${regStep === 1 ? 'bg-red-600 text-white' : regStep > 1 ? 'bg-emerald-600/30 text-emerald-300' : 'text-slate-500'}`}>
-                    {t('step1Short', appLanguage)}
-                  </div>
-                  <div className={`py-1.5 rounded-lg transition ${regStep === 2 ? 'bg-red-600 text-white' : regStep > 2 ? 'bg-emerald-600/30 text-emerald-300' : 'text-slate-500'}`}>
-                    {t('step2Short', appLanguage)}
-                  </div>
-                  <div className={`py-1.5 rounded-lg transition ${regStep === 3 ? 'bg-red-600 text-white' : regStep > 3 ? 'bg-emerald-600/30 text-emerald-300' : 'text-slate-500'}`}>
-                    {t('step3Short', appLanguage)}
-                  </div>
-                  <div className={`py-1.5 rounded-lg transition ${regStep === 4 ? 'bg-red-600 text-white' : regStep > 4 ? 'bg-emerald-600/30 text-emerald-300' : 'text-slate-500'}`}>
-                    {t('step4Short', appLanguage)}
-                  </div>
-                  <div className={`py-1.5 rounded-lg transition ${regStep === 5 ? 'bg-emerald-600 text-white' : 'text-slate-500'}`}>
-                    ۵. پرونده رسمی
-                  </div>
-                </div>
+              {/* Top Role Switcher: Job Seeker vs Partner */}
+              <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800 text-xs font-black">
+                <button
+                  type="button"
+                  onClick={() => setRegAccountType('seeker')}
+                  className={`py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
+                    regAccountType === 'seeker'
+                      ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>ثبت‌نام کارجو</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRegAccountType('partner')}
+                  className={`py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
+                    regAccountType === 'partner'
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span>ثبت‌نام همکار / کارفرما</span>
+                </button>
               </div>
+
+              {/* INDEPENDENT PARTNER REGISTRATION FORM */}
+              {regAccountType === 'partner' && (
+                <form onSubmit={handlePartnerRegisterSubmit} className="space-y-4 animate-in fade-in duration-200">
+                  <div className="p-3.5 rounded-2xl bg-indigo-950/40 border border-indigo-500/40 space-y-1.5">
+                    <h3 className="text-xs sm:text-sm font-black text-indigo-300 flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <span>ثبت‌نام اختصاصی همکاران و دفاتر کاریابی</span>
+                    </h3>
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      پس از تکمیل فرم ثبت‌نام همکار، جهت فعال‌سازی پنل و دسترسی به امکانات ثبت و مدیریت کارجویان، پرداخت آنلاین حق اشتراک از طریق درگاه بانکی و تایید مدیریت الزامی است.
+                    </p>
+                  </div>
+
+                  {partnerRegError && (
+                    <div className="p-3 rounded-xl bg-red-950/90 border border-red-500/60 text-red-200 text-xs font-bold flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                      <span>{partnerRegError}</span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="space-y-1">
+                      <label className="text-slate-300 font-medium">نام شرکت / دفتر کاریابی یا کارگاه *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="مثلاً: آژانس کاریابی امید"
+                        value={partnerCompanyName}
+                        onChange={(e) => setPartnerCompanyName(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-hidden focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-slate-300 font-medium">نام و نام خانوادگی مدیر / نماینده *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="نام کامل نماینده"
+                        value={partnerFullName}
+                        onChange={(e) => setPartnerFullName(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-hidden focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-slate-300 font-medium">شماره موبایل و واتساپ *</label>
+                      <input
+                        type="text"
+                        required
+                        dir="ltr"
+                        placeholder="09123456789 / +905..."
+                        value={partnerPhone}
+                        onChange={(e) => setPartnerPhone(toEnglishDigits(e.target.value))}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-slate-300 font-medium">شهر محل فعالیت *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="استانبول، تهران، آنکارا..."
+                        value={partnerCity}
+                        onChange={(e) => setPartnerCity(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 focus:outline-hidden focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-slate-300 font-medium flex items-center gap-1">
+                        <Mail className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>آدرس ایمیل (جهت بازیابی رمز عبور) *</span>
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        dir="ltr"
+                        placeholder="partner@gmail.com"
+                        value={partnerEmail}
+                        onChange={(e) => setPartnerEmail(e.target.value.trim())}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-slate-300 font-medium">انتخاب پلن اشتراک همکاری (قابل پرداخت آنلاین پس از ثبت‌نام)</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        {partnerPlans.map((pl) => (
+                          <button
+                            key={pl.id}
+                            type="button"
+                            onClick={() => setPartnerPlanId(pl.id)}
+                            className={`p-3 rounded-xl border text-right transition flex items-center justify-between cursor-pointer ${
+                              partnerPlanId === pl.id
+                                ? 'bg-indigo-600/25 border-indigo-400 text-white font-bold'
+                                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:border-slate-600'
+                            }`}
+                          >
+                            <div>
+                              <p className="text-xs font-bold text-white">{pl.title}</p>
+                              <p className="text-[10px] text-indigo-300 font-mono mt-0.5">
+                                {pl.priceToman.toLocaleString('fa-IR')} تومان ({pl.priceTL.toLocaleString('fa-IR')} لیر)
+                              </p>
+                            </div>
+                            {partnerPlanId === pl.id && <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-slate-300 font-medium">نام کاربری همکار (انگلیسی) *</label>
+                      <input
+                        type="text"
+                        required
+                        dir="ltr"
+                        placeholder="partner_agency"
+                        value={partnerUsername}
+                        onChange={(e) =>
+                          setPartnerUsername(
+                            toEnglishDigits(e.target.value)
+                              .replace(/[^a-zA-Z0-9_.-]/g, '')
+                              .toLowerCase()
+                          )
+                        }
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-slate-300 font-medium">رمز عبور همکار *</label>
+                      <div className="relative">
+                        <input
+                          type={showPartnerPassword ? 'text' : 'password'}
+                          required
+                          dir="ltr"
+                          placeholder="Abc12345"
+                          value={partnerPassword}
+                          onChange={(e) => setPartnerPassword(toEnglishDigits(e.target.value))}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-indigo-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPartnerPassword(!showPartnerPassword)}
+                          className="absolute left-2.5 top-3 text-slate-400 hover:text-white"
+                        >
+                          {showPartnerPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 pt-1 text-[10px]">
+                        <span className={partnerPassCheck.hasMinLength ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                          {partnerPassCheck.hasMinLength ? '✓' : '○'} حداقل ۸ کاراکتر
+                        </span>
+                        <span className={partnerPassCheck.hasUppercase ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                          {partnerPassCheck.hasUppercase ? '✓' : '○'} حروف بزرگ (A-Z)
+                        </span>
+                        <span className={partnerPassCheck.hasLowercase ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                          {partnerPassCheck.hasLowercase ? '✓' : '○'} حروف کوچک (a-z)
+                        </span>
+                        <span className={partnerPassCheck.hasNumber ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                          {partnerPassCheck.hasNumber ? '✓' : '○'} شامل عدد (0-9)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black rounded-2xl text-xs sm:text-sm shadow-xl shadow-indigo-600/30 transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Building2 className="w-4 h-4" />
+                    <span>ثبت‌نام همکار و ادامه جهت پرداخت آنلاین اشتراک</span>
+                  </button>
+                </form>
+              )}
+
+              {/* INDEPENDENT JOB SEEKER REGISTRATION WIZARD */}
+              {regAccountType === 'seeker' && (
+                <>
+                  {/* Wizard Steps Progress Indicator */}
+                  <div className="sticky -top-5 sm:-top-7 z-10 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 pb-3 pt-1">
+                    <div className="flex items-center justify-between text-xs mb-2 font-bold">
+                      <span className="text-white flex items-center gap-1.5">
+                        <UserCheck className="w-4 h-4 text-emerald-400" />
+                        <span>
+                          {regStep === 5
+                            ? 'مرحله نهایی: صدور پرونده رسمی کارجو'
+                            : `${t('regStepOfFour', appLanguage)} ${regStep} ${t('regStepOfFourSuffix', appLanguage)}`}
+                        </span>
+                      </span>
+                      <span className="text-amber-400">
+                        {regStep === 1 && t('regStep1Title', appLanguage)}
+                        {regStep === 2 && t('regStep2Title', appLanguage)}
+                        {regStep === 3 && t('regStep3Title', appLanguage)}
+                        {regStep === 4 && t('regStep4Title', appLanguage)}
+                        {regStep === 5 && 'تاییدیه و پرونده صادر شده ✓'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-5 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-[10px] text-center font-bold">
+                      <div className={`py-1.5 rounded-lg transition ${regStep === 1 ? 'bg-red-600 text-white' : regStep > 1 ? 'bg-emerald-600/30 text-emerald-300' : 'text-slate-500'}`}>
+                        {t('step1Short', appLanguage)}
+                      </div>
+                      <div className={`py-1.5 rounded-lg transition ${regStep === 2 ? 'bg-red-600 text-white' : regStep > 2 ? 'bg-emerald-600/30 text-emerald-300' : 'text-slate-500'}`}>
+                        {t('step2Short', appLanguage)}
+                      </div>
+                      <div className={`py-1.5 rounded-lg transition ${regStep === 3 ? 'bg-red-600 text-white' : regStep > 3 ? 'bg-emerald-600/30 text-emerald-300' : 'text-slate-500'}`}>
+                        {t('step3Short', appLanguage)}
+                      </div>
+                      <div className={`py-1.5 rounded-lg transition ${regStep === 4 ? 'bg-red-600 text-white' : regStep > 4 ? 'bg-emerald-600/30 text-emerald-300' : 'text-slate-500'}`}>
+                        {t('step4Short', appLanguage)}
+                      </div>
+                      <div className={`py-1.5 rounded-lg transition ${regStep === 5 ? 'bg-emerald-600 text-white' : 'text-slate-500'}`}>
+                        ۵. پرونده رسمی
+                      </div>
+                    </div>
+                  </div>
 
               {/* STEP 1: مشخصات هویتی + شماره کارت واریزکننده + تعیین کشور مقصد */}
               {regStep === 1 && (
@@ -1593,6 +1849,8 @@ export const OnboardingFlow: React.FC = () => {
                   </div>
                 </div>
               )}
+                </>
+              )}
             </div>
           )}
 
@@ -1610,12 +1868,12 @@ export const OnboardingFlow: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Role Selector */}
-                <div className="grid grid-cols-3 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+                {/* Role Selector (Standard Users: Job Seeker & Partner only) */}
+                <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
                   <button
                     type="button"
                     onClick={() => setLoginRole('seeker')}
-                    className={`py-2 rounded-lg transition ${
+                    className={`py-2.5 rounded-lg transition cursor-pointer ${
                       loginRole === 'seeker' ? 'bg-red-600 text-white font-bold' : 'text-slate-400 hover:text-white'
                     }`}
                   >
@@ -1624,20 +1882,11 @@ export const OnboardingFlow: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setLoginRole('partner')}
-                    className={`py-2 rounded-lg transition ${
+                    className={`py-2.5 rounded-lg transition cursor-pointer ${
                       loginRole === 'partner' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    همکار
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLoginRole('admin')}
-                    className={`py-2 rounded-lg transition ${
-                      loginRole === 'admin' ? 'bg-amber-600 text-white font-bold' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {t('adminRole', appLanguage)}
+                    همکار / کارفرما
                   </button>
                 </div>
 

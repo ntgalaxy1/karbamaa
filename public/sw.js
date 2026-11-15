@@ -4,7 +4,7 @@
  * and IndexedDB data synchronization for Job Listings & Essential Addresses.
  */
 
-const CACHE_NAME = 'karbama-cache-v30';
+const CACHE_NAME = 'karbama-cache-v49';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -100,11 +100,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Never cache Vite HMR / dev internal endpoints or APK/ZIP binary downloads
+  // Never intercept PHP gateway scripts (pay.php, callback.php, etc.), API routes, or binary downloads
   if (
+    url.pathname.endsWith('.php') ||
+    url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/@') ||
     url.pathname.includes('node_modules') ||
     url.pathname.endsWith('.apk') ||
+    url.pathname.endsWith('.aab') ||
     url.pathname.endsWith('.zip')
   ) {
     return;

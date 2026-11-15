@@ -96,14 +96,24 @@ const MainContent: React.FC = () => {
     currentPartner,
     appLanguage,
     showToast,
+    updateProfile,
+    addAdminNotification,
+    submitJobWithPayment,
+    submitPartnerSubscriptionPayment,
+    brokerSettings,
   } = useApp();
-  const [adminLoginModalOpen, setAdminLoginModalOpen] = useState(false);
   const [aboutUsModalOpen, setAboutUsModalOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [paymentCallbackResult, setPaymentCallbackResult] = useState<{
     status: 'success' | 'failed';
     ref: string;
   } | null>(null);
+
+  // Detect dedicated /admin route
+  const isDedicatedAdminRoute =
+    (typeof window !== 'undefined' &&
+      (window.location.pathname === '/admin' || window.location.pathname.startsWith('/admin/'))) ||
+    activeTab === 'admin';
 
   // Handle callback URL query parameters on main page load (?payment=success&ref=... or ?payment=failed)
   useEffect(() => {
@@ -118,7 +128,64 @@ const MainContent: React.FC = () => {
         '';
 
       if (payment === 'success') {
-        setPaymentCallbackResult({ status: 'success', ref });
+        const trackingRef = ref || 'SEP-' + Math.floor(100000 + Math.random() * 900000);
+        setPaymentCallbackResult({ status: 'success', ref: trackingRef });
+
+        // 1. Check if there is a pending Partner subscription payment
+        const pendingPartnerRaw = localStorage.getItem('karbama_pending_partner_payment');
+        if (pendingPartnerRaw && currentPartner) {
+          try {
+            const parsedPartner = JSON.parse(pendingPartnerRaw);
+            localStorage.removeItem('karbama_pending_partner_payment');
+            submitPartnerSubscriptionPayment(
+              parsedPartner.planId || currentPartner.planId || '1_month',
+              'sepal',
+              undefined,
+              `درگاه آنلاین - کد رهگیری: ${trackingRef}`,
+              currentPartner.fullName
+            );
+            setActiveTab('partner');
+          } catch {
+            // ignore
+          }
+        }
+
+        // 2. Check if there is a pending Employer job posting payment
+        const pendingJobRaw = localStorage.getItem('karbama_pending_sepal_job');
+        if (pendingJobRaw) {
+          try {
+            const parsedJob = JSON.parse(pendingJobRaw);
+            localStorage.removeItem('karbama_pending_sepal_job');
+            submitJobWithPayment({
+              ...parsedJob,
+              paymentMethod: 'sepal',
+              paymentReferenceId: trackingRef,
+            });
+          } catch {
+            // ignore
+          }
+        }
+
+        // 3. Check if a Job Seeker completed online payment
+        const pendingSeekerRaw = localStorage.getItem('karbama_pending_seeker_payment');
+        if ((pendingSeekerRaw || (!pendingPartnerRaw && !pendingJobRaw)) && currentSeeker) {
+          localStorage.removeItem('karbama_pending_seeker_payment');
+          updateProfile({
+            seekerPaymentStatus: 'paid',
+            verificationStatus: 'pending',
+            isPaymentVerified: false,
+            seekerPaymentMethod: 'sepal',
+            seekerPaymentRefId: `درگاه آنلاین (کد رهگیری: ${trackingRef})`,
+            seekerPaidAmount: String(brokerSettings.brokerServiceFee),
+          });
+          addAdminNotification({
+            type: 'seeker_payment',
+            title: '💳 پرداخت آنلاین کارجو از درگاه بانکی',
+            message: `کارجو «${currentSeeker.fullName}» مبلغ خدمات را از طریق درگاه آنلاین پرداخت نمود (کد رهگیری: ${trackingRef}) و منتظر تایید مدیریت جهت باز شدن قفل آگهی‌هاست.`,
+            data: { seekerId: currentSeeker.id },
+          });
+        }
+
         showToast(
           ref
             ? `✅ پرداخت شما با موفقیت انجام شد. شماره پیگیری: ${ref}`
@@ -127,6 +194,9 @@ const MainContent: React.FC = () => {
         );
         window.history.replaceState({}, document.title, window.location.pathname);
       } else if (payment === 'failed') {
+        localStorage.removeItem('karbama_pending_partner_payment');
+        localStorage.removeItem('karbama_pending_sepal_job');
+        localStorage.removeItem('karbama_pending_seeker_payment');
         setPaymentCallbackResult({ status: 'failed', ref: '' });
         showToast('⚠️ پرداخت ناموفق بود یا توسط کاربر لغو گردید.', 'error');
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -136,7 +206,7 @@ const MainContent: React.FC = () => {
     }
   }, []);
 
-  // Strict check: No guest direct entry into the app without registration/login (except for /privacy-policy)
+  // Strict check: No guest direct entry into the app without registration/login (except for /privacy-policy and dedicated /admin route)
   const isUserAuthenticated = Boolean(currentSeeker || isAdminLoggedIn || currentPartner);
   const isPrivacyPolicyPage = activeTab === 'privacy-policy';
 
@@ -176,6 +246,39 @@ const MainContent: React.FC = () => {
     };
   }, [appLanguage, activeTab, isUserAuthenticated]);
 
+  // Dedicated Admin Portal Route (/admin) — completely separated from standard user paths
+  if (isDedicatedAdminRoute) {
+    return (
+      <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+        <div style={{ background: 'var(--primary-topbar)' }} className="h-1 w-full shrink-0 shadow-xs" />
+        <OfflineIndicator />
+        {isAdminLoggedIn && <Header />}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
+          <AdminPanel />
+        </main>
+        <div className="fixed bottom-6 left-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              className={`pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-medium animate-in fade-in slide-in-from-bottom-3 duration-300 ${
+                toast.type === 'success'
+                  ? 'bg-slate-900 border-emerald-500/50 text-emerald-200'
+                  : toast.type === 'error'
+                  ? 'bg-slate-900 border-red-500/50 text-red-200'
+                  : 'bg-slate-900 border-slate-700 text-slate-200'
+              }`}
+            >
+              {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+              {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />}
+              {toast.type === 'info' && <Info className="w-4 h-4 text-blue-400 shrink-0" />}
+              <span>{toast.message}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
@@ -190,14 +293,14 @@ const MainContent: React.FC = () => {
                   <CheckCircle2 className="w-9 h-9" />
                 </div>
                 <h2 className="text-lg font-black text-emerald-400">
-                  پرداخت آنلاین شما با موفقیت انجام شد
+                  پرداخت شما با موفقیت انجام شد
                 </h2>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  تراکنش شما با موفقیت ثبت گردید و جهت فعال‌سازی حساب در سامانه کارباما ثبت شد.
+                  اطلاعات پرداخت آنلاین شما ثبت گردید و جهت تایید نهایی برای مدیریت ارسال شد.
                 </p>
                 {paymentCallbackResult.ref && (
                   <div className="p-3.5 rounded-2xl bg-slate-950 border border-emerald-500/40 flex items-center justify-between text-xs">
-                    <span className="text-slate-400">شماره پیگیری (Ref):</span>
+                    <span className="text-slate-400">کد رهگیری (ref):</span>
                     <span className="font-mono font-black text-emerald-300 text-sm select-all" dir="ltr">
                       {paymentCallbackResult.ref}
                     </span>
@@ -217,17 +320,14 @@ const MainContent: React.FC = () => {
                   <AlertCircle className="w-9 h-9" />
                 </div>
                 <h2 className="text-lg font-black text-red-400">
-                  پرداخت ناموفق بود یا لغو گردید
+                  پرداخت ناموفق بود یا توسط کاربر لغو شد
                 </h2>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  عملیات پرداخت تکمیل نشد. در صورت کسر وجه از حساب بانکی شما، مبلغ حداکثر ظرف ۷۲ ساعت به صورت خودکار به حساب شما بازگردانده می‌شود.
-                </p>
                 <button
                   type="button"
                   onClick={() => setPaymentCallbackResult(null)}
                   className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl text-xs transition cursor-pointer"
                 >
-                  بستن و تلاش مجدد
+                  بستن
                 </button>
               </>
             )}
@@ -271,7 +371,6 @@ const MainContent: React.FC = () => {
           {/* Floating Omnipresent Admin Quick Toolbar (When Admin Logged In) */}
           <AdminQuickToolbar />
 
-
           {/* Main App Navigation Header */}
           <Header />
 
@@ -283,178 +382,146 @@ const MainContent: React.FC = () => {
             {activeTab === 'currency' && <CurrencyExchangeSection />}
             {activeTab === 'about-us' && <AboutUsSection />}
             {activeTab === 'privacy-policy' && <PrivacyPolicySection />}
-        {activeTab === 'map' && <MapSection />}
-        {activeTab === 'addresses' && <EssentialAddresses />}
-        {activeTab === 'my-applications' && <ApplicationsSection />}
-        {activeTab === 'settings' && <SettingsProfile />}
-        {activeTab === 'cv-builder' && <CVBuilder />}
-        {activeTab === 'admin' && (
-          isAdminLoggedIn ? (
-            <AdminPanel />
-          ) : (
-            <div className="max-w-md mx-auto py-16 text-center space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
-                <Lock className="w-8 h-8" />
-              </div>
-              <h2 className="text-xl font-bold">بخش اختصاصی مدیران کارباما</h2>
-              <p className="text-xs text-slate-400">
-                این بخش فقط با ورود نام کاربری و رمز عبور مدیر سامانه قابل دسترسی است.
-              </p>
-              <button
-                onClick={() => setAdminLoginModalOpen(true)}
-                className="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs shadow-md transition"
-              >
-                ورود به بخش مدیریت (نام کاربری و رمز)
-              </button>
-            </div>
-          )
-        )}
-      </main>
+            {activeTab === 'map' && <MapSection />}
+            {activeTab === 'addresses' && <EssentialAddresses />}
+            {activeTab === 'my-applications' && <ApplicationsSection />}
+            {activeTab === 'settings' && <SettingsProfile />}
+            {activeTab === 'cv-builder' && <CVBuilder />}
+          </main>
 
-      {/* Footer (Desktop & Universal) */}
-      <footer className="bg-white/80 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 py-6 pb-24 sm:pb-20 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-right">
-            <div className="flex items-center gap-3">
-              <img
-                src="/logo.png"
-                alt="لوگوی کارباما"
-                className="w-8 h-8 rounded-full object-cover border border-amber-400/50 shadow-xs shrink-0"
-              />
-              <div className="flex flex-col sm:flex-row items-center gap-2">
-                <span className="font-bold text-slate-800 dark:text-white text-sm">
-                  کارباما (KARBAMA) | سامانه کاریابی و اقامت ایرانیان در ترکیه
-                </span>
-                <span className="hidden sm:inline text-slate-400">|</span>
-                <span className="hidden sm:inline text-slate-500">پشتیبانی PWA و اندروید</span>
-              </div>
-            </div>
-
-            {/* Enamad (نماد اعتماد الکترونیکی) Official Badge */}
-            <div className="flex items-center gap-3 justify-center my-1 md:my-0">
-              <a
-                referrerPolicy="origin"
-                target="_blank"
-                rel="noopener noreferrer"
-                href="https://trustseal.enamad.ir/?id=8525821&Code=XEkLJtcaakG7VTxhSuZB80dckY4lQbqM"
-                className="inline-flex items-center gap-2 p-1.5 px-2.5 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-xs hover:shadow-md hover:border-amber-400/60 transition-all shrink-0 group"
-                title="نماد اعتماد الکترونیکی (اینماد)"
-              >
-                <img
-                  referrerPolicy="origin"
-                  src="https://trustseal.enamad.ir/logo.aspx?id=8525821&Code=XEkLJtcaakG7VTxhSuZB80dckY4lQbqM"
-                  alt="نماد اعتماد الکترونیکی اینماد کارباما"
-                  className="h-16 w-auto cursor-pointer object-contain"
-                  onError={(e) => {
-                    const target = e.currentTarget;
-                    if (!target.src.endsWith('/enamad.svg')) {
-                      target.src = '/enamad.svg';
-                    }
-                  }}
-                  {...({ code: 'XEkLJtcaakG7VTxhSuZB80dckY4lQbqM' } as any)}
-                />
-                <div className="text-right hidden sm:block pr-1">
-                  <span className="block text-[11px] font-bold text-slate-800 dark:text-slate-100 group-hover:text-amber-500 transition-colors">
-                    نماد اعتماد الکترونیکی
-                  </span>
-                  <span className="block text-[9px] text-slate-500 dark:text-slate-400 font-mono">
-                    کد کسب‌وکار: 8525821
-                  </span>
+          {/* Footer (Desktop & Universal) */}
+          <footer className="bg-white/80 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 py-6 pb-24 sm:pb-20 transition-colors">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-right">
+                <div className="flex items-center gap-3">
+                  <img
+                    src="/logo.png"
+                    alt="لوگوی کارباما"
+                    className="w-8 h-8 rounded-full object-cover border border-amber-400/50 shadow-xs shrink-0"
+                  />
+                  <div className="flex flex-col sm:flex-row items-center gap-2">
+                    <span className="font-bold text-slate-800 dark:text-white text-sm">
+                      کارباما (KARBAMA) | سامانه کاریابی و اقامت ایرانیان در ترکیه
+                    </span>
+                    <span className="hidden sm:inline text-slate-400">|</span>
+                    <span className="hidden sm:inline text-slate-500">پشتیبانی PWA و اندروید</span>
+                  </div>
                 </div>
-              </a>
-            </div>
 
-            <div className="flex items-center gap-4 text-[11px] flex-wrap justify-center">
-              <span className="hidden xl:inline text-slate-500">شماره‌های ضروری: ۱۵۷ (اقامت) - ۱۷۰ (وزارت کار) - ۱۱۲ (اورژانس)</span>
-              
-              {/* About Us Link */}
-              <button
-                onClick={() => setAboutUsModalOpen(true)}
-                className="text-amber-500 dark:text-amber-400 font-bold hover:underline flex items-center gap-1 transition"
-              >
-                <Info className="w-3.5 h-3.5" />
-                درباره ما
-              </button>
+                {/* Enamad (نماد اعتماد الکترونیکی) Official Badge */}
+                <div className="flex items-center gap-3 justify-center my-1 md:my-0">
+                  <a
+                    referrerPolicy="origin"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    href="https://trustseal.enamad.ir/?id=8525821&Code=XEkLJtcaakG7VTxhSuZB80dckY4lQbqM"
+                    className="inline-flex items-center gap-2 p-1.5 px-2.5 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-xs hover:shadow-md hover:border-amber-400/60 transition-all shrink-0 group"
+                    title="نماد اعتماد الکترونیکی (اینماد)"
+                  >
+                    <img
+                      referrerPolicy="origin"
+                      src="https://trustseal.enamad.ir/logo.aspx?id=8525821&Code=XEkLJtcaakG7VTxhSuZB80dckY4lQbqM"
+                      alt="نماد اعتماد الکترونیکی اینماد کارباما"
+                      className="h-16 w-auto cursor-pointer object-contain"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (!target.src.endsWith('/enamad.svg')) {
+                          target.src = '/enamad.svg';
+                        }
+                      }}
+                      {...({ code: 'XEkLJtcaakG7VTxhSuZB80dckY4lQbqM' } as any)}
+                    />
+                    <div className="text-right hidden sm:block pr-1">
+                      <span className="block text-[11px] font-bold text-slate-800 dark:text-slate-100 group-hover:text-amber-500 transition-colors">
+                        نماد اعتماد الکترونیکی
+                      </span>
+                      <span className="block text-[9px] text-slate-500 dark:text-slate-400 font-mono">
+                        کد کسب‌وکار: 8525821
+                      </span>
+                    </div>
+                  </a>
+                </div>
 
-              {/* Privacy Policy Link */}
-              <button
-                onClick={() => {
-                  setActiveTab('privacy-policy');
-                  window.history.pushState({}, '', '/privacy-policy');
-                }}
-                className="text-slate-500 hover:text-amber-500 dark:text-slate-400 dark:hover:text-amber-400 font-bold hover:underline flex items-center gap-1 transition"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                حریم خصوصی
-              </button>
+                <div className="flex items-center gap-4 text-[11px] flex-wrap justify-center">
+                  <span className="hidden xl:inline text-slate-500">شماره‌های ضروری: ۱۵۷ (اقامت) - ۱۷۰ (وزارت کار) - ۱۱۲ (اورژانس)</span>
 
-              {/* Discreet Admin Login Trigger when not logged in */}
-              {!isAdminLoggedIn ? (
-                <button
-                  onClick={() => setAdminLoginModalOpen(true)}
-                  className="text-slate-400 dark:text-slate-500 hover:text-amber-400 flex items-center gap-1 transition"
-                  title="ورود با دسترسی مدیریت (یوزرنیم و پسوورد)"
-                >
-                  <Lock className="w-3 h-3" />
-                  ورود مدیر
-                </button>
-              ) : (
-                <span className="text-amber-400 flex items-center gap-1 font-bold">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  مدیریت فعال
+                  {/* About Us Link */}
+                  <button
+                    onClick={() => setAboutUsModalOpen(true)}
+                    className="text-amber-500 dark:text-amber-400 font-bold hover:underline flex items-center gap-1 transition"
+                  >
+                    <Info className="w-3.5 h-3.5" />
+                    درباره ما
+                  </button>
+
+                  {/* Privacy Policy Link */}
+                  <button
+                    onClick={() => {
+                      setActiveTab('privacy-policy');
+                      window.history.pushState({}, '', '/privacy-policy');
+                    }}
+                    className="text-slate-500 hover:text-amber-500 dark:text-slate-400 dark:hover:text-amber-400 font-bold hover:underline flex items-center gap-1 transition"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                    حریم خصوصی
+                  </button>
+
+                  {isAdminLoggedIn && (
+                    <button
+                      onClick={() => {
+                        setActiveTab('admin');
+                        window.history.pushState({}, '', '/admin');
+                      }}
+                      className="text-amber-400 flex items-center gap-1 font-bold hover:underline cursor-pointer"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      پنل مدیریت (/admin)
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* User Requested Universal Faint Footer Attribution */}
+              <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-center gap-2">
+                <p className="text-[11px] font-mono tracking-wide text-slate-400/70 dark:text-slate-500/70 select-none text-center">
+                  powered by Naser Tavakkoli . @Ntgalaxy
+                </p>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400">
+                  v{APP_VERSION}
                 </span>
-              )}
+              </div>
             </div>
+          </footer>
+
+          {/* Bottom Navigation Bar */}
+          <BottomNav />
+
+          {/* Floating Toast Notification Container */}
+          <div className="fixed bottom-20 left-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
+            {toasts.map((toast) => (
+              <div
+                key={toast.id}
+                className={`pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-medium animate-in fade-in slide-in-from-bottom-3 duration-300 ${
+                  toast.type === 'success'
+                    ? 'bg-slate-900 border-emerald-500/50 text-emerald-200'
+                    : toast.type === 'error'
+                    ? 'bg-slate-900 border-red-500/50 text-red-200'
+                    : 'bg-slate-900 border-slate-700 text-slate-200'
+                }`}
+              >
+                {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />}
+                {toast.type === 'info' && <Info className="w-4 h-4 text-blue-400 shrink-0" />}
+                <span>{toast.message}</span>
+              </div>
+            ))}
           </div>
 
-          {/* User Requested Universal Faint Footer Attribution */}
-          <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-center gap-2">
-            <p className="text-[11px] font-mono tracking-wide text-slate-400/70 dark:text-slate-500/70 select-none text-center">
-              powered by Naser Tavakkoli . @Ntgalaxy
-            </p>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400">
-              v{APP_VERSION}
-            </span>
-          </div>
-        </div>
-      </footer>
-
-      {/* Bottom Navigation Bar */}
-      <BottomNav />
-
-      {/* Floating Toast Notification Container */}
-      <div className="fixed bottom-20 left-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-medium animate-in fade-in slide-in-from-bottom-3 duration-300 ${
-              toast.type === 'success'
-                ? 'bg-slate-900 border-emerald-500/50 text-emerald-200'
-                : toast.type === 'error'
-                ? 'bg-slate-900 border-red-500/50 text-red-200'
-                : 'bg-slate-900 border-slate-700 text-slate-200'
-            }`}
-          >
-            {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
-            {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />}
-            {toast.type === 'info' && <Info className="w-4 h-4 text-blue-400 shrink-0" />}
-            <span>{toast.message}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Admin Login Modal */}
-      <AuthModal
-        isOpen={adminLoginModalOpen}
-        onClose={() => setAdminLoginModalOpen(false)}
-        defaultMode="admin"
-      />
-
-      {/* About Us Modal */}
-      <AboutUsModal
-        isOpen={aboutUsModalOpen}
-        onClose={() => setAboutUsModalOpen(false)}
-      />
+          {/* About Us Modal */}
+          <AboutUsModal
+            isOpen={aboutUsModalOpen}
+            onClose={() => setAboutUsModalOpen(false)}
+          />
         </div>
       )}
 

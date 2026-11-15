@@ -166,7 +166,12 @@ export const AdminPanel: React.FC = () => {
        Boolean(s.payerCardNumber))
   );
 
-  const [paymentApprovalSubTab, setPaymentApprovalSubTab] = useState<'seekers' | 'jobs'>('seekers');
+  // Count pending payment partners (those awaiting online payment approval or activation)
+  const pendingPaymentPartners = partners.filter(
+    (p) => p.subscriptionStatus !== 'active'
+  );
+
+  const [paymentApprovalSubTab, setPaymentApprovalSubTab] = useState<'seekers' | 'partners' | 'jobs'>('seekers');
   const [rejectModalSeekerId, setRejectModalSeekerId] = useState<string | null>(null);
 
   // State for Admin Security & Password Change
@@ -178,6 +183,8 @@ export const AdminPanel: React.FC = () => {
   // State for Payment & Exchange Rate Settings
   const [feeTLInput, setFeeTLInput] = useState(paymentSettings.feeTL);
   const [exchangeRateInput, setExchangeRateInput] = useState(paymentSettings.exchangeRateToman);
+  const [directPaymentAmountInput, setDirectPaymentAmountInput] = useState<number>(paymentSettings.directPaymentAmount || 0);
+  const [paymentAmountUnitInput, setPaymentAmountUnitInput] = useState<'toman' | 'rial'>(paymentSettings.paymentAmountUnit || 'toman');
   const [turkeyBankInput, setTurkeyBankInput] = useState(paymentSettings.turkeyBankName);
   const [turkeyIbanInput, setTurkeyIbanInput] = useState(paymentSettings.turkeyIban);
   const [turkeyHolderInput, setTurkeyHolderInput] = useState(paymentSettings.turkeyAccountHolder);
@@ -623,10 +630,23 @@ export const AdminPanel: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl shadow-lg shadow-amber-700/30 transition flex items-center justify-center gap-2"
+              className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl shadow-lg shadow-amber-700/30 transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <ShieldCheck className="w-4 h-4" />
-              ورود و فعال‌سازی دسترسی مدیریت
+              ورود و فعال‌سازی دسترسی مدیریت (/admin)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.history.pushState({}, '', '/');
+                }
+                setActiveTab('jobs');
+              }}
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl border border-slate-700 transition text-xs cursor-pointer"
+            >
+              بازگشت به صفحه اصلی سایت کارباما
             </button>
           </form>
         </div>
@@ -1226,24 +1246,24 @@ export const AdminPanel: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs px-3 py-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl font-bold font-mono">
-                {pendingPaymentSeekers.length + pendingPaymentJobs.length} مورد نیازمند بررسی مدیریت
+                {pendingPaymentSeekers.length + pendingPaymentPartners.length + pendingPaymentJobs.length} مورد نیازمند بررسی مدیریت
               </span>
             </div>
           </div>
 
           {/* Subtab Navigation */}
-          <div className="flex items-center gap-2 p-1.5 bg-slate-900/90 border border-slate-800 rounded-2xl">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1.5 bg-slate-900/90 border border-slate-800 rounded-2xl">
             <button
               type="button"
               onClick={() => setPaymentApprovalSubTab('seekers')}
-              className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
+              className={`py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
                 paymentApprovalSubTab === 'seekers'
                   ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <Users className="w-4 h-4" />
-              <span>کارجویان در انتظار تایید پرداخت و باز شدن قفل</span>
+              <span>تایید پرداخت کارجویان</span>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
                 paymentApprovalSubTab === 'seekers' ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-slate-300'
               }`}>
@@ -1253,15 +1273,33 @@ export const AdminPanel: React.FC = () => {
 
             <button
               type="button"
+              onClick={() => setPaymentApprovalSubTab('partners')}
+              className={`py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                paymentApprovalSubTab === 'partners'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              <span>تایید پرداخت و فعال‌سازی همکاران</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                paymentApprovalSubTab === 'partners' ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-slate-300'
+              }`}>
+                {pendingPaymentPartners.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setPaymentApprovalSubTab('jobs')}
-              className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
+              className={`py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
                 paymentApprovalSubTab === 'jobs'
                   ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <Briefcase className="w-4 h-4" />
-              <span>آگهی‌های کارفرمایان در انتظار تایید و انتشار</span>
+              <span>آگهی‌های کارفرمایان</span>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
                 paymentApprovalSubTab === 'jobs' ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-slate-300'
               }`}>
@@ -1269,6 +1307,81 @@ export const AdminPanel: React.FC = () => {
               </span>
             </button>
           </div>
+
+          {/* SUBTAB: PARTNERS PENDING PAYMENT APPROVAL & ACTIVATION */}
+          {paymentApprovalSubTab === 'partners' && (
+            <div className="space-y-4">
+              {pendingPaymentPartners.length === 0 ? (
+                <div className="p-12 text-center bg-slate-900 border border-slate-800 rounded-3xl space-y-3">
+                  <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto">
+                    <CheckCircle className="w-8 h-8" />
+                  </div>
+                  <h4 className="font-bold text-white text-sm">هیچ همکاری در صف تایید پرداخت و فعال‌سازی پنل وجود ندارد.</h4>
+                  <p className="text-xs text-slate-400">تمام حساب‌های همکاران بررسی و فعال شده‌اند.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingPaymentPartners.map((partner) => (
+                    <div
+                      key={partner.id}
+                      className="p-5 bg-slate-900 border border-indigo-500/40 rounded-3xl space-y-4 shadow-xl"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-black text-white text-base">{partner.companyName}</span>
+                            <span className="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px] font-mono font-bold">
+                              {partner.partnerCode}
+                            </span>
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                                partner.subscriptionStatus === 'pending_approval'
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              }`}
+                            >
+                              {partner.subscriptionStatus === 'pending_approval'
+                                ? '💳 پرداخت آنلاین انجام شده — منتظر تایید مدیر'
+                                : '⏳ ثبت‌نام شده (در انتظار پرداخت آنلاین)'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400">
+                            نماینده: <strong className="text-slate-200">{partner.fullName}</strong> | تلفن:{' '}
+                            <strong className="text-emerald-400 font-mono" dir="ltr">{partner.phone}</strong> | شهر:{' '}
+                            <strong className="text-slate-200">{partner.city || 'استانبول'}</strong> | پلن:{' '}
+                            <strong className="text-indigo-300">{partner.planTitle || 'اشتراک همکاری'}</strong>
+                          </p>
+                          {partner.paymentReferenceId && (
+                            <p className="text-xs text-emerald-300 font-mono pt-1">
+                              کد رهگیری درگاه آنلاین: {partner.paymentReferenceId}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => rejectPartnerSubscription(partner.id, 'پرداخت تایید نشد؛ لطفاً مجدداً از طریق درگاه آنلاین اقدام نمایید.')}
+                            className="px-3.5 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 rounded-xl text-xs font-bold transition cursor-pointer"
+                          >
+                            رد پرداخت
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => approvePartnerSubscription(partner.id)}
+                            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg transition flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            <span>تایید پرداخت و فعال‌سازی پنل همکار</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* SUBTAB 1: SEEKERS PENDING PAYMENT APPROVAL & UNLOCK */}
           {paymentApprovalSubTab === 'seekers' && (
@@ -1641,6 +1754,48 @@ export const AdminPanel: React.FC = () => {
               <p className="text-[11px] text-slate-400">به‌روزرسانی خودکار روزانه بر اساس نرخ لحظه‌ای بازار آزاد فعال است</p>
             </div>
 
+            {/* Direct Online Payment Gateway Amount & Unit */}
+            <div className="p-5 bg-slate-950 rounded-2xl border border-teal-500/30 space-y-3 sm:col-span-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="text-xs font-bold text-teal-300">
+                  مبلغ مستقیم درگاه پرداخت آنلاین (pay.php) و واحد پول (تومان / ریال)
+                </label>
+                <span className="text-xs font-mono font-bold text-teal-400">
+                  مبلغ ارسالی فعلی به درگاه:{' '}
+                  {(directPaymentAmountInput > 0
+                    ? directPaymentAmountInput
+                    : Number(feeTLInput || 500) * Number(exchangeRateInput || 5460)
+                  ).toLocaleString('fa-IR')}{' '}
+                  {paymentAmountUnitInput === 'toman' ? 'تومان (unit=toman)' : 'ریال'}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">
+                    مبلغ دلخواه مستقیم (در صورت ۰ بودن، از حاصل‌ضرب لیر × نرخ روز استفاده می‌شود)
+                  </label>
+                  <input
+                    type="number"
+                    value={directPaymentAmountInput}
+                    onChange={(e) => setDirectPaymentAmountInput(Number(e.target.value))}
+                    placeholder="0 (محاسبه خودکار بر اساس نرخ لیر)"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">واحد مبلغ ارسالی به درگاه (pay.php)</label>
+                  <select
+                    value={paymentAmountUnitInput}
+                    onChange={(e) => setPaymentAmountUnitInput(e.target.value as 'toman' | 'rial')}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-bold"
+                  >
+                    <option value="toman">تومان (ارسال با پارامتر &amp;unit=toman)</option>
+                    <option value="rial">ریال (ارسال مستقیم مبلغ به ریال)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
           </div>
 
           {/* Turkey Bank Account Details */}
@@ -1783,6 +1938,8 @@ export const AdminPanel: React.FC = () => {
                 updatePaymentSettings({
                   feeTL: Number(feeTLInput) || 500,
                   exchangeRateToman: Number(exchangeRateInput) || 2300,
+                  directPaymentAmount: Number(directPaymentAmountInput) || 0,
+                  paymentAmountUnit: paymentAmountUnitInput,
                   turkeyBankName: turkeyBankInput.trim(),
                   turkeyIban: turkeyIbanInput.trim(),
                   turkeyAccountHolder: turkeyHolderInput.trim(),

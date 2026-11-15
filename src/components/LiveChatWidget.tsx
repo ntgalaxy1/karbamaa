@@ -24,6 +24,7 @@ export const LiveChatWidget: React.FC = () => {
     rejectLiveChat,
     sendLiveChatMessage,
     markChatRead,
+    paymentSettings,
   } = useApp();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -138,17 +139,28 @@ export const LiveChatWidget: React.FC = () => {
                     </ul>
                   </div>
 
-                  {/* Payment Trigger Form */}
-                  <form action="https://karbama34.ir/pay.php" method="POST">
-                    <input type="hidden" name="amount" value={7500000} />
-                    <button
-                      type="submit"
-                      className="w-full py-2 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black rounded-xl shadow-lg shadow-amber-600/30 transition flex items-center justify-center gap-1.5 text-[10px] cursor-pointer"
-                    >
-                      <CreditCard className="w-3.5 h-3.5 text-slate-950" />
-                      <span>پرداخت آنلاین</span>
-                    </button>
-                  </form>
+                  {/* Payment Trigger Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const adminAmountUnit = paymentSettings?.paymentAmountUnit || 'toman';
+                      const adminConfiguredAmount =
+                        paymentSettings?.directPaymentAmount && paymentSettings.directPaymentAmount > 0
+                          ? paymentSettings.directPaymentAmount
+                          : adminAmountUnit === 'rial'
+                            ? 7500000
+                            : 750000;
+                      if (adminAmountUnit === 'toman') {
+                        window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}&unit=toman`;
+                      } else {
+                        window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}`;
+                      }
+                    }}
+                    className="w-full py-2 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black rounded-xl shadow-lg shadow-amber-600/30 transition flex items-center justify-center gap-1.5 text-[10px] cursor-pointer"
+                  >
+                    <CreditCard className="w-3.5 h-3.5 text-slate-950" />
+                    <span>پرداخت آنلاین</span>
+                  </button>
                 </div>
               ) : activeSeekerChat.status === 'pending' ? (
                 /* STATE 2: PAID, WAITING FOR ADMIN APPROVAL */

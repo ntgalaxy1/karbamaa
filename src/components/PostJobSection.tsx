@@ -554,408 +554,150 @@ export const PostJobSection: React.FC = () => {
         </div>
       )}
 
-      {/* STEP 2: PAYMENT (3 METHODS) */}
+      {/* STEP 2: ONLINE PAYMENT GATEWAY ONLY (Manual payments disabled) */}
       {step === 2 && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
           <div className="border-b border-slate-800 pb-4 flex items-center justify-between">
             <div>
-              <h3 className="font-extrabold text-white text-base">گام دوم: انتخاب روش پرداخت تعرفه آگهی</h3>
-              <p className="text-xs text-slate-400 mt-1">یکی از روش‌های زیر را جهت پرداخت انتخاب فرمایید:</p>
+              <h3 className="font-extrabold text-white text-base">گام دوم: پرداخت آنلاین تعرفه انتشار آگهی</h3>
+              <p className="text-xs text-slate-400 mt-1">پرداخت امن از طریق درگاه بانکی شاپرک (شتاب)</p>
             </div>
             <div className="text-left bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-xl">
-              <span className="text-[10px] text-amber-300 block">مبلغ قابل پرداخت (به‌روزرسانی روزانه):</span>
+              <span className="text-[10px] text-amber-300 block">مبلغ قابل پرداخت:</span>
               <span className="text-sm font-extrabold text-amber-400 font-mono">{feeToman.toLocaleString('fa-IR')} تومان</span>
               <span className="text-[10px] text-slate-400 block font-mono">({(feeToman * 10).toLocaleString('fa-IR')} ریال)</span>
             </div>
           </div>
 
-          {/* 3 Payment Methods Tabs */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-
-            {/* Method 1: Sepal Official Shaparak Gateway */}
-            <button
-              onClick={() => setPaymentMethod('sepal')}
-              className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between space-y-3 ${
-                paymentMethod === 'sepal'
-                  ? 'bg-teal-600/20 border-teal-500 text-white shadow-lg'
-                  : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-xs font-extrabold">۱. درگاه رسمی شاپرک سپال</span>
-                <ShieldCheck className="w-5 h-5 text-teal-400" />
+          <div className="p-6 bg-slate-950 border border-teal-500/40 rounded-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-black">
+                شاپرک
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                اتصال مستقیم به درگاه رسمی سپال (payment.sepal.ir) و پرداخت با کلیه کارت‌های شتاب
-              </p>
-              <span className="text-[10px] font-bold text-teal-300 bg-teal-500/10 px-2 py-0.5 rounded-lg border border-teal-500/20 self-start">
-                اتصال مستقیم به سپال
-              </span>
-            </button>
-
-            {/* Method 2: Turkey Bank Account (Ziraat Bank) */}
-            <button
-              onClick={() => setPaymentMethod('turkey_bank')}
-              className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between space-y-3 ${
-                paymentMethod === 'turkey_bank'
-                  ? 'bg-red-600/20 border-red-500 text-white shadow-lg'
-                  : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-xs font-extrabold">۲. حساب بانکی ترکیه (İBAN)</span>
-                <Landmark className="w-5 h-5 text-red-400" />
+              <div>
+                <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                  <span>پرداخت آنلاین از طریق درگاه بانکی</span>
+                  <span className="text-[10px] bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded-full font-bold">
+                    پروتکل رسمی شاپرک
+                  </span>
+                </h4>
+                <p className="text-xs text-slate-400">
+                  مبلغ تعرفه: <strong className="text-teal-300 font-mono">{feeToman.toLocaleString('fa-IR')} تومان</strong> ({(feeToman * 10).toLocaleString('fa-IR')} ریال)
+                </p>
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                واریز مستقیم معادل ارزی تعرفه به حساب زراعت بانک یا ایش‌بانک کارباما با حواله یا FAST
-              </p>
-              <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-lg border border-red-500/20 self-start">
-                حساب بانکی ترکیه
-              </span>
-            </button>
-
-            {/* Method 3: Card to Card from Iran */}
-            <button
-              onClick={() => setPaymentMethod('iran_card')}
-              className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between space-y-3 ${
-                paymentMethod === 'iran_card'
-                  ? 'bg-emerald-600/20 border-emerald-500 text-white shadow-lg'
-                  : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-xs font-extrabold">۳. کارت به کارت از ایران</span>
-                <Send className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1.5 leading-relaxed">
+              <p>• پس از کلیک روی دکمه «پرداخت آنلاین»، مرورگر شما مستقیماً به صفحه درگاه پرداخت بانکی هدایت می‌شود.</p>
+              <p>• پس از تکمیل پرداخت و بازگشت به سایت کارباما، آگهی شما ثبت و منتشر شده و به صورت خودکار به کارجویان اطلاع‌رسانی می‌گردد.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div>
+                <label className="block text-xs text-slate-300 mb-1">نام کارفرما / پرداخت‌کننده</label>
+                <input
+                  type="text"
+                  value={payerName}
+                  onChange={(e) => setPayerName(e.target.value)}
+                  placeholder="مثال: علی اکبری"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white"
+                />
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                انتقال معادل تومانی ({feeToman.toLocaleString('fa-IR')} تومان) با همراه بانک و ارسال فیش واریزی
-              </p>
-              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20 self-start">
-                کارت به کارت ایران
-              </span>
-            </button>
-
+              <div>
+                <label className="block text-xs text-slate-300 mb-1">شماره همراه پرداخت‌کننده (09xxxxxxxxx)</label>
+                <input
+                  type="text"
+                  value={payerPhone}
+                  onChange={(e) => setPayerPhone(e.target.value)}
+                  placeholder="0912..."
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white dir-ltr text-right"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* METHOD 1 CONTENT: SEPAL */}
-          {paymentMethod === 'sepal' && (
-            <div className="p-6 bg-slate-950 border border-teal-500/40 rounded-2xl space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-black">
-                  سپال
-                </div>
-                <div>
-                  <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                    <span>اتصال مستقیم به درگاه پرداخت شاپرک سپال (payment.sepal.ir)</span>
-                    <span className="text-[10px] bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded-full font-bold">
-                      پروتکل رسمی شاپرک
-                    </span>
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    مبلغ ریالی تعرفه با نرخ روز لحظه‌ای: <strong className="text-teal-300 font-mono">{feeToman.toLocaleString('fa-IR')} تومان</strong> ({ (feeToman * 10).toLocaleString('fa-IR') } ریال)
-                  </p>
-                </div>
-              </div>
-              <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1.5 leading-relaxed">
-                <p>• پس از کلیک روی دکمه زیر، مرورگر شما مستقیماً به صفحه رسمی درگاه پرداخت سپال (<code>payment.sepal.ir</code>) هدایت می‌شود.</p>
-                <p>• پس از تکمیل پرداخت در درگاه سپال و بازگشت به <code>karbama34.ir/api/sep/callback.php</code>، تراکنش تایید شده و آگهی شما ثبت می‌گردد.</p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <div>
-                  <label className="block text-xs text-slate-300 mb-1">نام کارفرما / پرداخت‌کننده</label>
-                  <input
-                    type="text"
-                    value={payerName}
-                    onChange={(e) => setPayerName(e.target.value)}
-                    placeholder="مثال: علی اکبری"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-300 mb-1">شماره همراه پرداخت‌کننده (09xxxxxxxxx)</label>
-                  <input
-                    type="text"
-                    value={payerPhone}
-                    onChange={(e) => setPayerPhone(e.target.value)}
-                    placeholder="0912..."
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white dir-ltr text-right"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* METHOD 2 CONTENT: TURKEY BANK ACCOUNT */}
-          {paymentMethod === 'turkey_bank' && (
-            <div className="p-6 bg-slate-950 border border-slate-800 rounded-2xl space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-red-600/20 text-red-400 flex items-center justify-center">
-                    <Landmark className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-sm">مشخصات حساب بانکی ترکیه جهت واریز تعرفه آگهی</h4>
-                    <p className="text-xs text-slate-400">بانک: {paymentSettings.turkeyBankName}</p>
-                  </div>
-                </div>
-                <span className="px-3 py-1 bg-red-600/20 border border-red-500/40 text-red-400 rounded-lg text-xs font-bold font-mono">
-                  500.00 TL
-                </span>
-              </div>
-
-              {/* Account Details Box */}
-              <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400">نام صاحب حساب:</span>
-                  <span className="text-xs font-bold text-white font-mono">{paymentSettings.turkeyAccountHolder}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400">نام بانک ترکیه:</span>
-                  <span className="text-xs font-bold text-white font-mono">{paymentSettings.turkeyBankName}</span>
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="text-xs text-slate-400">شماره ایبان (IBAN):</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-amber-300 dir-ltr select-all">
-                      {paymentSettings.turkeyIban}
-                    </span>
-                    <button
-                      onClick={() => handleCopy(paymentSettings.turkeyIban, 'iban')}
-                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition"
-                      title="کپی شماره ایبان"
-                    >
-                      {copiedKey === 'iban' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Upload Receipt & Tracking No */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5">شماره پیگیری / دکونت بانک (Dekont No) *</label>
-                  <input
-                    type="text"
-                    value={referenceId}
-                    onChange={(e) => setReferenceId(e.target.value)}
-                    placeholder="مثال: 948271034"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white dir-ltr text-right"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5">نام واریزکننده (صاحب حساب ترکیه)</label>
-                  <input
-                    type="text"
-                    value={payerName}
-                    onChange={(e) => setPayerName(e.target.value)}
-                    placeholder="مثال: علی رضایی"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white"
-                  />
-                </div>
-              </div>
-
-              {/* Receipt File Upload */}
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">آپلود عکس فیش واریزی (Dekont Görseli) *</label>
-                <div className="flex items-center gap-4">
-                  <label className="flex-1 border-2 border-dashed border-slate-700 hover:border-red-500 rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/50">
-                    <Upload className="w-6 h-6 text-slate-400 mb-1" />
-                    <span className="text-xs font-bold text-slate-300">انتخاب تصویر فیش واریزی از گالری</span>
-                    <span className="text-[10px] text-slate-500">فرمت‌های JPG یا PNG تا سقف ۵ مگابایت</span>
-                    <input type="file" accept="image/*" onChange={handleReceiptUpload} className="hidden" />
-                  </label>
-                  {receiptImage && (
-                    <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-700 shrink-0">
-                      <img src={receiptImage} alt="پیش‌نمایش فیش" className="w-full h-full object-cover" />
-                      <span className="absolute bottom-0 inset-x-0 bg-emerald-600 text-[9px] text-white text-center py-0.5">آماده</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {/* METHOD 3 CONTENT: IRAN CARD TO CARD */}
-          {paymentMethod === 'iran_card' && (
-            <div className="p-6 bg-slate-950 border border-slate-800 rounded-2xl space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center">
-                    <Send className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-sm">مشخصات کارت بانکی ایران جهت واریز تومانی</h4>
-                    <p className="text-xs text-slate-400">بانک: {paymentSettings.iranBankName}</p>
-                  </div>
-                </div>
-                <span className="px-3 py-1 bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 rounded-lg text-xs font-bold font-mono">
-                  {feeToman.toLocaleString('fa-IR')} تومان
-                </span>
-              </div>
-
-              {/* Card Details Box */}
-              <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400">نام دارنده حساب:</span>
-                  <span className="text-xs font-bold text-white font-mono">{paymentSettings.iranCardHolder}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-400">نام بانک مقصد:</span>
-                  <span className="text-xs font-bold text-white font-mono">{paymentSettings.iranBankName}</span>
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-950 rounded-lg border border-slate-800">
-                  <span className="text-xs text-slate-400">شماره کارت ۱۶ رقمی:</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-mono font-extrabold text-emerald-300 dir-ltr select-all tracking-wider">
-                      {paymentSettings.iranCardNumber}
-                    </span>
-                    <button
-                      onClick={() => handleCopy(paymentSettings.iranCardNumber, 'card')}
-                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition"
-                      title="کپی شماره کارت"
-                    >
-                      {copiedKey === 'card' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Reference ID & Payer Name */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5">شماره پیگیری تراکنش / شماره ارجاع *</label>
-                  <input
-                    type="text"
-                    value={referenceId}
-                    onChange={(e) => setReferenceId(e.target.value)}
-                    placeholder="مثال: 589410294"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white dir-ltr text-right"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5">نام و ۴ رقم آخر کارت واریزکننده</label>
-                  <input
-                    type="text"
-                    value={payerName}
-                    onChange={(e) => setPayerName(e.target.value)}
-                    placeholder="مثال: رضا احمدی - کارت ۴۵۸۲"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white"
-                  />
-                </div>
-              </div>
-
-              {/* Receipt File Upload */}
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">آپلود عکس فیش واریزی کارت به کارت *</label>
-                <div className="flex items-center gap-4">
-                  <label className="flex-1 border-2 border-dashed border-slate-700 hover:border-emerald-500 rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition bg-slate-900/50">
-                    <Upload className="w-6 h-6 text-slate-400 mb-1" />
-                    <span className="text-xs font-bold text-slate-300">انتخاب تصویر فیش واریزی از گالری</span>
-                    <span className="text-[10px] text-slate-500">تصویر اسکرین‌شات رسید همراه بانک یا عابربانک</span>
-                    <input type="file" accept="image/*" onChange={handleReceiptUpload} className="hidden" />
-                  </label>
-                  {receiptImage && (
-                    <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-700 shrink-0">
-                      <img src={receiptImage} alt="پیش‌نمایش فیش" className="w-full h-full object-cover" />
-                      <span className="absolute bottom-0 inset-x-0 bg-emerald-600 text-[9px] text-white text-center py-0.5">آماده</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {/* Buttons: Back and Submit */}
+          {/* Buttons: Back and Online Payment Submit */}
           <div className="flex items-center justify-between pt-4 border-t border-slate-800">
             <button
               onClick={() => setStep(1)}
-              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold flex items-center gap-2 transition"
+              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer"
             >
               <ArrowRight className="w-4 h-4" />
               <span>بازگشت به ویرایش مشخصات</span>
             </button>
 
-            {paymentMethod === 'sepal' || paymentMethod === 'zarinpal' ? (
-              <form
-                action="https://karbama34.ir/pay.php"
-                method="POST"
-                onSubmit={() => {
-                  try {
-                    const subcatString = selectedSubcategories.join('، ');
-                    localStorage.setItem(
-                      'karbama_pending_sepal_job',
-                      JSON.stringify({
-                        title: title.trim(),
-                        company: company.trim(),
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  const subcatString = selectedSubcategories.join('، ');
+                  localStorage.setItem(
+                    'karbama_pending_sepal_job',
+                    JSON.stringify({
+                      title: title.trim(),
+                      company: company.trim(),
+                      city,
+                      district: district.trim() || 'مرکز شهر',
+                      category,
+                      subcategory: subcatString || undefined,
+                      contractType,
+                      payFrequency,
+                      keywords: [
+                        title,
+                        company,
                         city,
-                        district: district.trim() || 'مرکز شهر',
-                        category,
-                        subcategory: subcatString || undefined,
-                        contractType,
-                        payFrequency,
-                        keywords: [
-                          title,
-                          company,
-                          city,
-                          district,
-                          currentCatData?.label || '',
-                          ...selectedSubcategories,
-                          accommodation ? 'جای خواب' : '',
-                          meals ? 'غذا' : '',
-                        ].filter(Boolean),
-                        salaryMin: Number(salaryMin) || 0,
-                        salaryMax: Number(salaryMax) || 0,
-                        currency: 'TRY' as const,
-                        accommodation,
-                        accommodationDetails: accommodation ? accommodationDetails : undefined,
-                        meals,
-                        mealDetails: meals ? mealDetails : undefined,
-                        hasLeave,
-                        leaveDetails: hasLeave ? leaveDetails : undefined,
-                        workPermitSupport,
-                        turkishRequired,
-                        gender,
-                        description: description.trim(),
-                        requirements: requirements
-                          .split('\n')
-                          .map((r) => r.trim())
-                          .filter(Boolean),
-                        contactPhone: contactPhone.trim(),
-                        contactWhatsapp: contactWhatsapp.trim(),
-                        imageUrl: imageUrl.trim() || undefined,
-                        paymentAmountTL: feeTL,
-                        paymentAmountToman: feeToman,
-                        paymentPayerName: payerName.trim() || undefined,
-                        paymentPayerPhone: payerPhone.trim() || undefined,
-                      })
-                    );
-                  } catch {
-                    // ignore
-                  }
-                }}
-              >
-                <input type="hidden" name="amount" value={feeToman * 10} />
-                <button
-                  type="submit"
-                  className="px-7 py-3 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xl transition cursor-pointer"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>پرداخت آنلاین</span>
-                </button>
-              </form>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                className="px-7 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xl transition cursor-pointer"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>ثبت نهایی آگهی و ارسال فیش برای تایید مدیر</span>
-              </button>
-            )}
+                        district,
+                        currentCatData?.label || '',
+                        ...selectedSubcategories,
+                        accommodation ? 'جای خواب' : '',
+                        meals ? 'غذا' : '',
+                      ].filter(Boolean),
+                      salaryMin: Number(salaryMin) || 0,
+                      salaryMax: Number(salaryMax) || 0,
+                      currency: 'TRY' as const,
+                      accommodation,
+                      accommodationDetails: accommodation ? accommodationDetails : undefined,
+                      meals,
+                      mealDetails: meals ? mealDetails : undefined,
+                      hasLeave,
+                      leaveDetails: hasLeave ? leaveDetails : undefined,
+                      workPermitSupport,
+                      turkishRequired,
+                      gender,
+                      description: description.trim(),
+                      requirements: requirements
+                        .split('\n')
+                        .map((r) => r.trim())
+                        .filter(Boolean),
+                      contactPhone: contactPhone.trim(),
+                      contactWhatsapp: contactWhatsapp.trim(),
+                      imageUrl: imageUrl.trim() || undefined,
+                      paymentAmountTL: feeTL,
+                      paymentAmountToman: feeToman,
+                      paymentPayerName: payerName.trim() || undefined,
+                      paymentPayerPhone: payerPhone.trim() || undefined,
+                    })
+                  );
+                } catch {
+                  // ignore
+                }
+                const adminAmountUnit = paymentSettings.paymentAmountUnit || 'toman';
+                const adminConfiguredAmount =
+                  paymentSettings.directPaymentAmount && paymentSettings.directPaymentAmount > 0
+                    ? paymentSettings.directPaymentAmount
+                    : adminAmountUnit === 'rial'
+                      ? feeToman * 10
+                      : feeToman;
+                if (adminAmountUnit === 'toman') {
+                  window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}&unit=toman`;
+                } else {
+                  window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}`;
+                }
+              }}
+              className="px-7 py-3 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xl transition cursor-pointer"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>پرداخت آنلاین</span>
+            </button>
           </div>
-
         </div>
       )}
 

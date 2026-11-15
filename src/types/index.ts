@@ -172,6 +172,7 @@ export interface RegisterPartnerInput {
   username: string;
   password: string;
   city?: string;
+  planId?: PartnerSubscriptionPlanId;
 }
 
 export interface AdminCreatePartnerInput {
@@ -204,6 +205,8 @@ export type JobPaymentStatus = 'pending_payment' | 'pending_approval' | 'paid' |
 export interface PaymentGatewaySettings {
   feeTL: number;                // پایه محاسبه لیر (پیش‌فرض ۵۰۰)
   exchangeRateToman: number;    // نرخ روز هر لیر به تومان
+  directPaymentAmount?: number; // مبلغ مستقیم تعیین‌شده توسط مدیر (اختیاری)
+  paymentAmountUnit?: 'toman' | 'rial'; // واحد مبلغ درگاه (تومان یا ریال)
   lastRateUpdateDate?: string;  // تاریخ آخرین به‌روزرسانی خودکار روزانه
   autoUpdateDaily?: boolean;    // فعال بودن به‌روزرسانی خودکار روزانه
   turkeyBankName: string;       // نام بانک ترکیه (Ziraat Bankası)

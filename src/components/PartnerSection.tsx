@@ -32,6 +32,8 @@ export const PartnerSection: React.FC = () => {
   const {
     currentPartner,
     partners,
+    partnerPlans,
+    paymentSettings,
     isPartnerLoggedIn,
     loginPartner,
     registerPartner,
@@ -58,6 +60,9 @@ export const PartnerSection: React.FC = () => {
   const [regUsername, setRegUsername] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [selectedActivationPlanId, setSelectedActivationPlanId] = useState<'1_month' | '3_months' | '6_months' | '1_year'>(
+    currentPartner?.planId || '1_month'
+  );
 
   const partnerPassCheck = checkPasswordStrength(regPassword);
 
@@ -468,11 +473,203 @@ export const PartnerSection: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg transition"
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg transition cursor-pointer"
               >
-                ثبت‌نام و ورود مستقیم به پنل همکار
+                ثبت‌نام همکار و ادامه جهت پرداخت آنلاین اشتراک
               </button>
             </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Enforce Paid Activation Requirement for Partner Account (unless Admin is logged in)
+  if (currentPartner && !isAdminLoggedIn && currentPartner.subscriptionStatus !== 'active') {
+    const activePlan =
+      partnerPlans.find((pl) => pl.id === selectedActivationPlanId) ||
+      partnerPlans.find((pl) => pl.id === currentPartner.planId) ||
+      partnerPlans[0];
+    const isPendingApproval = currentPartner.subscriptionStatus === 'pending_approval';
+
+    const handlePartnerOnlinePayment = () => {
+      const unit = paymentSettings.paymentAmountUnit || 'toman';
+      const configuredDirect = Number(paymentSettings.directPaymentAmount) || 0;
+      const planToman = activePlan ? activePlan.priceToman : 5000000;
+      const adminConfiguredAmount =
+        configuredDirect > 0 ? configuredDirect : unit === 'toman' ? planToman : planToman * 10;
+
+      try {
+        localStorage.setItem(
+          'karbama_pending_partner_payment',
+          JSON.stringify({
+            partnerId: currentPartner.id,
+            planId: activePlan?.id || '1_month',
+          })
+        );
+      } catch {
+        // ignore
+      }
+
+      if (unit === 'toman') {
+        window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}&unit=toman`;
+      } else {
+        window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}`;
+      }
+    };
+
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 py-4">
+        {/* Partner Header Card */}
+        <div className="bg-slate-900 border border-indigo-500/40 rounded-3xl p-5 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 shrink-0">
+              <Building2 className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-black text-white">
+                  حساب همکار: {currentPartner.companyName}
+                </h2>
+                <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-400/40 text-[11px] font-mono font-bold text-indigo-300">
+                  کد همکاری: {currentPartner.partnerCode}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                نماینده: {currentPartner.fullName} | شهر: {currentPartner.city || 'استانبول'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={logoutPartner}
+            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-300 border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>خروج از حساب همکار</span>
+          </button>
+        </div>
+
+        {/* Locked Activation Gate */}
+        <div className="bg-slate-900 border-2 border-amber-500/40 rounded-3xl p-6 shadow-2xl space-y-5">
+          <div className="flex items-start gap-3.5 border-b border-slate-800 pb-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0">
+              <Lock className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  فعال‌سازی پنل و اشتراک همکار
+                </h3>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-black border ${
+                    isPendingApproval
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      : 'bg-red-500/20 text-red-300 border-red-500/40'
+                  }`}
+                >
+                  {isPendingApproval ? '⏳ در انتظار تایید مدیریت' : '🔒 غیرفعال (نیازمند پرداخت آنلاین)'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                همکار گرامی، امکانات پنل همکاری (ثبت کارجو، مدیریت پرونده‌ها و دسترسی به ظرفیت‌های شغلی) تا زمان تکمیل پرداخت آنلاین و تایید نهایی توسط مدیریت غیرفعال می‌باشد.
+              </p>
+            </div>
+          </div>
+
+          {isPendingApproval ? (
+            <div className="p-5 rounded-2xl bg-amber-950/30 border border-amber-500/40 space-y-3 text-center">
+              <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-400 text-amber-300 flex items-center justify-center mx-auto">
+                <CheckCircle className="w-6 h-6" />
+              </div>
+              <h4 className="text-sm sm:text-base font-black text-amber-300">
+                پرداخت آنلاین شما ثبت شد و در انتظار تایید مدیریت است
+              </h4>
+              <p className="text-xs text-slate-300 leading-relaxed max-w-lg mx-auto">
+                اطلاعات پرداخت حق اشتراک شما برای مدیریت ارسال گردیده است. به محض بررسی و تایید توسط مدیر سامانه، پنل همکاری شما به صورت خودکار فعال خواهد شد.
+              </p>
+              {currentPartner.paymentReferenceId && (
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-950 border border-amber-500/30 text-xs">
+                  <span className="text-slate-400">وضعیت / کد رهگیری:</span>
+                  <span className="font-mono font-bold text-amber-300">{currentPartner.paymentReferenceId}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {currentPartner.adminApprovalNote && (
+                <div className="p-3.5 rounded-2xl bg-red-950/50 border border-red-500/40 text-xs text-red-200 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                  <span>یادداشت مدیریت: {currentPartner.adminApprovalNote}</span>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-300">
+                  انتخاب دوره اشتراک پنل همکاری:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {partnerPlans.map((pl) => {
+                    const isSelected = selectedActivationPlanId === pl.id;
+                    return (
+                      <button
+                        key={pl.id}
+                        type="button"
+                        onClick={() => setSelectedActivationPlanId(pl.id)}
+                        className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between gap-2 cursor-pointer ${
+                          isSelected
+                            ? 'bg-indigo-600/25 border-2 border-indigo-400 text-white shadow-lg'
+                            : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-xs sm:text-sm font-black text-white">{pl.title}</span>
+                          {pl.badge && (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+                              {pl.badge}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between w-full pt-1 border-t border-slate-800/80">
+                          <span className="text-xs font-mono font-black text-emerald-400">
+                            {pl.priceToman.toLocaleString('fa-IR')} تومان
+                          </span>
+                          <span className="text-[11px] font-mono text-slate-400">
+                            ({pl.priceTL.toLocaleString('fa-IR')} لیر)
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/30 space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400">پلن انتخابی جهت فعال‌سازی:</span>
+                  <span className="font-bold text-white">{activePlan?.title}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400">مبلغ قابل پرداخت در درگاه آنلاین:</span>
+                  <span className="font-mono font-black text-emerald-400 text-sm">
+                    {(Number(paymentSettings.directPaymentAmount) > 0
+                      ? Number(paymentSettings.directPaymentAmount)
+                      : activePlan?.priceToman || 0
+                    ).toLocaleString('fa-IR')}{' '}
+                    {(paymentSettings.paymentAmountUnit || 'toman') === 'toman' ? 'تومان' : 'ریال'}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handlePartnerOnlinePayment}
+                  className="w-full py-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl text-sm shadow-xl shadow-emerald-900/40 transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <DollarSign className="w-5 h-5" />
+                  <span>پرداخت آنلاین و فعال‌سازی پنل همکار</span>
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
