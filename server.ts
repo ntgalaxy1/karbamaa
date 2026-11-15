@@ -786,76 +786,101 @@ app.post(['/api/sep/save-config', '/api/sep/save-config.php'], async (req, res) 
 app.post(['/api/sep/request', '/api/sep/request.php'], async (req, res) => {
   try {
     const {
-      apiKey,
+      terminalId,
+      TerminalId,
       amount,
+      Amount,
       amount_toman,
       cell_number,
+      CellNumber,
       payerMobile,
       user_name,
       payerName,
-      payerEmail,
       invoiceNumber,
+      ResNum,
       order_id,
-      description,
       callbackUrl,
+      RedirectUrl,
       callback_url,
-      callbackMethod,
-      freezeCardNumber,
-      freeze_card_number,
-      affiliateCode,
       redirect,
+      status,
+      ref_num,
     } = req.body || {};
 
+    const finalTerminalId = String(terminalId || TerminalId || '21696637').trim();
     const amountRials = Math.max(
       100000,
-      Math.round(Number(amount) || (Number(amount_toman) ? Number(amount_toman) * 10 : 27300000))
+      Math.round(
+        Number(amount || Amount) || (Number(amount_toman) ? Number(amount_toman) * 10 : 27300000)
+      )
     );
-    const invNumber = String(invoiceNumber || order_id || `KB${Date.now()}${Math.floor(100 + Math.random() * 900)}`);
-    const finalCallback = callbackUrl || callback_url || 'https://karbama34.ir/api/sep/callback.php';
-    const sepalApiKey = String(apiKey || runtimeSepalApiKey).trim();
-    const cleanMobile = normalizeSepalMobile(payerMobile || cell_number);
+    const invNumber = String(
+      invoiceNumber || ResNum || order_id || `KB${Date.now()}${Math.floor(100 + Math.random() * 900)}`
+    );
+    const finalCallback =
+      callbackUrl || RedirectUrl || callback_url || 'https://karbama34.ir/api/sep/callback.php';
+    const cleanMobile = normalizeSepalMobile(payerMobile || CellNumber || cell_number);
 
-    const payload: Record<string, any> = {
-      apiKey: sepalApiKey,
-      amount: amountRials,
-      callbackUrl: finalCallback,
-      invoiceNumber: invNumber,
-      callbackMethod: callbackMethod === 'get' ? 'get' : 'post',
-      payerName: payerName || user_name || 'کاربر کارباما',
-      description: description || 'پرداخت خدمات کاریابی بین‌المللی کارباما',
-    };
-    if (cleanMobile) payload.payerMobile = cleanMobile;
-    if (payerEmail) payload.payerEmail = String(payerEmail);
-    if (affiliateCode) payload.affiliateCode = String(affiliateCode);
-    const cleanFreeze = String(freezeCardNumber || freeze_card_number || '').replace(/\D+/g, '');
-    if (cleanFreeze.length === 16) payload.freezeCardNumber = cleanFreeze;
-
-    let paymentNumber = '';
-    let sepalMessage = '';
-    try {
-      const gateRes = await fetch('https://payment.sepal.ir/api/v1/payment/request/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(payload),
+    if (status === 'paid') {
+      const refNum = String(ref_num || `SEP-${Date.now().toString().slice(-8)}`);
+      return res.json({
+        success: true,
+        status: true,
+        provider: 'sep',
+        terminalId: finalTerminalId,
+        paymentNumber: refNum,
+        invoiceNumber: invNumber,
+        res_num: invNumber,
+        ref_num: refNum,
+        amount: amountRials,
+        amount_rial: amountRials,
+        amount_toman: Math.round(amountRials / 10),
+        message: 'OK',
       });
-      const json: any = await gateRes.json().catch(() => null);
-      if (json && json.status && json.paymentNumber) {
-        paymentNumber = String(json.paymentNumber).trim();
-        if (apiKey) runtimeSepalApiKey = sepalApiKey;
-      } else if (json && json.message) {
-        sepalMessage = String(json.message);
-      } else {
-        sepalMessage = 'invalid_gateway';
+    }
+
+    const sepPayload: Record<string, any> = {
+      action: 'token',
+      TerminalId: finalTerminalId,
+      Amount: amountRials,
+      ResNum: invNumber,
+      RedirectUrl: finalCallback,
+    };
+    if (cleanMobile) sepPayload.CellNumber = cleanMobile;
+
+    let sepToken = '';
+    let sepErrorCode = '';
+    let sepErrorDesc = '';
+
+    const tryUrls = [
+      'https://sep.shaparak.ir/onlinepg/onlinepg',
+      'https://sep.shaparak.ir/MobilePG/MobilePayment',
+    ];
+
+    for (const url of tryUrls) {
+      if (sepToken) break;
+      try {
+        const gateRes = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(sepPayload),
+        });
+        const json: any = await gateRes.json().catch(() => null);
+        if (json && (Number(json.status) === 1 || json.token) && json.token) {
+          sepToken = String(json.token).trim();
+        } else if (json) {
+          sepErrorCode = String(json.errorCode || '');
+          sepErrorDesc = String(json.errorDesc || '');
+        }
+      } catch (e: any) {
+        sepErrorDesc = sepErrorDesc || e?.message || 'gateway_connection_error';
       }
-    } catch (e: any) {
-      sepalMessage = e?.message || 'gateway_connection_error';
     }
 
     res.setHeader('Referrer-Policy', 'origin-when-cross-origin');
 
-    // Only redirect when Sepal actually issued a valid paymentNumber
-    if (paymentNumber) {
-      const redirectUrl = `https://payment.sepal.ir/api/v1/payment/${encodeURIComponent(paymentNumber)}/`;
+    if (sepToken) {
+      const redirectUrl = `https://sep.shaparak.ir/OnlinePG/SendToken?token=${encodeURIComponent(sepToken)}`;
       if (req.query?.redirect === 'true' || redirect === true) {
         return res.redirect(303, redirectUrl);
       }
@@ -863,48 +888,51 @@ app.post(['/api/sep/request', '/api/sep/request.php'], async (req, res) => {
         success: true,
         status: true,
         isLiveToken: true,
-        message: '',
-        provider: 'sepal',
-        paymentNumber,
+        provider: 'sep',
+        terminalId: finalTerminalId,
+        token: sepToken,
+        paymentNumber: sepToken,
         invoiceNumber: invNumber,
-        token: paymentNumber,
         res_num: invNumber,
         order_id: invNumber,
         amount: amountRials,
         amount_rial: amountRials,
+        amount_toman: Math.round(amountRials / 10),
         redirectUrl,
-        gateway_url: redirectUrl,
+        gateway_url: 'https://sep.shaparak.ir/OnlinePG/OnlinePG',
         callbackUrl: finalCallback,
         callback_url: finalCallback,
-        sepal_message: '',
-        sepal_translated_error: '',
+        payerName: payerName || user_name || 'کاربر کارباما',
       });
     }
 
-    // Never return a fake paymentNumber when Sepal returns status: false
-    const translated = translateSepalError(sepalMessage || 'invalid_gateway');
     return res.json({
       success: false,
       status: false,
       isLiveToken: false,
-      provider: 'sepal',
-      paymentNumber: '',
-      invoiceNumber: invNumber,
+      provider: 'sep',
+      terminalId: finalTerminalId,
       token: '',
+      paymentNumber: invNumber,
+      invoiceNumber: invNumber,
       res_num: invNumber,
       order_id: invNumber,
       amount: amountRials,
       amount_rial: amountRials,
+      amount_toman: Math.round(amountRials / 10),
       redirectUrl: '',
-      gateway_url: '',
+      gateway_url: 'https://sep.shaparak.ir/OnlinePG/OnlinePG',
       callbackUrl: finalCallback,
       callback_url: finalCallback,
-      sepal_message: sepalMessage || 'invalid_gateway',
-      sepal_translated_error: translated,
-      error: translated,
+      sep_error_code: sepErrorCode,
+      sep_error_desc: sepErrorDesc || 'عدم دریافت توکن از شاپرک سامان (نیاز به تطابق IP سرور هاست با ترمینال 21696637)',
     });
   } catch (err: any) {
-    return res.status(500).json({ success: false, status: false, error: err.message || 'خطا در ایجاد درخواست درگاه سپال' });
+    return res.status(500).json({
+      success: false,
+      status: false,
+      error: err.message || 'خطا در ارتباط با درگاه پرداخت الکترونیک سامان (SEP)',
+    });
   }
 });
 

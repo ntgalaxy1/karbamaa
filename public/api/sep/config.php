@@ -21,10 +21,10 @@ define('KARBAMA_DOMAIN', 'https://karbama34.ir');
 define('KARBAMA_CALLBACK_URL', 'https://karbama34.ir/api/sep/callback.php');
 define('KARBAMA_RETURN_APP_URL', 'https://karbama34.ir/#/payment-result');
 
-// نوع درگاه پیش‌فرض: 'sepal' (درگاه رسمی سپال) یا 'sep' (سامان کیش)
-define('DEFAULT_GATEWAY_PROVIDER', 'sepal');
+// نوع درگاه پیش‌فرض: 'sep' (سامان کیش - شاپرک) یا 'sepal'
+define('DEFAULT_GATEWAY_PROVIDER', 'sep');
 
-// مسیر فایل ذخیره پویا تنظیمات کلید درگاه سپال روی سرور
+// مسیر فایل ذخیره پویا تنظیمات کلید درگاه روی سرور
 define('GATEWAY_SETTINGS_FILE', __DIR__ . '/gateway_settings.json');
 
 /**
@@ -42,7 +42,7 @@ function getConfiguredSepalApiKey() {
 }
 
 /**
- * ذخیره کلید وب‌سرویس درگاه سپال (apiKey) روی سرور هاست
+ * ذخیره کلید وب‌سرویس درگاه روی سرور هاست
  */
 function saveConfiguredSepalApiKey($apiKey, $uniqueCode = '') {
     $current = [];
@@ -65,17 +65,19 @@ function saveConfiguredSepalApiKey($apiKey, $uniqueCode = '') {
 }
 
 // اطلاعات رسمی وب‌سرویس درگاه پرداخت سپال (Sepal API v1)
-// مرجع: https://payment.sepal.ir/api/v1/payment/
 define('SEPAL_API_KEY', getConfiguredSepalApiKey());
 define('SEPAL_UNIQUE_CODE', '2930311446');
 define('SEPAL_REQUEST_URL', 'https://payment.sepal.ir/api/v1/payment/request/');
 define('SEPAL_GATEWAY_BASE_URL', 'https://payment.sepal.ir/api/v1/payment/');
 define('SEPAL_VERIFY_URL', 'https://payment.sepal.ir/api/v1/payment/verify/');
 
-// اطلاعات درگاه سامان کیش (SEP) در صورت نیاز
-define('SEP_TERMINAL_ID', '14589230');
+// اطلاعات رسمی درگاه پرداخت الکترونیک سامان کیش (SEP - شاپرک)
+// شماره ترمینال اختصاصی کارباما: 21696637
+define('SEP_TERMINAL_ID', '21696637');
+define('SEP_TOKEN_URL', 'https://sep.shaparak.ir/onlinepg/onlinepg');
 define('SEP_REQUEST_URL', 'https://sep.shaparak.ir/MobilePG/MobilePayment');
 define('SEP_GATEWAY_URL', 'https://sep.shaparak.ir/OnlinePG/OnlinePG');
+define('SEP_SEND_TOKEN_URL', 'https://sep.shaparak.ir/OnlinePG/SendToken');
 define('SEP_VERIFY_URL', 'https://sep.shaparak.ir/verifyTxnRandomSessionkey/ipg/VerifyTransaction');
 
 // -------------------------------------------------------------

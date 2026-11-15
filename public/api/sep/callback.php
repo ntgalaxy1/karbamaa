@@ -101,38 +101,54 @@ if ($sepalStatus === 1 && !empty($paymentNumber)) {
 }
 // -------------------------------------------------------------
 // ب) بررسی بازگشت از درگاه سامان کیش (SEP: State === 'OK' || Status === 2)
+// شماره ترمینال سامان: 21696637
 // -------------------------------------------------------------
-elseif ($sepState === 'OK' || $sepStatus === 2) {
+elseif (strtoupper($sepState) === 'OK' || $sepStatus === 2) {
     if (!empty($referenceNumber)) {
         $sepVerifyPayload = [
-            'TerminalNumber' => SEP_TERMINAL_ID,
+            'TerminalNumber' => intval(SEP_TERMINAL_ID),
             'RefNum' => $referenceNumber
         ];
         $verifyRes = makeHttpPostRequest(SEP_VERIFY_URL, $sepVerifyPayload);
         $verifyJson = json_decode($verifyRes['body'], true);
 
         if (
-            (isset($verifyJson['Success']) && $verifyJson['Success'] === true) ||
-            (isset($verifyJson['ResultCode']) && intval($verifyJson['ResultCode']) === 0)
+            (is_array($verifyJson) && isset($verifyJson['Success']) && $verifyJson['Success'] === true) ||
+            (is_array($verifyJson) && isset($verifyJson['ResultCode']) && intval($verifyJson['ResultCode']) === 0)
         ) {
             $isSuccess = true;
-            $verifyMessage = 'پرداخت شما با موفقیت انجام شد';
+            $verifyMessage = 'پرداخت شما در درگاه شاپرک سامان با موفقیت تایید شد';
+            if (isset($verifyJson['TransactionDetail']) && is_array($verifyJson['TransactionDetail'])) {
+                $detail = $verifyJson['TransactionDetail'];
+                if (!empty($detail['StraceNo'])) {
+                    $traceNo = strval($detail['StraceNo']);
+                }
+                if (!empty($detail['MaskedPan']) && empty($cardNumber)) {
+                    $cardNumber = strval($detail['MaskedPan']);
+                }
+                if (!empty($detail['OriginalAmount']) && $amount <= 0) {
+                    $amount = intval($detail['OriginalAmount']);
+                }
+            }
         } else {
-            $errorMessage = 'تایید نهایی تراکنش توسط سرور شاپرک انجام نشد. در صورت کسر وجه، ظرف ۷۲ ساعت به حساب شما بازمی‌گردد.';
+            $errDesc = (is_array($verifyJson) && !empty($verifyJson['ResultDescription']))
+                ? strval($verifyJson['ResultDescription'])
+                : 'تایید نهایی تراکنش توسط سرور شاپرک سامان انجام نشد. در صورت کسر وجه، ظرف ۷۲ ساعت به حساب شما بازمی‌گردد.';
+            $errorMessage = $errDesc;
         }
     } else {
-        $errorMessage = 'شماره مرجع بانکی (referenceNumber / RefNum) دریافت نشد.';
+        $errorMessage = 'شماره مرجع بانکی (RefNum) از درگاه سامان دریافت نشد.';
     }
 } else {
-    $errorMessage = 'تراکنش پرداخت توسط کاربر لغو شد یا از سمت بانک ناموفق اعلام گردید (status=0).';
+    $errorMessage = 'تراکنش پرداخت توسط کاربر لغو شد یا از سمت بانک ناموفق اعلام گردید.';
 }
 
 // ذخیره نتیجه نهایی در دیتابیس
-$orderKey = !empty($invoiceNumber) ? $invoiceNumber : $paymentNumber;
+$orderKey = !empty($invoiceNumber) ? $invoiceNumber : ($paymentNumber ?: $referenceNumber);
 if ($isSuccess && !empty($orderKey)) {
     saveOrderData($orderKey, [
         'res_num' => $invoiceNumber ?: $orderKey,
-        'payment_number' => $paymentNumber,
+        'payment_number' => $paymentNumber ?: $referenceNumber,
         'status' => 'paid',
         'ref_num' => $referenceNumber ?: $paymentNumber,
         'trace_no' => $traceNo ?: $referenceNumber,
@@ -145,7 +161,7 @@ if ($isSuccess && !empty($orderKey)) {
     ]);
 } elseif (!empty($orderKey)) {
     saveOrderData($orderKey, [
-        'payment_number' => $paymentNumber,
+        'payment_number' => $paymentNumber ?: $referenceNumber,
         'status' => 'failed',
         'error_message' => $errorMessage
     ]);
@@ -153,10 +169,12 @@ if ($isSuccess && !empty($orderKey)) {
 
 $returnQuery = http_build_query([
     'payment' => $isSuccess ? 'success' : 'failed',
-    'provider' => 'sepal',
-    'paymentNumber' => $paymentNumber,
+    'provider' => 'sep',
+    'terminalId' => SEP_TERMINAL_ID,
+    'paymentNumber' => $paymentNumber ?: $referenceNumber,
     'invoiceNumber' => $invoiceNumber,
-    'refId' => $referenceNumber ?: $paymentNumber,
+    'refId' => $traceNo ?: ($referenceNumber ?: $paymentNumber),
+    'RefNum' => $referenceNumber,
     'resNum' => $invoiceNumber,
     'cardNumber' => $cardNumber,
     'amount' => $amount,
