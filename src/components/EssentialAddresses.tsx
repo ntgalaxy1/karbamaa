@@ -359,7 +359,7 @@ export const EssentialAddresses: React.FC = () => {
             <div className="bg-gradient-to-br from-amber-950/70 to-slate-900 border border-amber-500/40 rounded-2xl p-4 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-1.5 text-amber-400 text-xs font-bold mb-1">
-                  وزارت کار ترکیه (شکایت و بیمه)
+                  وزارت کار ترکیه (رسیدگی به شکایات کارگری)
                 </div>
                 <div className="text-xl font-extrabold text-white font-mono">170 (Alo 170)</div>
                 <div className="text-[11px] text-slate-300">پیگیری حقوق پرداخت‌نشده و اقامت کاری</div>

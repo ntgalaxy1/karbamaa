@@ -4,7 +4,6 @@ import { TurkishLevel, ResidenceStatus } from '../types';
 import { AuthModal } from './AuthModal';
 import { ResumeBuilder } from './ResumeBuilder';
 import { CVBuilder } from './CVBuilder';
-import { PWAInstallBanner } from './PWAInstallBanner';
 import {
   User,
   Users,
@@ -250,8 +249,6 @@ export const SettingsProfile: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Mobile Version / PWA Install Banner transferred to Settings */}
-      <PWAInstallBanner />
 
       {/* Pending Verification & Direct Online Payment Section if Unapproved */}
       {currentSeeker.verificationStatus !== 'approved' && (
@@ -314,8 +311,20 @@ export const SettingsProfile: React.FC = () => {
       <div className="bg-gradient-to-r from-red-950 via-slate-900 to-slate-900 dark:from-red-950 dark:via-slate-900 dark:to-slate-900 light:from-red-900 light:via-slate-800 light:to-slate-900 border border-red-500/30 rounded-3xl p-6 shadow-xl print:hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-red-600/40">
-              {currentSeeker.fullName.charAt(0)}
+            <div className="w-16 h-16 rounded-2xl bg-slate-900 border-2 border-red-500/50 flex items-center justify-center overflow-hidden shadow-lg shadow-red-600/30 shrink-0">
+              {currentSeeker.fullBodyPhotoUrl || currentSeeker.passportPhotoUrl ? (
+                <img
+                  src={currentSeeker.fullBodyPhotoUrl || currentSeeker.passportPhotoUrl}
+                  alt={currentSeeker.fullName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <img
+                  src="/logo.png"
+                  alt={currentSeeker.fullName}
+                  className="w-full h-full object-cover"
+                />
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2">

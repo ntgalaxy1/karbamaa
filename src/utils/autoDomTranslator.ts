@@ -27,11 +27,11 @@ const PHRASE_DICT: Array<[string, { tr: string; en: string; ar: string }]> = [
     },
   ],
   [
-    'امکان ثبت آگهی شغلی جدید با مشخصات کامل (بیمه، غذا، جای خواب و...) و ویرایش/حذف تمام آگهی‌ها در اختیار شماست.',
+    'امکان ثبت آگهی شغلی جدید با مشخصات کامل (غذا، جای خواب و...) و ویرایش/حذف تمام آگهی‌ها در اختیار شماست.',
     {
-      tr: 'Tüm detaylarıyla (sigorta, yemek, konaklama vb.) yeni iş ilanı ekleme ve tüm ilanları düzenleme/silme yetkisi sizdedir.',
-      en: 'You have full access to post new job listings with complete details (insurance, meals, accommodation) and edit/delete all ads.',
-      ar: 'يمكنك إضافة إعلانات وظائف جديدة بكافة التفاصيل (التأمين، الطعام، السكن) وتعديل أو حذف جميع الإعلانات.',
+      tr: 'Tüm detaylarıyla (yemek, konaklama vb.) yeni iş ilanı ekleme ve tüm ilanları düzenleme/silme yetkisi sizdedir.',
+      en: 'You have full access to post new job listings with complete details (meals, accommodation) and edit/delete all ads.',
+      ar: 'يمكنك إضافة إعلانات وظائف جديدة بكافة التفاصيل (الطعام، السكن) وتعديل أو حذف جميع الإعلانات.',
     },
   ],
   [
@@ -243,11 +243,11 @@ const PHRASE_DICT: Array<[string, { tr: string; en: string; ar: string }]> = [
     },
   ],
   [
-    'بیمه و مجوز کار',
+    'اقامت و مجوز کار',
     {
-      tr: 'Sigorta ve Çalışma İzni',
-      en: 'Insurance & Work Permit',
-      ar: 'التأمين وتصريح العمل',
+      tr: 'İkamet ve Çalışma İzni',
+      en: 'Residency & Work Permit',
+      ar: 'الإقامة وتصريح العمل',
     },
   ],
   [
@@ -400,7 +400,6 @@ const TOKEN_DICT: Array<[string, { tr: string; en: string; ar: string }]> = [
   ['جای خواب', { tr: 'Konaklama', en: 'Accommodation', ar: 'سكن' }],
   ['خوابگاه', { tr: 'Yurt / Konaklama', en: 'Dormitory', ar: 'سكن مشترك' }],
   ['غذا', { tr: 'Yemek', en: 'Meals', ar: 'طعام' }],
-  ['بیمه', { tr: 'Sigorta', en: 'Insurance', ar: 'تأمين' }],
   ['مجوز کار', { tr: 'Çalışma İzni', en: 'Work Permit', ar: 'تصريح عمل' }],
   ['مرخصی', { tr: 'İzin', en: 'Leave', ar: 'إجازة' }],
   ['حقوق', { tr: 'Maaş', en: 'Salary', ar: 'الراتب' }],

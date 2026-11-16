@@ -194,10 +194,10 @@ export const TRANSLATIONS: TranslationDictionary = {
     ar: 'الجسر المباشر الذي يربط الباحثين عن عمل والمتخصصين بأفضل أصحاب العمل وفرص العمل الحقيقية',
   },
   bannerDescription: {
-    fa: 'در سامانه رسمی کارباما، پرونده شغلی خود را ثبت کنید و بدون واسطه‌های غیرمعتبر، مستقیماً به صدها فرصت شغلی تاییدشده همراه با جای خواب، بیمه و قرارداد قانونی متصل شوید.',
-    tr: 'Resmi Karbama sisteminde iş dosyanızı oluşturun; konaklama, sigorta ve yasal sözleşmeli yüzlerce onaylı iş fırsatına doğrudan ulaşın.',
-    en: 'Register your official career profile on Karbama and connect directly to hundreds of verified jobs with accommodation, insurance, and legal contracts.',
-    ar: 'سجّل ملفك المهني في منصة كارباما الرسمية وتواصل مباشرة مع مئات فرص العمل المعتمدة مع السكن والتأمين والعقود القانونية.',
+    fa: 'در سامانه رسمی کارباما، پرونده شغلی خود را ثبت کنید و بدون واسطه‌های غیرمعتبر، مستقیماً به صدها فرصت شغلی تاییدشده همراه با جای خواب، وعده غذایی و قرارداد قانونی متصل شوید.',
+    tr: 'Resmi Karbama sisteminde iş dosyanızı oluşturun; konaklama, yemek ve yasal sözleşmeli yüzlerce onaylı iş fırsatına doğrudan ulaşın.',
+    en: 'Register your official career profile on Karbama and connect directly to hundreds of verified jobs with accommodation, meals, and legal contracts.',
+    ar: 'سجّل ملفك المهني في منصة كارباما الرسمية وتواصل مباشرة مع مئات فرص العمل المعتمدة مع السكن والوجبات والعقود القانونية.',
   },
   searchScopeLabel: {
     fa: 'محدوده جستجو:',
@@ -320,12 +320,6 @@ export const TRANSLATIONS: TranslationDictionary = {
     tr: 'Yemek Dahil',
     en: 'Food Provided',
     ar: 'وجبات متوفرة',
-  },
-  insuranceSGK: {
-    fa: 'بیمه SGK',
-    tr: 'SGK Sigorta',
-    en: 'SGK Insurance',
-    ar: 'تأمين صحي SGK',
   },
 
   // Common Actions & Badges

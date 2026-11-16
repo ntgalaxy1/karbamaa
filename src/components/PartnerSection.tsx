@@ -45,6 +45,7 @@ export const PartnerSection: React.FC = () => {
     loginPartner,
     registerPartner,
     logoutPartner,
+    recoverPassword,
     registerSeekerByPartner,
     updateSeekerRecord,
     deleteSeekerRecord,
@@ -59,6 +60,10 @@ export const PartnerSection: React.FC = () => {
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmailInput, setForgotEmailInput] = useState('');
+  const [forgotNewPassInput, setForgotNewPassInput] = useState('');
+  const [forgotResult, setForgotResult] = useState<{ success: boolean; message: string } | null>(null);
   const [regCompanyName, setRegCompanyName] = useState('');
   const [regFullName, setRegFullName] = useState('');
   const [regNationalId, setRegNationalId] = useState('');
@@ -400,7 +405,21 @@ export const PartnerSection: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">رمز عبور</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-300">رمز عبور</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotModal(true);
+                      setForgotResult(null);
+                      setForgotEmailInput('');
+                      setForgotNewPassInput('');
+                    }}
+                    className="text-[11px] text-amber-400 hover:text-amber-300 font-bold transition cursor-pointer"
+                  >
+                    فراموشی رمز عبور همکار؟
+                  </button>
+                </div>
                 <div className="relative">
                   <Key className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
                   <input
@@ -417,10 +436,109 @@ export const PartnerSection: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg transition"
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg transition cursor-pointer"
               >
                 ورود به پنل همکار
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthError(null);
+                  setAuthTab('register');
+                }}
+                className="w-full py-2.5 bg-indigo-950/60 hover:bg-indigo-900/70 text-indigo-300 border border-indigo-500/40 font-bold rounded-xl text-xs transition cursor-pointer"
+              >
+                حساب ندارید؟ ثبت‌نام همکار
+              </button>
+
+              {showForgotModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+                  <div className="w-full max-w-md bg-slate-900 border border-indigo-500/40 rounded-3xl p-6 shadow-2xl space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                      <span className="text-sm font-bold text-indigo-300">
+                        بازیابی رمز عبور همکار (با ایمیل)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotModal(false)}
+                        className="p-1 text-slate-400 hover:text-white rounded-lg"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      آدرس ایمیل ثبت‌شده هنگام ثبت‌نام همکار را وارد نمایید تا رمز عبور شما بازیابی یا بازنشانی گردد.
+                    </p>
+                    {forgotResult && (
+                      <div
+                        className={`p-3 rounded-xl text-xs font-bold ${
+                          forgotResult.success
+                            ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
+                            : 'bg-red-500/20 border border-red-500/40 text-red-300'
+                        }`}
+                      >
+                        {forgotResult.message}
+                      </div>
+                    )}
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                          آدرس ایمیل همکار (یا نام کاربری)
+                        </label>
+                        <input
+                          type="text"
+                          dir="ltr"
+                          value={forgotEmailInput}
+                          onChange={(e) => setForgotEmailInput(e.target.value)}
+                          placeholder="partner@gmail.com"
+                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white font-mono text-left"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                          رمز عبور جدید (اختیاری - جهت تغییر مستقیم)
+                        </label>
+                        <input
+                          type="password"
+                          dir="ltr"
+                          value={forgotNewPassInput}
+                          onChange={(e) => setForgotNewPassInput(e.target.value)}
+                          placeholder="رمز جدید (حداقل ۶ کاراکتر)"
+                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white font-mono text-left"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotModal(false)}
+                        className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold"
+                      >
+                        بستن
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!forgotEmailInput.trim()) return;
+                          const res = recoverPassword(
+                            forgotEmailInput,
+                            'partner',
+                            forgotNewPassInput.trim() ? forgotNewPassInput.trim() : undefined
+                          );
+                          setForgotResult({
+                            success: res.success,
+                            message: res.message || res.error || '',
+                          });
+                        }}
+                        className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold"
+                      >
+                        تایید ایمیل و بازیابی رمز
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </form>
           ) : (
             <form onSubmit={handleRegister} className="space-y-4">

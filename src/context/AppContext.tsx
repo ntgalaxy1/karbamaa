@@ -143,7 +143,18 @@ interface AppContextType {
   logoutSeeker: () => void;
   logoutAdmin: () => void;
   changePassword: (oldPassword: string, newPassword: string) => { success: boolean; error?: string };
-  recoverPassword: (emailOrUsername: string) => { success: boolean; message?: string; error?: string; username?: string; password?: string };
+  recoverPassword: (
+    emailOrUsername: string,
+    targetRole?: 'seeker' | 'partner',
+    newPassword?: string
+  ) => {
+    success: boolean;
+    message?: string;
+    error?: string;
+    username?: string;
+    password?: string;
+    accountType?: 'seeker' | 'partner';
+  };
   updateProfile: (updates: Partial<JobSeeker>) => { success: boolean; error?: string };
   updateResume: (resume: SeekerResume) => { success: boolean; error?: string };
 
@@ -190,6 +201,7 @@ interface AppContextType {
   unreadNotificationCount: number;
   markNotificationAsRead: (id: string) => void;
   markAllNotificationsAsRead: () => void;
+  deleteNotification: (id: string) => void;
   clearNotifications: () => void;
   pushPermissionStatus: 'granted' | 'denied' | 'default' | 'unsupported';
   requestPushPermission: () => Promise<'granted' | 'denied' | 'default'>;
@@ -211,6 +223,7 @@ interface AppContextType {
   adminNotifications: any[];
   addAdminNotification: (notif: any) => void;
   markAdminNotificationAsRead: (id: string) => void;
+  deleteAdminNotification: (id: string) => void;
   clearAdminNotifications: () => void;
   unreadAdminNotifCount: number;
   approveSeekerAccount: (seekerId: string, note?: string) => void;
@@ -323,9 +336,9 @@ const DEFAULT_BROKER_SETTINGS: BrokerSettings = {
 
 const STORAGE_KEYS = {
   SEEKERS: 'karbama_seekers_v20_clean_final',
-  JOBS: 'karbama_jobs_v3',
+  JOBS: 'karbama_jobs_v4',
   APPLICATIONS: 'karbama_applications_v19_clean',
-  ADDRESSES: 'karbama_addresses_v3',
+  ADDRESSES: 'karbama_addresses_v4',
   HOTELS: 'karbama_hotels_v3',
   BOOKINGS: 'karbama_bookings_v3',
   TRANSIT: 'karbama_transit_v3',
@@ -526,11 +539,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Admin Live Notifications State
+  // Admin Live Notifications State (with persistent read & deleted tracking)
   const [adminNotifications, setAdminNotifications] = useState<any[]>(() => {
     try {
+      const deletedRaw = safeStorage.getItem('karbama_deleted_admin_notifs_v1');
+      const deletedIds = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+      const readRaw = safeStorage.getItem('karbama_read_admin_notifs_v1');
+      const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
       const stored = safeStorage.getItem('karbama_admin_notifications_v4');
-      return stored ? JSON.parse(stored) : [];
+      const parsed: any[] = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((n) => n && n.id && !deletedIds.has(n.id))
+        .map((n) => (readIds.has(n.id) ? { ...n, read: true } : n));
     } catch {
       return [];
     }
@@ -555,6 +576,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const markAdminNotificationAsRead = (id: string) => {
+    try {
+      const readRaw = safeStorage.getItem('karbama_read_admin_notifs_v1');
+      const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
+      readIds.add(id);
+      safeStorage.setItem('karbama_read_admin_notifs_v1', JSON.stringify(Array.from(readIds)));
+    } catch {
+      // ignore
+    }
     setAdminNotifications((prev) => {
       const next = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
       try {
@@ -566,13 +595,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const deleteAdminNotification = (id: string) => {
+    try {
+      const deletedRaw = safeStorage.getItem('karbama_deleted_admin_notifs_v1');
+      const deletedIds = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+      deletedIds.add(id);
+      safeStorage.setItem('karbama_deleted_admin_notifs_v1', JSON.stringify(Array.from(deletedIds)));
+    } catch {
+      // ignore
+    }
+    setAdminNotifications((prev) => {
+      const next = prev.filter((n) => n.id !== id);
+      try {
+        safeStorage.setItem('karbama_admin_notifications_v4', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  };
+
   const clearAdminNotifications = () => {
+    try {
+      const deletedRaw = safeStorage.getItem('karbama_deleted_admin_notifs_v1');
+      const deletedIds = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+      adminNotifications.forEach((n) => {
+        if (n?.id) deletedIds.add(n.id);
+      });
+      safeStorage.setItem('karbama_deleted_admin_notifs_v1', JSON.stringify(Array.from(deletedIds)));
+    } catch {
+      // ignore
+    }
     setAdminNotifications([]);
     try {
-      safeStorage.removeItem('karbama_admin_notifications_v4');
+      safeStorage.setItem('karbama_admin_notifications_v4', JSON.stringify([]));
     } catch (e) {
       console.error(e);
     }
+    showToast('اعلان‌های مدیریت پاکسازی شدند.', 'info');
   };
 
   const unreadAdminNotifCount = adminNotifications.filter((n) => !n.read).length;
@@ -864,13 +924,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [jobNotifications, setJobNotifications] = useState<JobNotification[]>(() => {
     try {
+      const deletedRaw = safeStorage.getItem('karbama_deleted_notifications_v1');
+      const deletedIds = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
       const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
       const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
       const stored = safeStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
       const parsed: JobNotification[] = stored ? JSON.parse(stored) : [];
       return Array.isArray(parsed)
         ? parsed
-            .filter((n) => n.id !== 'notif-welcome' && !String(n.message || '').includes('تست'))
+            .filter(
+              (n) =>
+                n &&
+                n.id &&
+                !deletedIds.has(n.id) &&
+                n.id !== 'notif-welcome' &&
+                !String(n.message || '').includes('تست')
+            )
             .map((n) => (readIds.has(n.id) ? { ...n, read: true } : n))
         : [];
     } catch {
@@ -1240,42 +1309,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     );
 
-    // Listen to notifications collection
+    // Listen to notifications collection (respecting deleted & read persistent sets)
     const unsubNotifs = onSnapshot(
       collection(db, 'notifications'),
       (snapshot) => {
         if (!snapshot.empty) {
+          let deletedIds = new Set<string>();
+          let readIds = new Set<string>();
+          try {
+            const deletedRaw = safeStorage.getItem('karbama_deleted_notifications_v1');
+            if (deletedRaw) {
+              const parsedDel = JSON.parse(deletedRaw);
+              if (Array.isArray(parsedDel)) deletedIds = new Set<string>(parsedDel);
+            }
+            const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
+            if (readRaw) {
+              const parsedIds = JSON.parse(readRaw);
+              if (Array.isArray(parsedIds)) readIds = new Set<string>(parsedIds);
+            }
+          } catch {
+            // ignore
+          }
+
           const firestoreNotifs: JobNotification[] = [];
           snapshot.forEach((docSnap) => {
             const data = docSnap.data() as JobNotification;
-            if (data && data.id) {
+            if (data && data.id && !deletedIds.has(data.id)) {
               firestoreNotifs.push(data);
             }
           });
 
           if (firestoreNotifs.length > 0) {
-            let readIds = new Set<string>();
-            try {
-              const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
-              if (readRaw) {
-                const parsedIds = JSON.parse(readRaw);
-                if (Array.isArray(parsedIds)) readIds = new Set<string>(parsedIds);
-              }
-            } catch {
-              // ignore
-            }
-
             setJobNotifications((prev) => {
               const map = new Map<string, JobNotification>();
-              prev.forEach((n) => map.set(n.id, n));
+              prev.forEach((n) => {
+                if (!deletedIds.has(n.id)) {
+                  map.set(n.id, readIds.has(n.id) ? { ...n, read: true } : n);
+                }
+              });
               firestoreNotifs.forEach((n) => {
+                if (deletedIds.has(n.id)) return;
                 const existing = map.get(n.id);
                 const isAlreadyRead = Boolean(existing?.read || readIds.has(n.id) || n.read);
                 map.set(n.id, { ...n, read: isAlreadyRead });
               });
-              return Array.from(map.values()).sort(
+              const merged = Array.from(map.values()).sort(
                 (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
               );
+              try {
+                safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(merged));
+              } catch {
+                // ignore
+              }
+              return merged;
             });
           }
         }
@@ -1970,10 +2056,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const recoverPassword = (
-    emailOrUsername: string
-  ): { success: boolean; message?: string; error?: string; username?: string; password?: string } => {
+    emailOrUsername: string,
+    targetRole?: 'seeker' | 'partner',
+    newPassword?: string
+  ): {
+    success: boolean;
+    message?: string;
+    error?: string;
+    username?: string;
+    password?: string;
+    accountType?: 'seeker' | 'partner';
+  } => {
     if (!emailOrUsername || !emailOrUsername.trim()) {
-      return { success: false, error: 'لطفاً نام کاربری، ایمیل، شماره موبایل یا کد ملی ثبت‌شده خود را وارد کنید.' };
+      return {
+        success: false,
+        error:
+          targetRole === 'partner'
+            ? 'لطفاً آدرس ایمیل، نام کاربری یا شماره موبایل ثبت‌شده همکار را وارد نمایید.'
+            : 'لطفاً آدرس ایمیل، نام کاربری، شماره موبایل یا کد ملی ثبت‌شده کارجو را وارد نمایید.',
+      };
     }
 
     const cleanInput = toEnglishDigits(emailOrUsername).trim().toLowerCase();
@@ -1981,57 +2082,111 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const normPhone = normalizePhoneForComparison(cleanInput);
     const normNatId = normalizeNationalIdForComparison(cleanInput);
 
-    // 1. Search Seekers by username, email, phone, or nationalId
-    const seeker = jobSeekers.find((s) => {
-      const sUser = toEnglishDigits(s.username || '').trim().toLowerCase();
-      const sEmail = toEnglishDigits(s.email || '').trim().toLowerCase();
-      const sPhone = normalizePhoneForComparison(s.phoneNumber || s.phone || '');
-      const sNatId = normalizeNationalIdForComparison(s.nationalId || '');
-      return (
-        sUser === cleanInput ||
-        (sanitizedInput.length >= 3 && sUser.replace(/[^a-z0-9_.-]/g, '') === sanitizedInput) ||
-        (sEmail && sEmail === cleanInput) ||
-        (normPhone.length >= 10 && sPhone === normPhone) ||
-        (normNatId.length >= 6 && sNatId === normNatId)
-      );
-    });
-    if (seeker) {
-      return {
-        success: true,
-        username: seeker.username,
-        password: seeker.password,
-        message: `اطلاعات حساب کارجو پیدا شد! نام کاربری: ${seeker.username} | رمز عبور: ${seeker.password}`,
-      };
+    // 1. Search Seekers (when targetRole is 'seeker' or unspecified)
+    if (!targetRole || targetRole === 'seeker') {
+      const seeker = jobSeekers.find((s) => {
+        const sUser = toEnglishDigits(s.username || '').trim().toLowerCase();
+        const sEmail = toEnglishDigits(s.email || '').trim().toLowerCase();
+        const sPhone = normalizePhoneForComparison(s.phoneNumber || s.phone || '');
+        const sNatId = normalizeNationalIdForComparison(s.nationalId || '');
+        return (
+          (sEmail && sEmail === cleanInput) ||
+          sUser === cleanInput ||
+          (sanitizedInput.length >= 3 && sUser.replace(/[^a-z0-9_.-]/g, '') === sanitizedInput) ||
+          (normPhone.length >= 10 && sPhone === normPhone) ||
+          (normNatId.length >= 6 && sNatId === normNatId)
+        );
+      });
+
+      if (seeker) {
+        const updatedPass =
+          newPassword && newPassword.trim().length >= 6 ? newPassword.trim() : seeker.password;
+        if (newPassword && newPassword.trim().length >= 6) {
+          const nextSeekers = jobSeekers.map((s) =>
+            s.id === seeker.id ? { ...s, password: updatedPass } : s
+          );
+          setJobSeekers(nextSeekers);
+          try {
+            safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(nextSeekers));
+          } catch {
+            // ignore
+          }
+          syncUserToFirestore({ ...seeker, password: updatedPass });
+          showToast('رمز عبور جدید حساب کارجوی شما با موفقیت ثبت و فعال شد.', 'success');
+        } else {
+          showToast('اطلاعات ورود حساب کارجو با موفقیت بازیابی شد.', 'success');
+        }
+        return {
+          success: true,
+          username: seeker.username,
+          password: updatedPass,
+          accountType: 'seeker',
+          message:
+            newPassword && newPassword.trim().length >= 6
+              ? `رمز عبور حساب کارجو (${seeker.fullName}) با موفقیت تغییر یافت! نام کاربری: ${seeker.username} | رمز عبور جدید: ${updatedPass}`
+              : `اطلاعات حساب کارجو (${seeker.fullName}) از طریق ایمیل تایید شد! نام کاربری: ${seeker.username} | رمز عبور: ${updatedPass}`,
+        };
+      }
+
+      if (targetRole === 'seeker') {
+        return {
+          success: false,
+          error: 'هیچ حساب کارجویی با این آدرس ایمیل، نام کاربری یا شماره موبایل در سامانه یافت نشد.',
+        };
+      }
     }
 
-    // 2. Search Partners
-    const partner = partners.find((p) => {
-      const pUser = toEnglishDigits(p.username || '').trim().toLowerCase();
-      const pEmail = toEnglishDigits(p.email || '').trim().toLowerCase();
-      const pPhone = normalizePhoneForComparison(p.phone || '');
-      return (
-        pUser === cleanInput ||
-        (pEmail && pEmail === cleanInput) ||
-        (normPhone.length >= 10 && pPhone === normPhone)
-      );
-    });
-    if (partner) {
-      return {
-        success: true,
-        username: partner.username,
-        password: partner.password,
-        message: `اطلاعات حساب همکار پیدا شد! نام کاربری: ${partner.username} | رمز عبور: ${partner.password}`,
-      };
-    }
+    // 2. Search Partners (when targetRole is 'partner' or unspecified)
+    if (!targetRole || targetRole === 'partner') {
+      const partner = partners.find((p) => {
+        const pUser = toEnglishDigits(p.username || '').trim().toLowerCase();
+        const pEmail = toEnglishDigits(p.email || '').trim().toLowerCase();
+        const pCode = toEnglishDigits(p.partnerCode || '').trim().toLowerCase();
+        const pPhone = normalizePhoneForComparison(p.phone || '');
+        return (
+          (pEmail && pEmail === cleanInput) ||
+          pUser === cleanInput ||
+          pCode === cleanInput ||
+          (normPhone.length >= 10 && pPhone === normPhone)
+        );
+      });
 
-    // 3. Search Admin Credentials
-    if (toEnglishDigits(adminCredentials.username).trim().toLowerCase() === cleanInput) {
-      return {
-        success: true,
-        username: adminCredentials.username,
-        password: adminCredentials.password,
-        message: `اطلاعات حساب مدیر ارشد پیدا شد! نام کاربری: ${adminCredentials.username} | رمز عبور: ${adminCredentials.password}`,
-      };
+      if (partner) {
+        const updatedPass =
+          newPassword && newPassword.trim().length >= 6 ? newPassword.trim() : partner.password;
+        if (newPassword && newPassword.trim().length >= 6) {
+          const nextPartners = partners.map((p) =>
+            p.id === partner.id ? { ...p, password: updatedPass } : p
+          );
+          setPartners(nextPartners);
+          try {
+            safeStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify(nextPartners));
+          } catch {
+            // ignore
+          }
+          syncPartnerToFirestore({ ...partner, password: updatedPass });
+          showToast('رمز عبور جدید حساب همکار با موفقیت ثبت و فعال شد.', 'success');
+        } else {
+          showToast('اطلاعات ورود حساب همکار با موفقیت بازیابی شد.', 'success');
+        }
+        return {
+          success: true,
+          username: partner.username,
+          password: updatedPass,
+          accountType: 'partner',
+          message:
+            newPassword && newPassword.trim().length >= 6
+              ? `رمز عبور حساب همکار (${partner.companyName}) با موفقیت تغییر یافت! نام کاربری: ${partner.username} | رمز عبور جدید: ${updatedPass}`
+              : `اطلاعات حساب همکار (${partner.companyName}) از طریق ایمیل تایید شد! نام کاربری: ${partner.username} | رمز عبور: ${updatedPass}`,
+        };
+      }
+
+      if (targetRole === 'partner') {
+        return {
+          success: false,
+          error: 'هیچ حساب همکاری با این آدرس ایمیل، نام کاربری یا شماره موبایل در سامانه یافت نشد.',
+        };
+      }
     }
 
     return {
@@ -2659,6 +2814,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
       return next;
     });
+    setDoc(doc(db, 'notifications', id), { isRead: true, read: true }, { merge: true }).catch(() => {});
   };
 
   const markAllNotificationsAsRead = () => {
@@ -2675,12 +2831,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return next;
     });
+    jobNotifications.forEach((n) => {
+      if (!n.read) {
+        setDoc(doc(db, 'notifications', n.id), { isRead: true, read: true }, { merge: true }).catch(() => {});
+      }
+    });
     showToast('تمام اعلان‌ها به عنوان خوانده شده علامت‌گذاری شدند.', 'info');
   };
 
+  const deleteNotification = (id: string) => {
+    try {
+      const deletedRaw = safeStorage.getItem('karbama_deleted_notifications_v1');
+      const deletedIds = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+      deletedIds.add(id);
+      safeStorage.setItem('karbama_deleted_notifications_v1', JSON.stringify(Array.from(deletedIds)));
+
+      const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
+      const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
+      readIds.add(id);
+      safeStorage.setItem('karbama_read_notifications_v1', JSON.stringify(Array.from(readIds)));
+    } catch {
+      // ignore
+    }
+
+    setJobNotifications((prev) => {
+      const next = prev.filter((n) => n.id !== id);
+      safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
+      return next;
+    });
+    deleteDoc(doc(db, 'notifications', id)).catch(() => {});
+  };
+
   const clearNotifications = () => {
+    try {
+      const deletedRaw = safeStorage.getItem('karbama_deleted_notifications_v1');
+      const deletedIds = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+      const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
+      const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
+      jobNotifications.forEach((n) => {
+        if (n.id) {
+          deletedIds.add(n.id);
+          readIds.add(n.id);
+        }
+      });
+      safeStorage.setItem('karbama_deleted_notifications_v1', JSON.stringify(Array.from(deletedIds)));
+      safeStorage.setItem('karbama_read_notifications_v1', JSON.stringify(Array.from(readIds)));
+      safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify([]));
+    } catch {
+      // ignore
+    }
+    jobNotifications.forEach((n) => {
+      if (n.id) {
+        deleteDoc(doc(db, 'notifications', n.id)).catch(() => {});
+      }
+    });
     setJobNotifications([]);
-    showToast('تاریخچه اعلان‌ها پاک شد.', 'info');
+    showToast('تاریخچه اعلان‌ها به طور کامل پاک شد.', 'info');
   };
 
   const requestPushPermission = async (): Promise<'granted' | 'denied' | 'default'> => {
@@ -3516,6 +3722,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unreadNotificationCount,
         markNotificationAsRead,
         markAllNotificationsAsRead,
+        deleteNotification,
         clearNotifications,
         pushPermissionStatus,
         requestPushPermission,
@@ -3540,6 +3747,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         adminNotifications,
         addAdminNotification,
         markAdminNotificationAsRead,
+        deleteAdminNotification,
         clearAdminNotifications,
         unreadAdminNotifCount,
         approveSeekerAccount,

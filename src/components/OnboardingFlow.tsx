@@ -29,6 +29,7 @@ import {
   Building2,
   Lock,
   User,
+  UserPlus,
   KeyRound,
   Phone,
   Briefcase,
@@ -206,6 +207,7 @@ export const OnboardingFlow: React.FC = () => {
   // Forgot password modal state
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [recoverInput, setRecoverInput] = useState('');
+  const [recoverNewPassword, setRecoverNewPassword] = useState('');
   const [recoverResult, setRecoverResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const passCheck = checkPasswordStrength(password);
@@ -230,7 +232,7 @@ export const OnboardingFlow: React.FC = () => {
       nativeName: 'فارسی',
       flag: '🇮🇷',
       welcome: 'پل ارتباطی مستقیم کارجویان و متخصصان با بهترین کارفرمایان و فرصت‌های شغلی واقعی',
-      desc: 'در سامانه رسمی کارباما، پرونده شغلی خود را ثبت کنید و بدون واسطه‌های غیرمعتبر، مستقیماً به صدها فرصت شغلی تاییدشده همراه با جای خواب، بیمه و قرارداد قانونی متصل شوید.',
+      desc: 'در سامانه رسمی کارباما، پرونده شغلی خود را ثبت کنید و بدون واسطه‌های غیرمعتبر، مستقیماً به صدها فرصت شغلی تاییدشده همراه با جای خواب، وعده غذایی و قرارداد قانونی متصل شوید.',
     },
     {
       code: 'tr',
@@ -238,7 +240,7 @@ export const OnboardingFlow: React.FC = () => {
       nativeName: 'Türkçe',
       flag: '🇹🇷',
       welcome: 'İş Arayanlar ve Uzmanları Doğrudan Güvenilir İşverenlerle Buluşturan Resmi Köprü',
-      desc: 'Resmi Karbama sisteminde iş dosyanızı oluşturun; konaklama, sigorta ve yasal sözleşmeli yüzlerce onaylı iş fırsatına doğrudan ulaşın.',
+      desc: 'Resmi Karbama sisteminde iş dosyanızı oluşturun; konaklama, yemek ve yasal sözleşmeli yüzlerce onaylı iş fırsatına doğrudan ulaşın.',
     },
     {
       code: 'en',
@@ -246,7 +248,7 @@ export const OnboardingFlow: React.FC = () => {
       nativeName: 'English',
       flag: '🇬🇧',
       welcome: 'Direct Bridge Connecting Job Seekers & Specialists with Verified Employers & Real Jobs',
-      desc: 'Register your official career profile on Karbama and connect directly to hundreds of verified jobs with accommodation, insurance, and legal contracts.',
+      desc: 'Register your official career profile on Karbama and connect directly to hundreds of verified jobs with accommodation, meals, and legal contracts.',
     },
     {
       code: 'ar',
@@ -254,7 +256,7 @@ export const OnboardingFlow: React.FC = () => {
       nativeName: 'العربية',
       flag: '🇸🇦',
       welcome: 'الجسر المباشر الذي يربط الباحثين عن عمل والمتخصصين بأفضل أصحاب العمل وفرص العمل الحقيقية',
-      desc: 'سجّل ملفك المهني في منصة كارباما الرسمية وتواصل مباشرة مع مئات فرص العمل المعتمدة مع السكن والتأمين والعقود القانونية.',
+      desc: 'سجّل ملفك المهني في منصة كارباما الرسمية وتواصل مباشرة مع مئات فرص العمل المعتمدة مع السكن والوجبات والعقود القانونية.',
     },
   ];
 
@@ -751,7 +753,7 @@ export const OnboardingFlow: React.FC = () => {
                               ✓ جای خواب رایگان
                             </span>
                             <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-medium">
-                              ✓ بیمه SGK و اقامت کاری
+                              ✓ قرارداد رسمی و اقامت کاری
                             </span>
                           </div>
                         </div>
@@ -813,7 +815,7 @@ export const OnboardingFlow: React.FC = () => {
                     </div>
                     <h3 className="text-xs sm:text-sm font-black text-white">فرصت‌های شغلی فعال</h3>
                     <p className="text-[11px] text-slate-400 leading-relaxed">
-                      آگهی‌های استخدامی احراز هویت‌شده با جای خواب، بیمه و قرارداد معتبر در ترکیه، آلمان، ارمنستان و عراق
+                      آگهی‌های استخدامی احراز هویت‌شده با جای خواب، وعده غذایی و قرارداد معتبر در ترکیه، آلمان، ارمنستان و عراق
                     </p>
                   </div>
                 </div>
@@ -2337,20 +2339,19 @@ export const OnboardingFlow: React.FC = () => {
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <label className="text-slate-300 font-medium">{t('loginPasswordInputLabel', appLanguage)}</label>
-                      {loginRole === 'seeker' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowForgotPasswordModal(true);
-                            setRecoverResult(null);
-                            setRecoverInput('');
-                          }}
-                          className="text-[11px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1"
-                        >
-                          <KeyRound className="w-3 h-3" />
-                          فراموشی رمز عبور؟
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowForgotPasswordModal(true);
+                          setRecoverResult(null);
+                          setRecoverInput('');
+                          setRecoverNewPassword('');
+                        }}
+                        className="text-[11px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <KeyRound className="w-3 h-3" />
+                        <span>{loginRole === 'partner' ? 'فراموشی رمز عبور همکار؟' : 'فراموشی رمز عبور کارجو؟'}</span>
+                      </button>
                     </div>
                     <div className="relative">
                       <Lock className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
@@ -2374,21 +2375,37 @@ export const OnboardingFlow: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                <div className="pt-2 flex flex-col gap-3">
                   <button
                     type="submit"
-                    className="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-700/30 transition flex items-center justify-center gap-2"
+                    className={`w-full py-3 text-white rounded-xl text-xs font-bold shadow-lg transition flex items-center justify-center gap-2 cursor-pointer ${
+                      loginRole === 'partner'
+                        ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-700/30'
+                        : 'bg-red-600 hover:bg-red-500 shadow-red-700/30'
+                    }`}
                   >
                     <LogIn className="w-4 h-4" />
-                    <span>{t('loginSubmitBtnText', appLanguage)}</span>
+                    <span>{loginRole === 'partner' ? 'ورود به پنل همکار' : t('loginSubmitBtnText', appLanguage)}</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setViewMode('register')}
-                    className="w-full sm:w-auto py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium border border-slate-700 transition"
+                    onClick={() => {
+                      setRegAccountType(loginRole === 'partner' ? 'partner' : 'seeker');
+                      setViewMode('register');
+                    }}
+                    className={`w-full py-3 px-4 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-2 cursor-pointer ${
+                      loginRole === 'partner'
+                        ? 'bg-indigo-950/60 hover:bg-indigo-900/70 text-indigo-300 border-indigo-500/40'
+                        : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-slate-700'
+                    }`}
                   >
-                    {t('noAccountRegBtnText', appLanguage)}
+                    <UserPlus className="w-4 h-4" />
+                    <span>
+                      {loginRole === 'partner'
+                        ? 'حساب ندارید؟ ثبت‌نام همکار'
+                        : 'حساب کاربری ندارید؟ ثبت‌نام کارجو'}
+                    </span>
                   </button>
                 </div>
               </form>
@@ -2397,14 +2414,18 @@ export const OnboardingFlow: React.FC = () => {
         </div>
       </div>
 
-      {/* FORGOT PASSWORD MODAL */}
+      {/* SEPARATE ROLE-SPECIFIC FORGOT PASSWORD MODAL (EMAIL BASED) */}
       {showForgotPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
           <div className="relative w-full max-w-md bg-slate-900 border border-amber-500/40 rounded-3xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2 text-amber-400 font-bold text-base">
-                <KeyRound className="w-5 h-5" />
-                <span>بازیابی رمز عبور کارباما</span>
+              <div className="flex items-center gap-2 text-amber-400 font-bold text-sm sm:text-base">
+                <KeyRound className="w-5 h-5 shrink-0" />
+                <span>
+                  {loginRole === 'partner'
+                    ? 'بازیابی رمز عبور همکار / کارفرما (با ایمیل)'
+                    : 'بازیابی رمز عبور کارجو (با ایمیل)'}
+                </span>
               </div>
               <button
                 onClick={() => setShowForgotPasswordModal(false)}
@@ -2414,13 +2435,42 @@ export const OnboardingFlow: React.FC = () => {
               </button>
             </div>
 
+            <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginRole('seeker');
+                  setRecoverResult(null);
+                }}
+                className={`py-2 rounded-lg transition cursor-pointer ${
+                  loginRole === 'seeker' ? 'bg-red-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                بازیابی حساب کارجو
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginRole('partner');
+                  setRecoverResult(null);
+                }}
+                className={`py-2 rounded-lg transition cursor-pointer ${
+                  loginRole === 'partner' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                بازیابی حساب همکار
+              </button>
+            </div>
+
             <p className="text-xs text-slate-300 leading-relaxed">
-              جهت بازیابی رمز عبور، آدرس ایمیل ثبت‌شده هنگام ثبت‌نام یا نام کاربری خود را وارد نمایید.
+              {loginRole === 'partner'
+                ? 'جهت بازیابی یا بازنشانی رمز عبور حساب همکار، آدرس ایمیل ثبت‌شده هنگام ثبت‌نام همکار را وارد نمایید.'
+                : 'جهت بازیابی یا بازنشانی رمز عبور حساب کارجو، آدرس ایمیل ثبت‌شده هنگام ثبت‌نام کارجو را وارد نمایید.'}
             </p>
 
             {recoverResult && (
               <div
-                className={`p-3 rounded-xl text-xs font-bold ${
+                className={`p-3 rounded-xl text-xs font-bold leading-relaxed ${
                   recoverResult.success
                     ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
                     : 'bg-red-500/20 border border-red-500/40 text-red-300'
@@ -2430,18 +2480,34 @@ export const OnboardingFlow: React.FC = () => {
               </div>
             )}
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                ایمیل یا نام کاربری (یوزرنیم)
-              </label>
-              <input
-                type="text"
-                dir="ltr"
-                value={recoverInput}
-                onChange={(e) => setRecoverInput(e.target.value)}
-                placeholder="example@gmail.com / username"
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-amber-500"
-              />
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  {loginRole === 'partner' ? 'ایمیل ثبت‌شده همکار (یا نام کاربری)' : 'ایمیل ثبت‌شده کارجو (یا نام کاربری)'}
+                </label>
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={recoverInput}
+                  onChange={(e) => setRecoverInput(e.target.value)}
+                  placeholder={loginRole === 'partner' ? 'partner@gmail.com' : 'seeker@gmail.com'}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  رمز عبور جدید (اختیاری - در صورت تمایل به تغییر مستقیم رمز)
+                </label>
+                <input
+                  type="password"
+                  dir="ltr"
+                  value={recoverNewPassword}
+                  onChange={(e) => setRecoverNewPassword(e.target.value)}
+                  placeholder="رمز جدید (حداقل ۶ کاراکتر)"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-amber-500"
+                />
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -2450,21 +2516,25 @@ export const OnboardingFlow: React.FC = () => {
                 onClick={() => setShowForgotPasswordModal(false)}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold"
               >
-                انصراف
+                بستن
               </button>
               <button
                 type="button"
                 onClick={() => {
                   if (!recoverInput.trim()) return;
-                  const res = recoverPassword(recoverInput);
+                  const res = recoverPassword(
+                    recoverInput,
+                    loginRole,
+                    recoverNewPassword.trim() ? recoverNewPassword.trim() : undefined
+                  );
                   setRecoverResult({
                     success: res.success,
                     message: res.message || res.error || '',
                   });
                 }}
-                className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-700/30"
+                className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-700/30 cursor-pointer"
               >
-                ارسال لینک / بازیابی رمز
+                {recoverNewPassword.trim() ? 'تایید ایمیل و تغییر رمز عبور' : 'تایید ایمیل و بازیابی رمز عبور'}
               </button>
             </div>
           </div>

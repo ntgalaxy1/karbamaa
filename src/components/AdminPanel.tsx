@@ -92,6 +92,7 @@ export const AdminPanel: React.FC = () => {
     adminNotifications,
     unreadAdminNotifCount,
     markAdminNotificationAsRead,
+    deleteAdminNotification,
     clearAdminNotifications,
     approveSeekerAccount,
     rejectSeekerAccount,
@@ -180,8 +181,23 @@ export const AdminPanel: React.FC = () => {
   const [newAdminPassInput, setNewAdminPassInput] = useState('');
   const [newAdminPassConfirmInput, setNewAdminPassConfirmInput] = useState('');
 
-  // State for Payment & Exchange Rate Settings
-  const [feeTLInput, setFeeTLInput] = useState(paymentSettings.feeTL);
+  // State for Payment & Exchange Rate Settings (Consolidated Vertical List)
+  const [feeTLInput, setFeeTLInput] = useState(paymentSettings.feeTL || 500);
+  const [seekerFeeTomanInput, setSeekerFeeTomanInput] = useState<number>(
+    paymentSettings.seekerFeeToman || (paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460)
+  );
+  const [jobPostingFeeTLInput, setJobPostingFeeTLInput] = useState<number>(
+    paymentSettings.jobPostingFeeTL || paymentSettings.feeTL || 500
+  );
+  const [jobPostingFeeTomanInput, setJobPostingFeeTomanInput] = useState<number>(
+    paymentSettings.jobPostingFeeToman || (paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460)
+  );
+  const [consultationFeeTLInput, setConsultationFeeTLInput] = useState<number>(
+    paymentSettings.consultationFeeTL || 150
+  );
+  const [consultationFeeTomanInput, setConsultationFeeTomanInput] = useState<number>(
+    paymentSettings.consultationFeeToman || 750000
+  );
   const [exchangeRateInput, setExchangeRateInput] = useState(paymentSettings.exchangeRateToman);
   const [directPaymentAmountInput, setDirectPaymentAmountInput] = useState<number>(paymentSettings.directPaymentAmount || 0);
   const [paymentAmountUnitInput, setPaymentAmountUnitInput] = useState<'toman' | 'rial'>(paymentSettings.paymentAmountUnit || 'toman');
@@ -490,7 +506,7 @@ export const AdminPanel: React.FC = () => {
     setNewTitle('');
     setNewCompany('');
     setNewDescription('');
-    showToast('آگهی کار با مشخصات کامل بیمه، غذا و جای خواب ثبت گردید', 'success');
+    showToast('آگهی کار با مشخصات کامل غذا و جای خواب ثبت گردید', 'success');
   };
 
   const handleCreateHotel = (e: React.FormEvent) => {
@@ -926,7 +942,7 @@ export const AdminPanel: React.FC = () => {
           }`}
         >
           <Landmark className="w-4 h-4" />
-          تنظیمات پرداخت، نرخ روز ارز و حساب‌ها
+          تنظیمات جامع مبالغ پرداختی و حساب‌ها
         </button>
 
         <button
@@ -987,18 +1003,6 @@ export const AdminPanel: React.FC = () => {
         >
           <MapPin className="w-4 h-4" />
           آدرس‌های مهم ({addresses.length})
-        </button>
-
-        <button
-          onClick={() => setAdminTab('broker')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
-            adminTab === 'broker'
-              ? 'bg-red-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-          }`}
-        >
-          <CreditCard className="w-4 h-4" />
-          تعهدنامه کارگزار
         </button>
       </div>
 
@@ -1216,11 +1220,24 @@ export const AdminPanel: React.FC = () => {
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="font-extrabold text-amber-300 text-sm">{notif.title}</span>
-                      <span className="text-[10px] text-slate-500 font-mono" dir="ltr">
-                        {new Date(notif.createdAt).toLocaleTimeString('fa-IR')}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] text-slate-500 font-mono" dir="ltr">
+                          {new Date(notif.createdAt).toLocaleTimeString('fa-IR')}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteAdminNotification(notif.id);
+                          }}
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition"
+                          title="حذف دائمی این اعلان"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                     <p className="text-slate-300 text-xs leading-relaxed">{notif.message}</p>
                   </div>
@@ -1710,61 +1727,236 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* EXCHANGE & PAYMENT SETTINGS TAB (Requested Feature) */}
+      {/* DEDICATED & CONSOLIDATED ADMIN PAYMENT SETTINGS SECTION (Vertical Stacked List Layout) */}
       {adminTab === 'exchange-settings' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
-          <div className="border-b border-slate-800 pb-4">
-            <h3 className="font-extrabold text-white text-base flex items-center gap-2">
-              <Landmark className="w-5 h-5 text-amber-400" />
-              <span>تنظیمات پرداخت، نرخ لحظه‌ای لیر و حساب‌های بانکی کارباما</span>
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">
-              مبالغ و شماره حساب‌های وارد شده در این بخش مستقیماً در فرم ثبت آگهی به کارفرمایان نمایش داده می‌شود.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            
-            {/* Lira Exchange Rate */}
-            <div className="p-5 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-amber-300">نرخ روز هر لیر به تومان (لحظه‌ای)</label>
-                <span className="text-xs font-mono font-bold text-slate-400">۱ TRY = {Number(exchangeRateInput).toLocaleString('fa-IR')} تومان</span>
-              </div>
-              <input
-                type="number"
-                value={exchangeRateInput}
-                onChange={(e) => setExchangeRateInput(Number(e.target.value))}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-mono"
-              />
-              <p className="text-[11px] text-slate-400">
-                مبلغ معادل ریالی با این نرخ روزانه معادل <strong>{(Number(feeTLInput || 500) * Number(exchangeRateInput)).toLocaleString('fa-IR')} تومان ({(Number(feeTLInput || 500) * Number(exchangeRateInput) * 10).toLocaleString('fa-IR')} ریال)</strong> به صورت خودکار محاسبه و نمایش داده می‌شود.
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-8 space-y-6 shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+            <div>
+              <h3 className="font-extrabold text-white text-base sm:text-lg flex items-center gap-2">
+                <Landmark className="w-5 h-5 text-amber-400" />
+                <span>بخش یکپارچه تنظیمات تمام مبالغ پرداختی، تعرفه‌های کارجو و همکار و حساب‌های بانکی</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                تمامی هزینه‌ها (ثبت‌نام کارجو، پلن‌های اشتراک همکاران، ثبت آگهی استخدام، مشاوره آنلاین، مبلغ درگاه شاپرک و تعهدنامه کارگزار) به صورت فهرست عمودی در یک بخش تجمیع شده‌اند.
               </p>
             </div>
+            <span className="px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold shrink-0">
+              فهرست عمودی یکپارچه تعرفه‌ها
+            </span>
+          </div>
 
-            {/* Base Factor */}
+          {/* VERTICAL STACKED LIST OF ALL PAYMENT AMOUNTS & FEES */}
+          <div className="flex flex-col space-y-4">
+            {/* ITEM 1: Daily Lira Exchange Rate */}
             <div className="p-5 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
-              <label className="text-xs font-bold text-amber-300 block">ضریب پایه محاسبه خودکار معادل ریالی روزانه</label>
-              <input
-                type="number"
-                value={feeTLInput}
-                onChange={(e) => setFeeTLInput(Number(e.target.value))}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-mono"
-              />
-              <p className="text-[11px] text-slate-400">به‌روزرسانی خودکار روزانه بر اساس نرخ لحظه‌ای بازار آزاد فعال است</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs sm:text-sm font-black text-amber-300 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-mono text-xs">1</span>
+                  نرخ روز هر لیر ترکیه به تومان (ضریب پایه تبدیل ارز)
+                </span>
+                <span className="text-xs font-mono font-bold text-emerald-400">
+                  ۱ TRY = {Number(exchangeRateInput).toLocaleString('fa-IR')} تومان
+                </span>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <input
+                  type="number"
+                  value={exchangeRateInput}
+                  onChange={(e) => {
+                    const rate = Number(e.target.value) || 0;
+                    setExchangeRateInput(rate);
+                    setSeekerFeeTomanInput((Number(feeTLInput) || 500) * rate);
+                  }}
+                  className="w-full sm:max-w-xs bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-mono"
+                />
+                <span className="text-[11px] text-slate-400">
+                  با تغییر نرخ روز لیر، معادل تومانی تعرفه‌های پایه به‌صورت خودکار محاسبه می‌گردد.
+                </span>
+              </div>
             </div>
 
-            {/* Direct Online Payment Gateway Amount & Unit */}
-            <div className="p-5 bg-slate-950 rounded-2xl border border-teal-500/30 space-y-3 sm:col-span-2">
+            {/* ITEM 2: Job Seeker Registration & Account Unlock Fee */}
+            <div className="p-5 bg-slate-950 rounded-2xl border border-red-500/30 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <label className="text-xs font-bold text-teal-300">
-                  مبلغ مستقیم درگاه پرداخت آنلاین (pay.php) و واحد پول (تومان / ریال)
-                </label>
+                <span className="text-xs sm:text-sm font-black text-red-300 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-red-500/20 text-red-300 flex items-center justify-center font-mono text-xs">2</span>
+                  هزینه ثبت‌نام و فعال‌سازی حساب کارجو (Job Seeker Fee)
+                </span>
+                <span className="text-xs font-mono font-bold text-red-400">
+                  {Number(feeTLInput).toLocaleString('fa-IR')} لیر / {Number(seekerFeeTomanInput).toLocaleString('fa-IR')} تومان
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">مبلغ تعرفه کارجو به لیر ترکیه (TRY)</label>
+                  <input
+                    type="number"
+                    value={feeTLInput}
+                    onChange={(e) => {
+                      const tl = Number(e.target.value) || 0;
+                      setFeeTLInput(tl);
+                      setSeekerFeeTomanInput(tl * (Number(exchangeRateInput) || 5460));
+                    }}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">مبلغ تعرفه کارجو به تومان (قابل ویرایش مستقیم)</label>
+                  <input
+                    type="number"
+                    value={seekerFeeTomanInput}
+                    onChange={(e) => setSeekerFeeTomanInput(Number(e.target.value) || 0)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ITEM 3: Partner / Employer Subscription Plans (Stacked Vertically) */}
+            <div className="p-5 bg-slate-950 rounded-2xl border border-indigo-500/30 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs sm:text-sm font-black text-indigo-300 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-mono text-xs">3</span>
+                  تعرفه پلن‌های اشتراک و فعال‌سازی پنل همکاران (Partner Fees)
+                </span>
+                <span className="text-[11px] text-indigo-400 font-bold">
+                  ۴ پلن اشتراک همکار (فهرست عمودی)
+                </span>
+              </div>
+
+              <div className="flex flex-col space-y-3">
+                {partnerPlanPrices.map((plan, idx) => (
+                  <div
+                    key={plan.id}
+                    className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="space-y-0.5 min-w-[180px]">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-white">{plan.title}</span>
+                        <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">
+                          {plan.durationMonths} ماهه
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400">{plan.features[0]}</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 max-w-xl">
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-1">مبلغ به لیر ترکیه (₺)</label>
+                        <input
+                          type="number"
+                          value={plan.priceTL}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setPartnerPlanPrices((prev) =>
+                              prev.map((p, i) => (i === idx ? { ...p, priceTL: val } : p))
+                            );
+                          }}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-1">مبلغ به تومان (IRT)</label>
+                        <input
+                          type="number"
+                          value={plan.priceToman}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setPartnerPlanPrices((prev) =>
+                              prev.map((p, i) => (i === idx ? { ...p, priceToman: val } : p))
+                            );
+                          }}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ITEM 4: Employer Job Posting Fee */}
+            <div className="p-5 bg-slate-950 rounded-2xl border border-amber-500/30 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs sm:text-sm font-black text-amber-300 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-mono text-xs">4</span>
+                  تعرفه ثبت و انتشار آگهی استخدام کارفرمایان (Job Posting Fee)
+                </span>
+                <span className="text-xs font-mono font-bold text-amber-400">
+                  {Number(jobPostingFeeTLInput).toLocaleString('fa-IR')} لیر / {Number(jobPostingFeeTomanInput).toLocaleString('fa-IR')} تومان
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">تعرفه ثبت آگهی به لیر (TRY)</label>
+                  <input
+                    type="number"
+                    value={jobPostingFeeTLInput}
+                    onChange={(e) => {
+                      const tl = Number(e.target.value) || 0;
+                      setJobPostingFeeTLInput(tl);
+                      setJobPostingFeeTomanInput(tl * (Number(exchangeRateInput) || 5460));
+                    }}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">تعرفه ثبت آگهی به تومان</label>
+                  <input
+                    type="number"
+                    value={jobPostingFeeTomanInput}
+                    onChange={(e) => setJobPostingFeeTomanInput(Number(e.target.value) || 0)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ITEM 5: Live Chat Consultation Fee */}
+            <div className="p-5 bg-slate-950 rounded-2xl border border-emerald-500/30 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs sm:text-sm font-black text-emerald-300 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-mono text-xs">5</span>
+                  هزینه مشاوره و چت آنلاین مستقیم با مدیریت (Consultation Fee)
+                </span>
+                <span className="text-xs font-mono font-bold text-emerald-400">
+                  {Number(consultationFeeTomanInput).toLocaleString('fa-IR')} تومان
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">حق مشاوره به لیر ترکیه (TRY)</label>
+                  <input
+                    type="number"
+                    value={consultationFeeTLInput}
+                    onChange={(e) => setConsultationFeeTLInput(Number(e.target.value) || 0)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">حق مشاوره به تومان (نمایش در ویجت چت)</label>
+                  <input
+                    type="number"
+                    value={consultationFeeTomanInput}
+                    onChange={(e) => setConsultationFeeTomanInput(Number(e.target.value) || 0)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ITEM 6: Direct Online Payment Gateway Amount & Unit (pay.php) */}
+            <div className="p-5 bg-slate-950 rounded-2xl border border-teal-500/30 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs sm:text-sm font-black text-teal-300 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-teal-500/20 text-teal-300 flex items-center justify-center font-mono text-xs">6</span>
+                  مبلغ مستقیم ارسالی به درگاه پرداخت آنلاین (pay.php) و واحد پول (تومان / ریال)
+                </span>
                 <span className="text-xs font-mono font-bold text-teal-400">
-                  مبلغ ارسالی فعلی به درگاه:{' '}
+                  مبلغ ارسالی فعلی:{' '}
                   {(directPaymentAmountInput > 0
                     ? directPaymentAmountInput
-                    : Number(feeTLInput || 500) * Number(exchangeRateInput || 5460)
+                    : Number(seekerFeeTomanInput || (Number(feeTLInput || 500) * Number(exchangeRateInput || 5460)))
                   ).toLocaleString('fa-IR')}{' '}
                   {paymentAmountUnitInput === 'toman' ? 'تومان (unit=toman)' : 'ریال'}
                 </span>
@@ -1772,13 +1964,13 @@ export const AdminPanel: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] text-slate-400 mb-1">
-                    مبلغ دلخواه مستقیم (در صورت ۰ بودن، از حاصل‌ضرب لیر × نرخ روز استفاده می‌شود)
+                    مبلغ ثابت درگاه (در صورت ۰ بودن، از مبلغ تعرفه کارجو / همکار استفاده می‌شود)
                   </label>
                   <input
                     type="number"
                     value={directPaymentAmountInput}
                     onChange={(e) => setDirectPaymentAmountInput(Number(e.target.value))}
-                    placeholder="0 (محاسبه خودکار بر اساس نرخ لیر)"
+                    placeholder="0 (استفاده خودکار از تعرفه هر بخش)"
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white font-mono"
                   />
                 </div>
@@ -1796,137 +1988,112 @@ export const AdminPanel: React.FC = () => {
               </div>
             </div>
 
-          </div>
-
-          {/* Turkey Bank Account Details */}
-          <div className="p-6 bg-slate-950 rounded-2xl border border-slate-800 space-y-4">
-            <h4 className="text-xs font-extrabold text-red-400 flex items-center gap-2">
-              <Building2 className="w-4 h-4" />
-              <span>مشخصات حساب بانکی ترکیه (Ziraat Bankası)</span>
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">نام بانک ترکیه</label>
-                <input
-                  type="text"
-                  value={turkeyBankInput}
-                  onChange={(e) => setTurkeyBankInput(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
-                />
+            {/* ITEM 7: Broker Settlement Fee & Commitment Account */}
+            <div className="p-5 bg-slate-950 rounded-2xl border border-rose-500/30 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs sm:text-sm font-black text-rose-300 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-300 flex items-center justify-center font-mono text-xs">7</span>
+                  مبلغ تعهدنامه تسویه حساب کارگزار و مشخصات حساب مندرج در قرارداد کارجو
+                </span>
+                <span className="text-xs font-mono font-bold text-rose-400">{brokerFeeInput}</span>
               </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">نام صاحب حساب</label>
-                <input
-                  type="text"
-                  value={turkeyHolderInput}
-                  onChange={(e) => setTurkeyHolderInput(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">شماره ایبان (IBAN ترکیه)</label>
-                <input
-                  type="text"
-                  value={turkeyIbanInput}
-                  onChange={(e) => setTurkeyIbanInput(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono dir-ltr text-right"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Iran Card to Card Details */}
-          <div className="p-6 bg-slate-950 rounded-2xl border border-slate-800 space-y-4">
-            <h4 className="text-xs font-extrabold text-emerald-400 flex items-center gap-2">
-              <CreditCard className="w-4 h-4" />
-              <span>مشخصات کارت بانکی ایران جهت دریافت تومانی</span>
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">نام بانک ایران</label>
-                <input
-                  type="text"
-                  value={iranBankInput}
-                  onChange={(e) => setIranBankInput(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">نام صاحب کارت</label>
-                <input
-                  type="text"
-                  value={iranHolderInput}
-                  onChange={(e) => setIranHolderInput(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">شماره کارت ۱۶ رقمی</label>
-                <input
-                  type="text"
-                  value={iranCardInput}
-                  onChange={(e) => setIranCardInput(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono dir-ltr text-right"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">مبلغ هزینه خدمات کارگزار در تعهدنامه</label>
+                  <input
+                    type="text"
+                    value={brokerFeeInput}
+                    onChange={(e) => setBrokerFeeInput(e.target.value)}
+                    placeholder="مثال: ۲۵,۰۰۰,۰۰۰ تومان"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-emerald-300 font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">شماره کارت کارگزار در تعهدنامه</label>
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={brokerCardInput}
+                    onChange={(e) => setBrokerCardInput(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono text-left"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-400 mb-1">نام صاحب حساب کارگزار و بانک</label>
+                  <input
+                    type="text"
+                    value={brokerHolderInput}
+                    onChange={(e) => setBrokerHolderInput(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Sepal IPG & Inquiry (Sepal-Yar) Configuration */}
-          <div className="p-6 bg-slate-950 rounded-2xl border border-teal-500/30 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-              <h4 className="text-xs font-extrabold text-teal-400 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-teal-400" />
-                <span>تنظیمات درگاه شاپرک سپال و استعلام بانکی سپال‌یار (Sepal)</span>
-              </h4>
-              <span className="text-[10px] bg-teal-500/20 border border-teal-500/40 text-teal-300 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 w-fit">
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-                متصل به وب‌سرویس رسمی سپال
+            {/* ITEM 8: Turkey & Iran Bank Accounts + Sepal Gateway Keys */}
+            <div className="p-5 bg-slate-950 rounded-2xl border border-slate-800 space-y-4">
+              <span className="text-xs sm:text-sm font-black text-slate-200 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center font-mono text-xs">8</span>
+                اطلاعات حساب‌های بانکی و کلیدهای وب‌سرویس درگاه شاپرک (سپال)
               </span>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs text-slate-300 font-bold mb-1">
-                  کد یکتای سپال (X-Unique-Code):
-                </label>
-                <input
-                  type="text"
-                  value={sepalUniqueCodeInput}
-                  onChange={(e) => setSepalUniqueCodeInput(e.target.value)}
-                  placeholder="مثال: 2930311446"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono dir-ltr text-right focus:border-teal-500 outline-hidden"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  کد یکتای اختصاصی شما در پنل inquiry.sepal.ir جهت استعلام شماره کارت و شبای کارجویان
-                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">نام بانک ترکیه</label>
+                  <input
+                    type="text"
+                    value={turkeyBankInput}
+                    onChange={(e) => setTurkeyBankInput(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">نام صاحب حساب ترکیه</label>
+                  <input
+                    type="text"
+                    value={turkeyHolderInput}
+                    onChange={(e) => setTurkeyHolderInput(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">شماره ایبان (IBAN ترکیه)</label>
+                  <input
+                    type="text"
+                    value={turkeyIbanInput}
+                    onChange={(e) => setTurkeyIbanInput(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono dir-ltr text-right"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs text-slate-300 font-bold mb-1">
-                  کلید درگاه پرداخت سپال (apiKey):
-                </label>
-                <input
-                  type="text"
-                  value={sepalApiKeyInput}
-                  onChange={(e) => setSepalApiKeyInput(e.target.value)}
-                  placeholder="کلید درگاه پرداخت سپال"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono dir-ltr text-right focus:border-teal-500 outline-hidden"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  کلید ارائه‌شده در بخش درگاه پرداخت sepal.ir جهت تسویه آنلاین شاپرک
-                </p>
-              </div>
-            </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800">
+                <div>
+                  <label className="block text-xs text-slate-300 font-bold mb-1">
+                    کد یکتای سپال (X-Unique-Code):
+                  </label>
+                  <input
+                    type="text"
+                    value={sepalUniqueCodeInput}
+                    onChange={(e) => setSepalUniqueCodeInput(e.target.value)}
+                    placeholder="مثال: 2930311446"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono dir-ltr text-right focus:border-teal-500 outline-hidden"
+                  />
+                </div>
 
-            <div className="p-3 bg-teal-950/30 border border-teal-500/20 rounded-xl text-[11px] text-teal-200/90 leading-relaxed space-y-1">
-              <p className="font-bold flex items-center gap-1 text-teal-300">
-                <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
-                ساختار PHP + MySQL درگاه پرداخت شاپرک (SEP و سپال) روی هاست karbama34.ir:
-              </p>
-              <p>• <code>api/sep/request.php</code> : ایجاد درخواست پرداخت و دریافت توکن از SEP</p>
-              <p>• <code>api/sep/callback.php</code> : دریافت پاسخ درگاه پس از پرداخت (<code>https://karbama34.ir/api/sep/callback.php</code>)</p>
-              <p>• <code>api/sep/verify.php</code> : تأیید تراکنش از سرور SEP و ثبت نتیجه در سفارش</p>
+                <div>
+                  <label className="block text-xs text-slate-300 font-bold mb-1">
+                    کلید درگاه پرداخت سپال (apiKey):
+                  </label>
+                  <input
+                    type="text"
+                    value={sepalApiKeyInput}
+                    onChange={(e) => setSepalApiKeyInput(e.target.value)}
+                    placeholder="کلید درگاه پرداخت سپال"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono dir-ltr text-right focus:border-teal-500 outline-hidden"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1937,6 +2104,11 @@ export const AdminPanel: React.FC = () => {
                 const cleanUniqueCode = sepalUniqueCodeInput.trim();
                 updatePaymentSettings({
                   feeTL: Number(feeTLInput) || 500,
+                  seekerFeeToman: Number(seekerFeeTomanInput) || 0,
+                  jobPostingFeeTL: Number(jobPostingFeeTLInput) || 500,
+                  jobPostingFeeToman: Number(jobPostingFeeTomanInput) || 0,
+                  consultationFeeTL: Number(consultationFeeTLInput) || 150,
+                  consultationFeeToman: Number(consultationFeeTomanInput) || 750000,
                   exchangeRateToman: Number(exchangeRateInput) || 2300,
                   directPaymentAmount: Number(directPaymentAmountInput) || 0,
                   paymentAmountUnit: paymentAmountUnitInput,
@@ -1949,6 +2121,14 @@ export const AdminPanel: React.FC = () => {
                   sepalApiKey: cleanApiKey,
                   sepalUniqueCode: cleanUniqueCode,
                 });
+                updatePartnerPlans(partnerPlanPrices);
+                updateBrokerSettings({
+                  brokerCardNumber: brokerCardInput.trim(),
+                  brokerCardHolder: brokerHolderInput.trim(),
+                  brokerBankName: brokerBankInput.trim(),
+                  brokerServiceFee: brokerFeeInput.trim(),
+                  brokerIban: brokerIbanInput.trim(),
+                });
                 if (cleanApiKey) {
                   fetch('/api/sep/save-config.php', {
                     method: 'POST',
@@ -1960,9 +2140,10 @@ export const AdminPanel: React.FC = () => {
                   }).catch(() => {});
                 }
               }}
-              className="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold shadow-lg transition"
+              className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white rounded-2xl text-xs sm:text-sm font-black shadow-xl shadow-amber-600/30 transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              ذخیره تنظیمات پرداخت و نرخ ارز
+              <CheckCircle2 className="w-4 h-4" />
+              <span>ذخیره یکپارچه تمام مبالغ، تعرفه‌های کارجو و همکار و تنظیمات درگاه</span>
             </button>
           </div>
         </div>
@@ -2319,86 +2500,23 @@ export const AdminPanel: React.FC = () => {
             </button>
           </div>
 
-          {/* 1. SET PARTNER SUBSCRIPTION PLAN PRICES (User Request: با قیمتهایی متفاوت که توسط مدیر تعیین بشه) */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-amber-400" />
-                  تنظیم تعرفه و قیمت پلن‌های اشتراک همکاران (توسط مدیر)
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  قیمت‌های تعیین‌شده در این قسمت در پنل همکاران به عنوان هزینه اشتراک نمایش داده می‌شود.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  updatePartnerPlans(partnerPlanPrices);
-                }}
-                className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold rounded-xl text-xs shadow-lg transition flex items-center gap-1.5 self-start sm:self-auto"
-              >
-                <Check className="w-4 h-4" />
-                ذخیره تغییرات قیمت پلن‌ها
-              </button>
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h4 className="text-xs sm:text-sm font-black text-amber-300 flex items-center gap-2">
+                <Landmark className="w-4 h-4 text-amber-400" />
+                <span>تنظیم تعرفه و قیمت پلن‌های اشتراک همکاران</span>
+              </h4>
+              <p className="text-xs text-slate-300 mt-0.5">
+                تمامی تعرفه‌های اشتراک همکاران و هزینه‌های کارجویان در بخش یکپارچه «تنظیمات جامع مبالغ پرداختی» تجمیع شده‌اند.
+              </p>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-              {partnerPlanPrices.map((plan, idx) => (
-                <div
-                  key={plan.id}
-                  className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/80 space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-white">{plan.title}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">
-                      {plan.durationMonths} ماه
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">قیمت به لیر ترکیه (₺):</label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        value={plan.priceTL}
-                        onChange={(e) => {
-                          const val = Number(e.target.value) || 0;
-                          setPartnerPlanPrices((prev) =>
-                            prev.map((p, i) => (i === idx ? { ...p, priceTL: val } : p))
-                          );
-                        }}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs focus:border-amber-500 outline-none"
-                      />
-                      <span className="absolute left-3 top-2 text-[10px] text-slate-400">لیر</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] text-slate-400 mb-1">قیمت معادل به تومان:</label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        value={plan.priceToman}
-                        onChange={(e) => {
-                          const val = Number(e.target.value) || 0;
-                          setPartnerPlanPrices((prev) =>
-                            prev.map((p, i) => (i === idx ? { ...p, priceToman: val } : p))
-                          );
-                        }}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs focus:border-amber-500 outline-none"
-                      />
-                      <span className="absolute left-3 top-2 text-[10px] text-slate-400">تومان</span>
-                    </div>
-                  </div>
-
-                  <div className="text-[10px] text-slate-500">
-                    ویژگی: {plan.features[0]}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <button
+              type="button"
+              onClick={() => setAdminTab('exchange-settings')}
+              className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition shrink-0 cursor-pointer"
+            >
+              مدیریت یکپارچه تعرفه‌ها
+            </button>
           </div>
 
           {/* 2. PENDING PARTNER PAYMENT APPROVALS (User Request: بعد از پرداخت توسط همکار بخشها قابل نمایش بشه) */}
@@ -3807,10 +3925,10 @@ export const AdminPanel: React.FC = () => {
                 </div>
               </div>
 
-              {/* SPECIFIC SECTIONS: ACCOMMODATION, MEALS, INSURANCE, WORK PERMIT */}
+              {/* SPECIFIC SECTIONS: ACCOMMODATION, MEALS, WORK PERMIT */}
               <div className="space-y-3 pt-3 border-t border-slate-800">
                 <span className="text-xs font-bold text-amber-300 block">
-                  مزایای رفاهی و تسهیلات کارجو (جای خواب، غذا و بیمه):
+                  مزایای رفاهی و تسهیلات کارجو (جای خواب و غذا):
                 </span>
 
                 {/* 1. ACCOMMODATION / جای خواب */}
@@ -4134,7 +4252,7 @@ export const AdminPanel: React.FC = () => {
                 </div>
               </div>
 
-              {/* Edit Job: Specific Benefits: Accommodation, Meals, Insurance */}
+              {/* Edit Job: Specific Benefits: Accommodation, Meals */}
               <div className="space-y-3 pt-3 border-t border-slate-800">
                 <span className="text-xs font-bold text-amber-300 block">مزایای کارجو:</span>
 

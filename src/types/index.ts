@@ -205,7 +205,12 @@ export type PaymentMethod = 'sepal' | 'zarinpal' | 'turkey_bank' | 'iran_card';
 export type JobPaymentStatus = 'pending_payment' | 'pending_approval' | 'paid' | 'rejected';
 
 export interface PaymentGatewaySettings {
-  feeTL: number;                // پایه محاسبه لیر (پیش‌فرض ۵۰۰)
+  feeTL: number;                // پایه محاسبه لیر کارجو (پیش‌فرض ۵۰۰)
+  seekerFeeToman?: number;      // مبلغ مستقیم تعیین‌شده کارجو به تومان
+  jobPostingFeeTL?: number;     // تعرفه ثبت آگهی استخدام کارفرما به لیر
+  jobPostingFeeToman?: number;  // تعرفه ثبت آگهی استخدام کارفرما به تومان
+  consultationFeeTL?: number;   // هزینه مشاوره و چت آنلاین با مدیریت به لیر
+  consultationFeeToman?: number;// هزینه مشاوره و چت آنلاین با مدیریت به تومان
   exchangeRateToman: number;    // نرخ روز هر لیر به تومان
   directPaymentAmount?: number; // مبلغ مستقیم تعیین‌شده توسط مدیر (اختیاری)
   paymentAmountUnit?: 'toman' | 'rial'; // واحد مبلغ درگاه (تومان یا ریال)

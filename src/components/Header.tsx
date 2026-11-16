@@ -372,23 +372,6 @@ export const Header: React.FC = () => {
 
                       <div className="border-t border-slate-800 dark:border-slate-800 light:border-slate-200 my-1"></div>
 
-                      {/* Android App Download */}
-                      <button
-                        onClick={() => {
-                          setApkModalOpen(true);
-                          setToolsDropdown(false);
-                        }}
-                        className="w-full text-right px-3 py-2 rounded-xl text-slate-200 dark:text-slate-200 light:text-slate-800 hover:bg-slate-800/80 dark:hover:bg-slate-800/80 light:hover:bg-slate-100 flex items-center justify-between transition"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Smartphone className="w-4 h-4 text-emerald-400" />
-                          <span className="font-bold">{t('downloadApk', appLanguage)}</span>
-                        </div>
-                        <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-md font-mono">
-                          v{APP_VERSION}
-                        </span>
-                      </button>
-
                       <button
                         onClick={() => {
                           setShareModalOpen(true);
@@ -500,9 +483,11 @@ export const Header: React.FC = () => {
                     onClick={() => setActiveTab('partner')}
                     className="flex items-center gap-1.5 bg-indigo-950/70 hover:bg-indigo-900/80 border border-indigo-500/40 px-2.5 py-1.5 rounded-xl transition text-right shadow-sm"
                   >
-                    <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-400/40 flex items-center justify-center font-bold text-xs shrink-0">
-                      <Building2 className="w-3.5 h-3.5" />
-                    </div>
+                    <img
+                      src="/logo.png"
+                      alt={currentPartner.companyName}
+                      className="w-6 h-6 rounded-full object-cover border border-indigo-400/60 shrink-0 bg-slate-900"
+                    />
                     <div className="hidden sm:flex items-center gap-1 text-right">
                       <p className="text-xs font-bold text-white leading-tight">
                         {currentPartner.companyName}
@@ -515,11 +500,13 @@ export const Header: React.FC = () => {
                 <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 relative">
                   <button
                     onClick={() => setUserDropdown(!userDropdown)}
-                    className="flex items-center gap-1.5 bg-slate-800 dark:bg-slate-800 light:bg-slate-100 hover:bg-slate-700/90 border border-red-500/30 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl transition text-right max-w-[110px] xs:max-w-[140px] sm:max-w-none shadow-md shadow-red-950/30 shrink-0"
+                    className="flex items-center gap-1.5 bg-slate-800 dark:bg-slate-800 light:bg-slate-100 hover:bg-slate-700/90 border border-red-500/30 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl transition text-right max-w-[120px] xs:max-w-[150px] sm:max-w-none shadow-md shadow-red-950/30 shrink-0"
                   >
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-red-600 to-rose-500 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-md shadow-red-600/40 border border-red-400/40">
-                      {currentSeeker.fullName.charAt(0)}
-                    </div>
+                    <img
+                      src={currentSeeker.fullBodyPhotoUrl || currentSeeker.passportPhotoUrl || '/logo.png'}
+                      alt={currentSeeker.fullName}
+                      className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover shrink-0 shadow-sm border border-amber-400/70 bg-slate-900"
+                    />
                     <div className="flex items-center gap-1 truncate min-w-0">
                       <p className="text-xs font-black text-white dark:text-white light:text-slate-900 truncate">
                         {currentSeeker.fullName.split(' ')[0]}
@@ -539,15 +526,22 @@ export const Header: React.FC = () => {
                         onClick={() => setUserDropdown(false)}
                       />
                       <div className="fixed sm:absolute top-16 left-3 right-3 sm:left-0 sm:right-auto sm:top-full mt-2 sm:w-64 max-w-[calc(100vw-1.5rem)] max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain bg-slate-900/98 dark:bg-slate-900/98 light:bg-white border-2 border-slate-700 dark:border-slate-700 light:border-slate-200 rounded-2xl shadow-2xl py-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
-                        <div className="px-4 py-2 border-b border-slate-800 dark:border-slate-800 light:border-slate-200 text-right flex items-center justify-between">
-                          <div>
-                            <p className="font-bold text-white dark:text-white light:text-slate-900">{currentSeeker.fullName}</p>
-                            <p className="text-[11px] text-slate-400">{t('fatherNameLabel', appLanguage)} {currentSeeker.fatherName}</p>
-                            <p className="text-[10px] text-slate-400 font-mono">@{currentSeeker.username}</p>
+                        <div className="px-4 py-2.5 border-b border-slate-800 dark:border-slate-800 light:border-slate-200 text-right flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <img
+                              src={currentSeeker.fullBodyPhotoUrl || currentSeeker.passportPhotoUrl || '/logo.png'}
+                              alt={currentSeeker.fullName}
+                              className="w-9 h-9 rounded-full object-cover border border-amber-400/70 shrink-0 bg-slate-900"
+                            />
+                            <div className="min-w-0">
+                              <p className="font-bold text-white dark:text-white light:text-slate-900 truncate">{currentSeeker.fullName}</p>
+                              <p className="text-[11px] text-slate-400 truncate">{t('fatherNameLabel', appLanguage)} {currentSeeker.fatherName}</p>
+                              <p className="text-[10px] text-slate-400 font-mono truncate">@{currentSeeker.username}</p>
+                            </div>
                           </div>
                           <button
                             onClick={() => setUserDropdown(false)}
-                            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition shrink-0"
                           >
                             <X className="w-4 h-4" />
                           </button>

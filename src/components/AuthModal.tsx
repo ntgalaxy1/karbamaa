@@ -308,6 +308,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
   // Password Recovery state
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [recoverInput, setRecoverInput] = useState('');
+  const [recoverNewPassword, setRecoverNewPassword] = useState('');
   const [recoverResult, setRecoverResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // 2. آدرس دقیق سکونت ایران و تعیین کشور مقصد (۴ کشور)
@@ -1969,7 +1970,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                       </p>
 
                       <p>
-                        اینجانب آگاه هستم که وظیفه کارگزار صرفاً معرفی اینجانب به کارفرما پیمانکار یا فرصت شغلی مورد در خواست بوده و کارگزار هیچ گونه تعهد یا مسئولیتی در قبال استخدام قطعی میزان حقوق و مزایا شرایط کار مدت، همکاری اسکان، بیمه، اقامت مجوز کار یا سایر توافقات احتمالی میان اینجانب و کارفرما یا پیمانکار نخواهد داشت.
+                        اینجانب آگاه هستم که وظیفه کارگزار صرفاً معرفی اینجانب به کارفرما پیمانکار یا فرصت شغلی مورد در خواست بوده و کارگزار هیچ گونه تعهد یا مسئولیتی در قبال استخدام قطعی میزان حقوق و مزایا شرایط کار مدت، همکاری اسکان، اقامت مجوز کار یا سایر توافقات احتمالی میان اینجانب و کارفرما یا پیمانکار نخواهد داشت.
                       </p>
 
                       <p>
@@ -2861,11 +2862,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                         setShowForgotPasswordModal(true);
                         setRecoverResult(null);
                         setRecoverInput(loginUsername || '');
+                        setRecoverNewPassword('');
                       }}
-                      className="text-xs text-amber-400 hover:text-amber-300 font-bold transition flex items-center gap-1"
+                      className="text-xs text-amber-400 hover:text-amber-300 font-bold transition flex items-center gap-1 cursor-pointer"
                     >
                       <KeyRound className="w-3.5 h-3.5" />
-                      فراموشی یا مشاهده رمز عبور؟
+                      <span>{loginUserRole === 'partner' ? 'فراموشی رمز عبور همکار؟' : 'فراموشی رمز عبور کارجو؟'}</span>
                     </button>
                   </div>
                   <div className="relative">
@@ -2889,31 +2891,57 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  className={`w-full py-3 text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer ${
-                    loginUserRole === 'partner'
-                      ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-700/30'
-                      : 'bg-red-600 hover:bg-red-500 shadow-red-700/30'
-                  }`}
-                >
-                  <LogIn className="w-4 h-4" />
-                  {loginUserRole === 'partner' ? 'ورود به پنل همکار' : 'ورود به حساب کارجو'}
-                </button>
+                <div className="pt-1 space-y-2.5">
+                  <button
+                    type="submit"
+                    className={`w-full py-3 text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer ${
+                      loginUserRole === 'partner'
+                        ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-700/30'
+                        : 'bg-red-600 hover:bg-red-500 shadow-red-700/30'
+                    }`}
+                  >
+                    <LogIn className="w-4 h-4" />
+                    {loginUserRole === 'partner' ? 'ورود به پنل همکار' : 'ورود به حساب کارجو'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setMode(loginUserRole === 'partner' ? 'partner' : 'register');
+                    }}
+                    className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-2 cursor-pointer ${
+                      loginUserRole === 'partner'
+                        ? 'bg-indigo-950/60 hover:bg-indigo-900/70 text-indigo-300 border-indigo-500/40'
+                        : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-slate-700'
+                    }`}
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>
+                      {loginUserRole === 'partner'
+                        ? 'حساب ندارید؟ ثبت‌نام همکار'
+                        : 'حساب کاربری ندارید؟ ثبت‌نام کارجو'}
+                    </span>
+                  </button>
+                </div>
               </form>
             </div>
           )}
         </div>
       </div>
 
-      {/* FORGOT PASSWORD MODAL */}
+      {/* SEPARATE ROLE-SPECIFIC FORGOT PASSWORD MODAL (EMAIL BASED) */}
       {showForgotPasswordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
           <div className="relative w-full max-w-md bg-slate-900 border border-amber-500/40 rounded-3xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2 text-amber-400 font-bold text-base">
-                <KeyRound className="w-5 h-5" />
-                <span>بازیابی رمز عبور کارباما</span>
+              <div className="flex items-center gap-2 text-amber-400 font-bold text-sm sm:text-base">
+                <KeyRound className="w-5 h-5 shrink-0" />
+                <span>
+                  {loginUserRole === 'partner'
+                    ? 'بازیابی رمز عبور همکار / کارفرما (با ایمیل)'
+                    : 'بازیابی رمز عبور کارجو (با ایمیل)'}
+                </span>
               </div>
               <button
                 onClick={() => setShowForgotPasswordModal(false)}
@@ -2923,13 +2951,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
               </button>
             </div>
 
+            <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginUserRole('seeker');
+                  setRecoverResult(null);
+                }}
+                className={`py-2 rounded-lg transition cursor-pointer ${
+                  loginUserRole === 'seeker' ? 'bg-red-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                بازیابی حساب کارجو
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginUserRole('partner');
+                  setRecoverResult(null);
+                }}
+                className={`py-2 rounded-lg transition cursor-pointer ${
+                  loginUserRole === 'partner' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                بازیابی حساب همکار
+              </button>
+            </div>
+
             <p className="text-xs text-slate-300 leading-relaxed">
-              جهت بازیابی رمز عبور، آدرس ایمیل ثبت‌شده هنگام ثبت‌نام یا نام کاربری خود را وارد نمایید.
+              {loginUserRole === 'partner'
+                ? 'جهت بازیابی یا بازنشانی رمز عبور حساب همکار، آدرس ایمیل ثبت‌شده هنگام ثبت‌نام همکار را وارد نمایید.'
+                : 'جهت بازیابی یا بازنشانی رمز عبور حساب کارجو، آدرس ایمیل ثبت‌شده هنگام ثبت‌نام کارجو را وارد نمایید.'}
             </p>
 
             {recoverResult && (
               <div
-                className={`p-3 rounded-xl text-xs font-bold ${
+                className={`p-3 rounded-xl text-xs font-bold leading-relaxed ${
                   recoverResult.success
                     ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
                     : 'bg-red-500/20 border border-red-500/40 text-red-300'
@@ -2939,18 +2996,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
               </div>
             )}
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                ایمیل یا نام کاربری (یوزرنیم)
-              </label>
-              <input
-                type="text"
-                dir="ltr"
-                value={recoverInput}
-                onChange={(e) => setRecoverInput(e.target.value)}
-                placeholder="example@gmail.com یا ali_reza"
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-hidden focus:border-amber-500 font-mono text-left"
-              />
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  {loginUserRole === 'partner'
+                    ? 'ایمیل ثبت‌شده همکار (یا نام کاربری)'
+                    : 'ایمیل ثبت‌شده کارجو (یا نام کاربری)'}
+                </label>
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={recoverInput}
+                  onChange={(e) => setRecoverInput(e.target.value)}
+                  placeholder={loginUserRole === 'partner' ? 'partner@gmail.com' : 'seeker@gmail.com'}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-hidden focus:border-amber-500 font-mono text-left"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  رمز عبور جدید (اختیاری - در صورت تمایل به تغییر مستقیم رمز)
+                </label>
+                <input
+                  type="password"
+                  dir="ltr"
+                  value={recoverNewPassword}
+                  onChange={(e) => setRecoverNewPassword(e.target.value)}
+                  placeholder="رمز جدید (حداقل ۶ کاراکتر)"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-hidden focus:border-amber-500 font-mono text-left"
+                />
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -2959,21 +3034,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                 onClick={() => setShowForgotPasswordModal(false)}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold"
               >
-                انصراف
+                بستن
               </button>
               <button
                 type="button"
                 onClick={() => {
                   if (!recoverInput.trim()) return;
-                  const res = recoverPassword(recoverInput);
+                  const res = recoverPassword(
+                    recoverInput,
+                    loginUserRole,
+                    recoverNewPassword.trim() ? recoverNewPassword.trim() : undefined
+                  );
                   setRecoverResult({
                     success: res.success,
                     message: res.message || res.error || '',
                   });
                 }}
-                className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-700/30"
+                className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-700/30 cursor-pointer"
               >
-                ارسال لینک / بازیابی رمز
+                {recoverNewPassword.trim() ? 'تایید ایمیل و تغییر رمز عبور' : 'تایید ایمیل و بازیابی رمز عبور'}
               </button>
             </div>
           </div>

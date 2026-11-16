@@ -33,6 +33,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
     unreadNotificationCount,
     markNotificationAsRead,
     markAllNotificationsAsRead,
+    deleteNotification,
     clearNotifications,
     setActiveTab,
     setOpenedJobIdFromAlert,
@@ -163,10 +164,11 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                 </button>
                 <button
                   onClick={clearNotifications}
-                  className="text-slate-400 hover:text-red-400 text-[11px] p-1"
-                  title="پاک کردن تاریخچه"
+                  className="text-slate-400 hover:text-red-400 text-[11px] px-2 py-0.5 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-1 transition"
+                  title="حذف کامل همه اعلان‌ها"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3 h-3" />
+                  حذف همه
                 </button>
               </div>
             )}
@@ -181,13 +183,13 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                 </div>
                 <h4 className="font-bold text-white text-sm">هیچ اعلانی ثبت نشده است</h4>
                 <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
-                  با تنظیم یک هشدار شغلی، هرگاه فرصت شغلی جدیدی متناسب با خواسته شما ثبت شود، در این قسمت ظاهر می‌گردد.
+                  هرگاه فرصت شغلی جدیدی در سامانه ثبت و منتشر شود، اعلان فوری در این قسمت ظاهر می‌گردد.
                 </p>
                 <button
                   onClick={onOpenAlertModal}
                   className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition shadow-md shadow-red-700/30"
                 >
-                  + تنظیم اولین هشدار شغلی
+                  + تنظیم هشدار شغلی
                 </button>
               </div>
             ) : (
@@ -197,23 +199,24 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                   onClick={() => handleOpenJob(notif.jobId, notif.id)}
                   className={`p-3.5 rounded-2xl border transition cursor-pointer relative group flex gap-3 text-xs ${
                     notif.read
-                      ? 'bg-slate-800/40 border-slate-800 text-slate-300 hover:bg-slate-800/70'
+                      ? 'bg-slate-800/40 border-slate-800 text-slate-300 hover:bg-slate-800/70 opacity-75'
                       : 'bg-slate-800/90 border-red-500/40 text-white shadow-md hover:border-red-500/80'
                   }`}
                 >
                   {/* Unread Indicator Dot */}
                   {!notif.read && (
-                    <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <span className="absolute top-3 left-3 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
                   )}
 
-                  {/* Thumbnail */}
-                  {notif.imageUrl && (
-                    <img
-                      src={notif.imageUrl}
-                      alt={notif.jobTitle}
-                      className="w-14 h-14 rounded-xl object-cover shrink-0 bg-slate-700"
-                    />
-                  )}
+                  {/* Thumbnail with Karbama Logo Fallback */}
+                  <img
+                    src={notif.imageUrl || '/logo.png'}
+                    alt={notif.jobTitle}
+                    onError={(e) => {
+                      e.currentTarget.src = '/logo.png';
+                    }}
+                    className="w-14 h-14 rounded-xl object-cover shrink-0 bg-slate-950 border border-slate-700"
+                  />
 
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -226,28 +229,37 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                       {notif.company} • {notif.city}
                     </p>
 
-                    <div className="flex items-center justify-between text-[10px] pt-1 gap-2">
+                    <div className="flex items-center justify-between text-[10px] pt-1.5 gap-2">
                       <span className="text-emerald-400 font-mono font-bold">
                         {notif.salaryText}
                       </span>
-                      <div className="flex items-center gap-2">
-                        {!notif.read && (
+                      <div className="flex items-center gap-1.5">
+                        {!notif.read ? (
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               markNotificationAsRead(notif.id);
                             }}
-                            className="px-2 py-0.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center gap-1 transition"
+                            className="px-2 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 font-bold transition"
                           >
                             <Check className="w-2.5 h-2.5" />
                             خوانده شد
                           </button>
+                        ) : (
+                          <span className="text-slate-500 font-medium">خوانده شده ✓</span>
                         )}
-                        <span className="text-slate-500 flex items-center gap-1 group-hover:text-red-400 transition">
-                          مشاهده آگهی
-                          <ExternalLink className="w-3 h-3" />
-                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteNotification(notif.id);
+                          }}
+                          className="p-1 rounded-lg bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/20 transition"
+                          title="حذف دائمی این اعلان"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
                       </div>
                     </div>
                   </div>
