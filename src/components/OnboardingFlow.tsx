@@ -229,32 +229,32 @@ export const OnboardingFlow: React.FC = () => {
       label: 'فارسی',
       nativeName: 'فارسی',
       flag: '🇮🇷',
-      welcome: 'به سامانه رسمی کاریابی کارباما خوش آمدید',
-      desc: 'مرجع رسمی ثبت‌نام کارجویان، پرونده‌های استخدامی و اعزام نیروی کار',
+      welcome: 'پل ارتباطی مستقیم کارجویان و متخصصان با بهترین کارفرمایان و فرصت‌های شغلی واقعی',
+      desc: 'در سامانه رسمی کارباما، پرونده شغلی خود را ثبت کنید و بدون واسطه‌های غیرمعتبر، مستقیماً به صدها فرصت شغلی تاییدشده همراه با جای خواب، بیمه و قرارداد قانونی متصل شوید.',
     },
     {
       code: 'tr',
       label: 'Türkçe',
       nativeName: 'Türkçe',
       flag: '🇹🇷',
-      welcome: 'Karbama Uygulamasına Hoş Geldiniz',
-      desc: "Türkiye'deki İranlılar için İş ve İkamet Sistemi",
+      welcome: 'İş Arayanlar ve Uzmanları Doğrudan Güvenilir İşverenlerle Buluşturan Resmi Köprü',
+      desc: 'Resmi Karbama sisteminde iş dosyanızı oluşturun; konaklama, sigorta ve yasal sözleşmeli yüzlerce onaylı iş fırsatına doğrudan ulaşın.',
     },
     {
       code: 'en',
       label: 'English',
       nativeName: 'English',
       flag: '🇬🇧',
-      welcome: 'Welcome to Karbama App',
-      desc: 'The official recruitment and residence system for Turkey',
+      welcome: 'Direct Bridge Connecting Job Seekers & Specialists with Verified Employers & Real Jobs',
+      desc: 'Register your official career profile on Karbama and connect directly to hundreds of verified jobs with accommodation, insurance, and legal contracts.',
     },
     {
       code: 'ar',
       label: 'العربية',
       nativeName: 'العربية',
       flag: '🇸🇦',
-      welcome: 'مرحباً بكم في تطبيق كارباما',
-      desc: 'نظام التوظيف والإقامة الرسمي في تركيا',
+      welcome: 'الجسر المباشر الذي يربط الباحثين عن عمل والمتخصصين بأفضل أصحاب العمل وفرص العمل الحقيقية',
+      desc: 'سجّل ملفك المهني في منصة كارباما الرسمية وتواصل مباشرة مع مئات فرص العمل المعتمدة مع السكن والتأمين والعقود القانونية.',
     },
   ];
 
@@ -548,18 +548,22 @@ export const OnboardingFlow: React.FC = () => {
   const formattedPhone = `${phoneCountryCode} ${phoneNumber}`;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-auto relative h-[88vh] min-h-[560px] max-h-[720px] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
+      <div
+        className={`${
+          viewMode === 'language' ? 'max-w-6xl' : 'max-w-2xl'
+        } w-full bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-auto relative max-h-[94vh] min-h-[580px] flex flex-col transition-all duration-300`}
+      >
         {/* Top bar */}
         <div style={{ background: 'var(--primary-topbar)' }} className="h-1.5 w-full shrink-0" />
 
         {/* Top Header Mode Indicator */}
-        <div className="px-5 sm:px-6 py-3.5 flex items-center justify-between text-xs border-b border-slate-800/80 shrink-0 bg-slate-950/40">
+        <div className="px-4 sm:px-6 py-3.5 flex items-center justify-between text-xs border-b border-slate-800/80 shrink-0 bg-slate-950/40">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <img
               src="/logo.png"
               alt="کارباما"
-              className="w-8 h-8 rounded-full object-cover border border-amber-400/80 shadow-sm"
+              className="w-9 h-9 rounded-full object-cover border border-amber-400/80 shadow-sm"
             />
             <div>
               <span className="font-black text-xs sm:text-sm text-white">کارباما | KARBAMA</span>
@@ -586,16 +590,16 @@ export const OnboardingFlow: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setViewMode('language')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   viewMode === 'language' ? 'bg-red-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                {t('selectLanguage', appLanguage)}
+                صفحه اصلی
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('register')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   viewMode === 'register' ? 'bg-red-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -604,7 +608,7 @@ export const OnboardingFlow: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setViewMode('login')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   viewMode === 'login' ? 'bg-red-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -614,105 +618,273 @@ export const OnboardingFlow: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-y-auto flex-1 p-5 sm:p-7">
-          {/* SCREEN 1: WELCOME & LANGUAGE SELECTION */}
+        <div className="overflow-y-auto flex-1 p-4 sm:p-7">
+          {/* SCREEN 1: ULTRA-MODERN HOMEPAGE HERO + DEVICE MOCKUP + SOCIAL PROOF STATS */}
           {viewMode === 'language' && (
-            <div className="min-h-full flex flex-col justify-between py-1 text-center">
-              <div className="space-y-4">
-                <div className="relative inline-block mx-auto">
-                  <img
-                    src="/logo.png"
-                    alt="کارباما"
-                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-amber-400/80 shadow-2xl ring-4 ring-amber-500/20"
-                  />
-                  <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center text-[10px] text-white font-bold">
-                    ✓
-                  </span>
-                </div>
+            <div className="space-y-6 animate-in fade-in duration-300">
+              {/* SPLIT-SCREEN HERO SECTION */}
+              <div
+                style={{ background: 'var(--primary-banner)' }}
+                className="relative rounded-3xl border border-slate-800/80 p-5 sm:p-8 lg:p-10 overflow-hidden shadow-xl"
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center relative z-10">
+                  {/* Hero Text & Dual CTA Column */}
+                  <div className="lg:col-span-7 space-y-5 text-right">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-extrabold">
+                      <ShieldCheck className="w-4 h-4 shrink-0" />
+                      <span>سامانه رسمی کاریابی، اعزام و اشتغال بین‌المللی | karbama34.ir</span>
+                    </div>
 
-                <div className="space-y-1.5">
-                  <h1 className="text-xl sm:text-2xl font-black text-white">
-                    {currentLangObj.welcome}
-                  </h1>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
-                    {currentLangObj.desc}
-                  </p>
-                </div>
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-[1.35] tracking-tight">
+                      {currentLangObj.welcome}
+                    </h1>
 
-                {/* Language Selection Grid */}
-                <div className="space-y-2 pt-1 text-right">
-                  <p className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-                    <Globe className="w-4 h-4 text-red-400" />
-                    {t('selectLanguagePrompt', appLanguage)}
-                  </p>
+                    <p className="text-xs sm:text-sm lg:text-base text-slate-300 leading-relaxed max-w-2xl">
+                      {currentLangObj.desc}
+                    </p>
 
-                  <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-                    {languages.map((l) => {
-                      const isSelected = appLanguage === l.code;
-                      return (
-                        <button
-                          key={l.code}
-                          type="button"
-                          onClick={() => changeAppLanguage(l.code)}
-                          className={`p-3 rounded-2xl border text-right transition flex items-center justify-between gap-2 sm:gap-3 ${
-                            isSelected
-                              ? 'bg-amber-500/20 border-amber-500 text-amber-200 font-bold shadow-lg scale-[1.02]'
-                              : 'bg-slate-800/80 border-slate-700/80 text-slate-300 hover:bg-slate-800 hover:text-white'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl sm:text-2xl">{l.flag}</span>
-                            <div>
-                              <p className="text-xs sm:text-sm font-bold">{l.label}</p>
-                              <p className="text-[10px] text-slate-400">{l.nativeName}</p>
+                    {/* Dual Call-to-Action Buttons */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRegAccountType('seeker');
+                          setViewMode('register');
+                        }}
+                        className="flex-1 py-3.5 sm:py-4 px-6 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs sm:text-sm rounded-2xl shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center gap-2.5 group cursor-pointer"
+                      >
+                        <Search className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                        <span>پیدا کردن شغل دلخواه</span>
+                        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform shrink-0" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRegAccountType('partner');
+                          setViewMode('register');
+                        }}
+                        className="flex-1 py-3.5 sm:py-4 px-6 bg-slate-800/90 hover:bg-slate-800 text-white border-2 border-blue-500/40 hover:border-blue-500 font-black text-xs sm:text-sm rounded-2xl shadow-md transition-all flex items-center justify-center gap-2.5 group cursor-pointer"
+                      >
+                        <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 shrink-0" />
+                        <span>ثبت آگهی استخدام و همکاری</span>
+                        <ArrowLeft className="w-4 h-4 text-blue-400 group-hover:-translate-x-1 transition-transform shrink-0" />
+                      </button>
+                    </div>
+
+                    {/* Quick Login & Trust Highlights */}
+                    <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-800/70">
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] sm:text-xs text-slate-300 font-bold">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                          قرارداد رسمی و جای خواب
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                          احراز هویت کارفرمایان
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                          پشتیبانی تا شروع به کار
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('login')}
+                        className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <LogIn className="w-3.5 h-3.5 text-amber-400" />
+                        <span>{t('existingAccountLoginBtn', appLanguage)}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sleek Device Mockup / App Preview Column */}
+                  <div className="lg:col-span-5 flex items-center justify-center">
+                    <div className="relative w-full max-w-sm">
+                      {/* Device Frame */}
+                      <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-4 shadow-2xl space-y-3.5 relative z-10">
+                        {/* App Mockup Top Bar */}
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                          <div className="flex items-center gap-2.5">
+                            <img
+                              src="/logo.png"
+                              alt="کارباما"
+                              className="w-9 h-9 rounded-full object-cover border border-amber-400 shadow-xs"
+                            />
+                            <div className="text-right">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-black text-white">اپلیکیشن کارباما</span>
+                                <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 text-[9px] font-bold">
+                                  رسمی ✓
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-400 font-mono" dir="ltr">
+                                karbama34.ir
+                              </p>
                             </div>
                           </div>
-                          {isSelected && <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />}
-                        </button>
-                      );
-                    })}
+                          <span className="px-2.5 py-1 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-bold">
+                            آگهی‌های زنده
+                          </span>
+                        </div>
+
+                        {/* Mockup Live Job Card 1 */}
+                        <div className="p-3 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-2 text-right">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <span className="text-xs font-black text-white block">
+                                سرآشپز و کباب‌پز ماهر (استانبول)
+                              </span>
+                              <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
+                                منطقه شیشلی • رستوران زنجیره‌ای معتبر
+                              </span>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-[10px] font-black shrink-0">
+                              ۴۸,۰۰۰ لیر
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 text-[10px]">
+                            <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-medium">
+                              ✓ جای خواب رایگان
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-medium">
+                              ✓ بیمه SGK و اقامت کاری
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Mockup Live Job Card 2 */}
+                        <div className="p-3 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-2 text-right">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <span className="text-xs font-black text-white block">
+                                چرخکار صنعتی و خیاط ماهر (مرتر)
+                              </span>
+                              <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                <MapPin className="w-3 h-3 text-blue-400 shrink-0" />
+                                استانبول • تولیدی پوشاک صادراتی
+                              </span>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-[10px] font-black shrink-0">
+                              ۴۲,۰۰۰ لیر
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 text-[10px]">
+                            <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-medium">
+                              ✓ ۳ وعده غذا + خوابگاه
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-medium">
+                              ✓ تسویه منظم هفتگی
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Mockup Bottom Status Pill */}
+                        <div className="p-2.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <span className="text-[11px] font-bold text-white">
+                              صدور فوری پرونده استخدامی کد رهگیری‌دار
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono font-bold text-emerald-400">24/7</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="pt-4 space-y-2.5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRegAccountType('seeker');
-                      setViewMode('register');
-                    }}
-                    className="w-full py-3 sm:py-3.5 px-4 bg-red-600 hover:bg-red-500 text-white font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-red-700/30 transition flex items-center justify-center gap-2 group cursor-pointer"
-                  >
-                    <UserCheck className="w-4 h-4 shrink-0" />
-                    <span>ثبت‌نام کارجو</span>
-                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform shrink-0" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRegAccountType('partner');
-                      setViewMode('register');
-                    }}
-                    className="w-full py-3 sm:py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-indigo-700/30 transition flex items-center justify-center gap-2 group cursor-pointer"
-                  >
-                    <Building2 className="w-4 h-4 shrink-0" />
-                    <span>ثبت‌نام همکار / کارفرما</span>
-                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform shrink-0" />
-                  </button>
+              {/* SOCIAL PROOF & TRUST STATISTICS SECTION DIRECTLY BELOW HERO */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-md hover:shadow-lg transition-all">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                    <Briefcase className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl sm:text-2xl font-black text-white">+۱,۴۸۰</span>
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 text-[10px] font-bold">
+                        بروزرسانی روزانه
+                      </span>
+                    </div>
+                    <h3 className="text-xs sm:text-sm font-black text-white">فرصت‌های شغلی فعال</h3>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      آگهی‌های استخدامی احراز هویت‌شده با جای خواب، بیمه و قرارداد معتبر در ترکیه، آلمان، ارمنستان و عراق
+                    </p>
+                  </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setViewMode('login')}
-                  className="w-full py-3 px-5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-2xl border border-slate-700 transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <LogIn className="w-4 h-4 text-amber-400" />
-                  <span>{t('existingAccountLoginBtn', appLanguage)}</span>
-                </button>
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-md hover:shadow-lg transition-all">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/15 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
+                    <UserCheck className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl sm:text-2xl font-black text-white">+۴,۳۵۰</span>
+                      <span className="px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400 text-[10px] font-bold">
+                        احراز هویت‌شده
+                      </span>
+                    </div>
+                    <h3 className="text-xs sm:text-sm font-black text-white">کارجویان و همکاران تاییدشده</h3>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      متخصصان دارای پرونده رسمی کد رهگیری‌دار و کارفرمایان و آژانس‌های کاریابی معتبر
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-md hover:shadow-lg transition-all">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
+                    <Award className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl sm:text-2xl font-black text-white">۹۸.۶٪</span>
+                      <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 text-[10px] font-bold">
+                        تضمین امنیت
+                      </span>
+                    </div>
+                    <h3 className="text-xs sm:text-sm font-black text-white">نرخ موفقیت و رضایت</h3>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      اعزام موفق کارجویان، پشتیبانی گام‌به‌گام حقوقی و رضایت بالای کارفرمایان از نیروهای معرفی‌شده
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* COMPACT LANGUAGE SELECTOR BAR */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <p className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <Globe className="w-4 h-4 text-blue-400 shrink-0" />
+                  <span>{t('selectLanguagePrompt', appLanguage)}</span>
+                </p>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {languages.map((l) => {
+                    const isSelected = appLanguage === l.code;
+                    return (
+                      <button
+                        key={l.code}
+                        type="button"
+                        onClick={() => changeAppLanguage(l.code)}
+                        className={`px-3 py-2 rounded-xl border text-right transition flex items-center justify-between gap-2 cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-500/15 border-emerald-500 text-white font-bold shadow-xs'
+                            : 'bg-slate-800/80 border-slate-700/80 text-slate-300 hover:bg-slate-800 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-base">{l.flag}</span>
+                          <span className="text-xs font-bold">{l.label}</span>
+                        </div>
+                        {isSelected && <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}

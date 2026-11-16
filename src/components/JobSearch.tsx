@@ -57,6 +57,11 @@ import {
   Loader2,
   AlertTriangle,
   CreditCard,
+  ArrowLeft,
+  UserCheck,
+  Award,
+  CheckCircle2,
+  ShieldCheck,
 } from 'lucide-react';
 import { JobImagePicker } from './JobImagePicker';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
@@ -255,6 +260,7 @@ export const JobSearch: React.FC = () => {
   }, [currentSeeker?.id]);
 
   // Payment referral state for locked jobseeker with Receipt Photo Upload & AI Verification
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const receiptFileInputRef = useRef<HTMLInputElement>(null);
   const [paymentReceiptPhoto, setPaymentReceiptPhoto] = useState<string | null>(null);
   const [paymentRefNote, setPaymentRefNote] = useState('');
@@ -931,86 +937,176 @@ export const JobSearch: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Search Header Banner (Dynamically adapts to selected theme color) */}
+      {/* ULTRA-MODERN SPLIT-SCREEN HERO SECTION */}
       <div
         style={{ background: 'var(--primary-banner)' }}
-        className="relative rounded-3xl overflow-hidden border border-red-500/40 p-6 sm:p-8 shadow-2xl transition-all duration-300"
+        className="relative rounded-3xl overflow-hidden border border-slate-800/80 p-5 sm:p-8 lg:p-10 shadow-2xl transition-all duration-300"
       >
         <div
           style={{ backgroundColor: 'var(--primary-color)' }}
-          className="absolute top-0 left-0 w-96 h-96 opacity-15 rounded-full blur-3xl pointer-events-none"
+          className="absolute top-0 left-0 w-96 h-96 opacity-10 rounded-full blur-3xl pointer-events-none"
         />
 
-        <div className="relative z-10">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="max-w-2xl flex-1">
-            <div className="flex flex-wrap items-center gap-2 mb-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 text-xs font-semibold">
-                <Sparkles className="w-3.5 h-3.5" />
-                {t('smartSystemTag', appLanguage)}
-              </div>
+        <div className="relative z-10 space-y-6">
+          {/* Split-Screen Hero Content + Sleek Device Mockup */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+            {/* Right Column: Value-Driven Copywriting, Badges & Dual CTAs */}
+            <div className="lg:col-span-7 space-y-4 text-right">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-extrabold">
+                  <ShieldCheck className="w-4 h-4 shrink-0" />
+                  <span>{t('smartSystemTag', appLanguage)}</span>
+                </div>
 
-              {/* Unified Job Posting & Position Registration Button for Admin */}
-              {isAdminLoggedIn && (
+                {isAdminLoggedIn && (
+                  <button
+                    type="button"
+                    onClick={() => setAdminJobModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/40 text-xs font-bold transition shadow-md cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ ثبت آگهی استخدام / موقعیت شغلی</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => setAdminJobModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/40 text-xs font-bold transition shadow-md"
+                  onClick={() => setJobAlertModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold transition shadow-xs cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ ثبت آگهی استخدام / موقعیت شغلی</span>
+                  <BellRing className="w-3.5 h-3.5 text-amber-400" />
+                  {t('jobAlertTitle', appLanguage)}
+                  {jobAlerts.length > 0 && (
+                    <span className="px-1.5 py-0.2 bg-amber-500 text-slate-950 rounded-md text-[10px] font-mono font-bold">
+                      {jobAlerts.length}
+                    </span>
+                  )}
                 </button>
-              )}
+              </div>
 
-              <button
-                type="button"
-                onClick={() => setJobAlertModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition shadow-xs"
-              >
-                <BellRing className="w-3.5 h-3.5 text-amber-400" />
-                {t('jobAlertTitle', appLanguage)}
-                {jobAlerts.length > 0 && (
-                  <span className="px-1.5 py-0.2 bg-amber-500 text-slate-950 rounded-full text-[10px] font-mono font-bold">
-                    {jobAlerts.length}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3 mb-2">
-              <img
-                src="/logo.png"
-                alt="کارباما"
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-amber-400/90 shadow-xl shadow-red-950/60 md:hidden shrink-0 ring-2 ring-amber-500/30"
-              />
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-[1.35] tracking-tight">
                 {t('bannerHeadline', appLanguage)}
               </h1>
-            </div>
-            <p className="text-sm text-slate-300 leading-relaxed mb-6">
-              {t('bannerDescription', appLanguage)}
-            </p>
-          </div>
 
-          <div className="hidden md:flex flex-col items-center justify-center shrink-0">
-            <div className="relative group">
-              <img
-                src="/logo.png"
-                alt="لوگوی رسمی کارباما"
-                className="w-32 h-32 lg:w-40 lg:h-40 rounded-full object-cover border-3 border-amber-400/90 shadow-2xl shadow-red-950/80 ring-4 ring-amber-500/30 group-hover:scale-105 transition-transform duration-300"
-              />
-              <span className="absolute -bottom-2 right-1/2 translate-x-1/2 bg-gradient-to-r from-amber-600 to-amber-500 text-white font-black text-xs px-3.5 py-0.5 rounded-full shadow-lg tracking-wider border border-amber-300/40 whitespace-nowrap">
-                KARBAMA
-              </span>
+              <p className="text-xs sm:text-sm lg:text-base text-slate-300 leading-relaxed max-w-2xl">
+                {t('bannerDescription', appLanguage)}
+              </p>
+
+              {/* Dual Call-to-Action Buttons (Job Seekers vs Partners/Employers) */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (searchInputRef.current) {
+                      searchInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      searchInputRef.current.focus();
+                    }
+                  }}
+                  className="flex-1 py-3.5 sm:py-4 px-6 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs sm:text-sm rounded-2xl shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center gap-2.5 group cursor-pointer"
+                >
+                  <Search className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span>پیدا کردن شغل دلخواه</span>
+                  <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('post-job')}
+                  className="flex-1 py-3.5 sm:py-4 px-6 bg-slate-800/90 hover:bg-slate-800 text-white border-2 border-blue-500/40 hover:border-blue-500 font-black text-xs sm:text-sm rounded-2xl shadow-md transition-all flex items-center justify-center gap-2.5 group cursor-pointer"
+                >
+                  <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 shrink-0" />
+                  <span>ثبت آگهی استخدام و همکاری</span>
+                  <ArrowLeft className="w-4 h-4 text-blue-400 group-hover:-translate-x-1 transition-transform shrink-0" />
+                </button>
+              </div>
+            </div>
+
+            {/* Left Column: Sleek Karbama34 Application Device Mockup Preview */}
+            <div className="lg:col-span-5 flex items-center justify-center">
+              <div className="relative w-full max-w-sm">
+                <div className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-4 shadow-2xl space-y-3 relative z-10">
+                  {/* Mockup Top Header */}
+                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-800">
+                    <div className="flex items-center gap-2.5">
+                      <img
+                        src="/logo.png"
+                        alt="لوگوی رسمی کارباما"
+                        className="w-10 h-10 rounded-full object-cover border-2 border-amber-400 shadow-xs"
+                      />
+                      <div className="text-right">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-black text-white">پلتفرم کارباما</span>
+                          <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 text-[9px] font-bold">
+                            تاییدشده ✓
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono block" dir="ltr">
+                          karbama34.ir
+                        </span>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-bold">
+                      {jobs.length.toLocaleString('fa-IR')} آگهی فعال
+                    </span>
+                  </div>
+
+                  {/* Mockup Live Preview Card 1 */}
+                  <div className="p-3 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-1.5 text-right">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="text-xs font-black text-white block">
+                          سرآشپز و کباب‌پز ماهر (استانبول)
+                        </span>
+                        <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
+                          شیشلی • قرارداد رسمی + جای خواب
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-[10px] font-black shrink-0">
+                        ۴۸,۰۰۰ ₺
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Mockup Live Preview Card 2 */}
+                  <div className="p-3 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-1.5 text-right">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="text-xs font-black text-white block">
+                          چرخکار صنعتی و خیاط پوشاک (مرتر)
+                        </span>
+                        <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3 text-blue-400 shrink-0" />
+                          استانبول • ۳ وعده غذا + بیمه SGK
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-[10px] font-black shrink-0">
+                        ۴۲,۰۰۰ ₺
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Mockup Verified Status Footer */}
+                  <div className="p-2.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span className="text-[11px] font-bold text-white">
+                        اتصال مستقیم به کارفرمایان احراز هویت‌شده
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-emerald-400">OFFICIAL</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
           {/* Search Box with Search Scope Selector */}
-          <div className="space-y-2.5">
+          <div className="space-y-2.5 pt-2 border-t border-slate-800/70">
             <div className="relative">
               <Search className="w-5 h-5 text-slate-400 absolute right-4 top-3.5" />
               <input
+                ref={searchInputRef}
                 type="text"
                 placeholder={t('searchJobsPlaceholder', appLanguage)}
                 value={searchQuery}
@@ -1151,6 +1247,63 @@ export const JobSearch: React.FC = () => {
             </button>
           </div>
         )}
+      </div>
+
+      {/* SOCIAL PROOF & STATISTICS SECTION DIRECTLY BELOW HERO */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-3 duration-500">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 flex items-start gap-4 shadow-md hover:shadow-lg transition-all">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+            <Briefcase className="w-6 h-6" />
+          </div>
+          <div className="space-y-1 text-right">
+            <div className="flex items-center gap-2">
+              <span className="text-xl sm:text-2xl font-black text-white">+۱,۴۸۰</span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 text-[10px] font-bold">
+                {jobs.length.toLocaleString('fa-IR')} آگهی زنده
+              </span>
+            </div>
+            <h3 className="text-xs sm:text-sm font-black text-white">فرصت‌های شغلی فعال</h3>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              موقعیت‌های کاری احراز هویت‌شده با جای خواب، بیمه SGK و قرارداد رسمی در سراسر ترکیه و منطقه
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 flex items-start gap-4 shadow-md hover:shadow-lg transition-all">
+          <div className="w-12 h-12 rounded-2xl bg-blue-500/15 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
+            <UserCheck className="w-6 h-6" />
+          </div>
+          <div className="space-y-1 text-right">
+            <div className="flex items-center gap-2">
+              <span className="text-xl sm:text-2xl font-black text-white">+۴,۳۵۰</span>
+              <span className="px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400 text-[10px] font-bold">
+                تاییدشده رسمی
+              </span>
+            </div>
+            <h3 className="text-xs sm:text-sm font-black text-white">کارجویان و همکاران تاییدشده</h3>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              متخصصان دارای پرونده کد رهگیری‌دار و کارفرمایان و دفاتر کاریابی معتبر و احراز هویت‌شده
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 flex items-start gap-4 shadow-md hover:shadow-lg transition-all">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
+            <Award className="w-6 h-6" />
+          </div>
+          <div className="space-y-1 text-right">
+            <div className="flex items-center gap-2">
+              <span className="text-xl sm:text-2xl font-black text-white">۹۸.۶٪</span>
+              <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 text-[10px] font-bold">
+                رتبه برتر اعتماد
+              </span>
+            </div>
+            <h3 className="text-xs sm:text-sm font-black text-white">نرخ موفقیت و رضایت</h3>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              اعزام موفق، پشتیبانی ۲۴ ساعته و تضمین امنیت فرآیند استخدام تا استقرار کامل در محل کار
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Admin Quick Action Banner (Visible when admin logs in) */}
