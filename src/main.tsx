@@ -2,14 +2,14 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-// Immediately hydrate theme to prevent flash
+// Immediately hydrate theme to prevent flash (Light Mode is the default theme)
 try {
-  const savedTheme = localStorage.getItem('karbama_theme_v3') || 'dark';
+  const savedTheme = localStorage.getItem('karbama_theme_v5') || 'light';
   document.documentElement.classList.remove('dark', 'light');
   document.documentElement.classList.add(savedTheme);
   document.documentElement.style.colorScheme = savedTheme;
 } catch {
-  document.documentElement.classList.add('dark');
+  document.documentElement.classList.add('light');
 }
 
 // Safely suppress sandboxed iframe DOMException & transient Firestore offline console errors

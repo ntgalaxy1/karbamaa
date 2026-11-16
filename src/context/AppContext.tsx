@@ -335,7 +335,7 @@ const STORAGE_KEYS = {
   SAVED_JOBS: 'karbama_saved_jobs_v4',
   JOB_ALERTS: 'karbama_job_alerts_v3',
   NOTIFICATIONS: 'karbama_notifications_v3',
-  THEME: 'karbama_theme_v3',
+  THEME: 'karbama_theme_v5',
   THEME_COLOR: 'karbama_theme_color_v3',
   CUSTOM_COLOR: 'karbama_custom_color_v3',
   BROKER_SETTINGS: 'karbama_broker_settings_v3',
@@ -785,7 +785,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // default
     }
-    return 'dark';
+    return 'light';
   });
 
   const [role, setRole] = useState<UserRole>(() => (isAdminLoggedIn ? 'admin' : 'jobseeker'));
@@ -948,23 +948,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     };
 
-    const lightRgba = hexToRgba(primaryHex, 0.16);
-    const borderRgba = hexToRgba(primaryHex, 0.42);
-    const glowRgba = hexToRgba(primaryHex, 0.28);
-    const bannerGrad = `linear-gradient(135deg, ${hexToRgba(primaryHex, 0.32)} 0%, rgba(15, 23, 42, 0.96) 55%, rgba(2, 6, 23, 1) 100%)`;
-    const topBarGrad = `linear-gradient(to right, rgba(15, 23, 42, 0.98), ${hexToRgba(primaryHex, 0.35)}, rgba(15, 23, 42, 0.98))`;
+    const lightRgba = hexToRgba(primaryHex, 0.14);
+    const borderRgba = hexToRgba(primaryHex, 0.35);
+    const glowRgba = hexToRgba(primaryHex, 0.25);
+    const bannerGrad =
+      theme === 'light'
+        ? `linear-gradient(135deg, #EFF6FF 0%, #FFFFFF 55%, #ECFDF5 100%)`
+        : `linear-gradient(135deg, ${hexToRgba(primaryHex, 0.32)} 0%, rgba(15, 23, 42, 0.96) 55%, rgba(2, 6, 23, 1) 100%)`;
+    const topBarGrad =
+      theme === 'light'
+        ? `linear-gradient(to right, #1E3A8A, #2563EB, #10B981)`
+        : `linear-gradient(to right, rgba(15, 23, 42, 0.98), ${hexToRgba(primaryHex, 0.35)}, rgba(15, 23, 42, 0.98))`;
 
     if (typeof document !== 'undefined') {
       const root = document.documentElement;
-      root.style.setProperty('--primary-color', primaryHex);
-      root.style.setProperty('--primary-hover', hoverHex);
+      root.style.setProperty('--primary-color', theme === 'light' && themeColor === 'red' ? '#10B981' : primaryHex);
+      root.style.setProperty('--primary-hover', theme === 'light' && themeColor === 'red' ? '#059669' : hoverHex);
       root.style.setProperty('--primary-light', lightRgba);
       root.style.setProperty('--primary-border', borderRgba);
       root.style.setProperty('--primary-glow', glowRgba);
       root.style.setProperty('--primary-banner', bannerGrad);
       root.style.setProperty('--primary-topbar', topBarGrad);
     }
-  }, [themeColor, customHexColor]);
+  }, [themeColor, customHexColor, theme]);
 
   // Sync theme (dark/light) to HTML root
   useEffect(() => {
@@ -2787,14 +2793,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const registerPartner = (input: RegisterPartnerInput): { success: boolean; error?: string } => {
     if (!input.companyName.trim() || !input.fullName.trim() || !input.phone.trim()) {
-      return { success: false, error: 'لطفاً نام شرکت/آژانس، نام نماینده و شماره تماس را وارد فرمایید.' };
+      return { success: false, error: 'لطفاً نام شرکت/آژانس، نام نماینده و شماره موبایل را وارد فرمایید.' };
     }
     if (!input.username.trim() || !input.password.trim()) {
       return { success: false, error: 'تعیین نام کاربری و رمز عبور الزامی است.' };
     }
 
-    if (input.email && !isValidEmail(input.email)) {
-      return { success: false, error: 'لطفاً یک آدرس ایمیل معتبر (جهت بازیابی رمز عبور) وارد کنید.' };
+    if (input.nationalId !== undefined && input.nationalId.trim() !== '') {
+      const natCheck = validateNationalIdOrPassport(input.nationalId);
+      if (!natCheck.isValid) {
+        return { success: false, error: natCheck.error || 'کد ملی وارد شده معتبر نیست.' };
+      }
+    }
+
+    const phoneCheck = validatePhoneNumber(input.phone, '+98');
+    if (!phoneCheck.isValid) {
+      return { success: false, error: phoneCheck.error || 'شماره موبایل وارد شده معتبر نیست.' };
+    }
+
+    if (!input.email?.trim() || !isValidEmail(input.email)) {
+      return { success: false, error: 'لطفاً یک آدرس ایمیل معتبر و واقعی وارد کنید.' };
+    }
+
+    if (input.cardNumber !== undefined && input.cardNumber.trim() !== '') {
+      const cardCheck = validateIranianBankCard(input.cardNumber);
+      if (!cardCheck.isValid) {
+        return { success: false, error: cardCheck.error || 'شماره کارت بانکی وارد شده معتبر نیست.' };
+      }
     }
 
     const pwdCheck = checkPasswordStrength(input.password);
@@ -2818,8 +2843,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       partnerCode: `PART-${randomNum}`,
       companyName: input.companyName.trim(),
       fullName: input.fullName.trim(),
+      nationalId: input.nationalId?.trim(),
       phone: input.phone.trim(),
       email: input.email?.trim().toLowerCase() || '',
+      cardNumber: input.cardNumber?.trim(),
       username: cleanUser,
       password: input.password,
       city: input.city?.trim() || 'استانبول',
@@ -3045,6 +3072,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     if (!input.fullName.trim() || !input.nationalId.trim() || !input.phoneNumber.trim()) {
       return { success: false, error: 'نام و نام خانوادگی، کد ملی و شماره تماس کارجو الزامی است.' };
+    }
+
+    const natIdCheck = validateNationalIdOrPassport(input.nationalId);
+    if (!natIdCheck.isValid) {
+      return { success: false, error: natIdCheck.error || 'کد ملی وارد شده معتبر نیست.' };
+    }
+
+    const phoneCheck = validatePhoneNumber(input.phoneNumber, input.phoneCountryCode || '+98');
+    if (!phoneCheck.isValid) {
+      return { success: false, error: phoneCheck.error || 'شماره موبایل کارجو معتبر نیست.' };
     }
 
     const cleanNatId = input.nationalId.replace(/\s/g, '');

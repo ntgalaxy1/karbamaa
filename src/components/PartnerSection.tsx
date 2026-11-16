@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { checkPasswordStrength, isValidEmail } from '../utils/validators';
+import {
+  checkPasswordStrength,
+  validateEmail,
+  validatePhoneNumber,
+  validateIranianBankCard,
+  validateIranianNationalId,
+} from '../utils/validators';
+import { sanitizeNumericOnly, sanitizeCardNumber } from '../utils/inputUtils';
 import { getDistrictsForCity } from '../data/turkeyData';
 import { ALL_TURKEY_CITIES_FA } from '../data/turkeyCities';
 import { Gender, JobSeeker, TargetCountry } from '../types';
@@ -54,8 +61,10 @@ export const PartnerSection: React.FC = () => {
   const [loginPassword, setLoginPassword] = useState('');
   const [regCompanyName, setRegCompanyName] = useState('');
   const [regFullName, setRegFullName] = useState('');
+  const [regNationalId, setRegNationalId] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regEmail, setRegEmail] = useState('');
+  const [regCardNumber, setRegCardNumber] = useState('');
   const [regCity, setRegCity] = useState('استانبول');
   const [regUsername, setRegUsername] = useState('');
   const [regPassword, setRegPassword] = useState('');
@@ -65,6 +74,10 @@ export const PartnerSection: React.FC = () => {
   );
 
   const partnerPassCheck = checkPasswordStrength(regPassword);
+  const regNatIdLiveCheck = regNationalId.trim().length > 0 ? validateIranianNationalId(regNationalId) : null;
+  const regPhoneLiveCheck = regPhone.trim().length > 0 ? validatePhoneNumber(regPhone, '+98') : null;
+  const regEmailLiveCheck = regEmail.trim().length > 0 ? validateEmail(regEmail) : null;
+  const regCardLiveCheck = regCardNumber.trim().length > 0 ? validateIranianBankCard(regCardNumber) : null;
 
   // Add Seeker form states (Simple & Focused)
   const [showAddForm, setShowAddForm] = useState(true);
@@ -106,13 +119,35 @@ export const PartnerSection: React.FC = () => {
     }
   };
 
+  const seekerNatIdLiveCheck = seekerNationalId.trim().length > 0 ? validateIranianNationalId(seekerNationalId) : null;
+  const seekerPhoneLiveCheck = seekerPhoneNumber.trim().length > 0 ? validatePhoneNumber(seekerPhoneNumber, seekerCountryCode) : null;
+
   // Handle Register
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
 
-    if (regEmail && !isValidEmail(regEmail)) {
-      setAuthError('لطفاً یک آدرس ایمیل معتبر وارد کنید.');
+    const natCheck = validateIranianNationalId(regNationalId);
+    if (!natCheck.isValid) {
+      setAuthError(natCheck.error || 'کد ملی وارد شده معتبر نیست.');
+      return;
+    }
+
+    const phoneCheck = validatePhoneNumber(regPhone, '+98');
+    if (!phoneCheck.isValid) {
+      setAuthError(phoneCheck.error || 'شماره موبایل وارد شده معتبر نیست (باید با 09 شروع شود).');
+      return;
+    }
+
+    const emailCheck = validateEmail(regEmail);
+    if (!emailCheck.isValid) {
+      setAuthError(emailCheck.error || 'لطفاً یک آدرس ایمیل معتبر وارد کنید.');
+      return;
+    }
+
+    const cardCheck = validateIranianBankCard(regCardNumber);
+    if (!cardCheck.isValid) {
+      setAuthError(cardCheck.error || 'شماره کارت بانکی ۱۶ رقمی وارد شده معتبر نیست.');
       return;
     }
 
@@ -127,8 +162,10 @@ export const PartnerSection: React.FC = () => {
     const res = registerPartner({
       companyName: regCompanyName,
       fullName: regFullName,
+      nationalId: regNationalId,
       phone: regPhone,
       email: regEmail,
+      cardNumber: regCardNumber,
       city: regCity,
       username: regUsername,
       password: regPassword,
@@ -158,12 +195,19 @@ export const PartnerSection: React.FC = () => {
       return;
     }
 
-    const cleanNatId = seekerNationalId.replace(/\D/g, '');
-    if (cleanNatId.length !== 10) {
-      showToast('کد ملی کارجو باید ۱۰ رقم باشد.', 'error');
+    const natCheck = validateIranianNationalId(seekerNationalId);
+    if (!natCheck.isValid) {
+      showToast(natCheck.error || 'کد ملی کارجو معتبر نیست.', 'error');
       return;
     }
 
+    const phoneCheck = validatePhoneNumber(seekerPhoneNumber, seekerCountryCode);
+    if (!phoneCheck.isValid) {
+      showToast(phoneCheck.error || 'شماره موبایل کارجو معتبر نیست.', 'error');
+      return;
+    }
+
+    const cleanNatId = seekerNationalId.replace(/\D/g, '');
     const finalJobTitle = getResolvedJobTitle();
 
     const res = registerSeekerByPartner({
@@ -412,31 +456,140 @@ export const PartnerSection: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    شماره تماس / واتساپ *
+                    کد ملی ۱۰ رقمی همکار *
                   </label>
                   <input
                     type="text"
-                    value={regPhone}
-                    onChange={(e) => setRegPhone(e.target.value)}
-                    placeholder="+90 532 000 0000"
+                    maxLength={10}
+                    inputMode="numeric"
+                    value={regNationalId}
+                    onChange={(e) => setRegNationalId(sanitizeNumericOnly(e.target.value, 10))}
+                    placeholder="0012345678"
                     dir="ltr"
                     required
-                    className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-indigo-500"
+                    className={`w-full px-3 py-2.5 bg-slate-800 border rounded-xl text-xs text-white font-mono outline-none ${
+                      regNatIdLiveCheck && !regNatIdLiveCheck.isValid
+                        ? 'border-red-500 ring-1 ring-red-500/50'
+                        : regNatIdLiveCheck?.isValid
+                        ? 'border-emerald-500'
+                        : 'border-slate-700 focus:border-indigo-500'
+                    }`}
                   />
+                  {regNatIdLiveCheck && !regNatIdLiveCheck.isValid && (
+                    <p className="mt-1 text-[11px] font-bold text-red-400 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{regNatIdLiveCheck.error}</span>
+                    </p>
+                  )}
+                  {regNatIdLiveCheck?.isValid && (
+                    <p className="mt-1 text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                      <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>کد ملی معتبر است.</span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    ایمیل (جهت بازیابی رمز) *
+                    شماره موبایل معتبر ایران (با 09) *
+                  </label>
+                  <input
+                    type="tel"
+                    maxLength={11}
+                    inputMode="numeric"
+                    value={regPhone}
+                    onChange={(e) => setRegPhone(sanitizeNumericOnly(e.target.value, 11))}
+                    placeholder="09123456789"
+                    dir="ltr"
+                    required
+                    className={`w-full px-3 py-2.5 bg-slate-800 border rounded-xl text-xs text-white font-mono outline-none ${
+                      regPhoneLiveCheck && !regPhoneLiveCheck.isValid
+                        ? 'border-red-500 ring-1 ring-red-500/50'
+                        : regPhoneLiveCheck?.isValid
+                        ? 'border-emerald-500'
+                        : 'border-slate-700 focus:border-indigo-500'
+                    }`}
+                  />
+                  {regPhoneLiveCheck && !regPhoneLiveCheck.isValid && (
+                    <p className="mt-1 text-[11px] font-bold text-red-400 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{regPhoneLiveCheck.error}</span>
+                    </p>
+                  )}
+                  {regPhoneLiveCheck?.isValid && (
+                    <p className="mt-1 text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                      <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>شماره موبایل معتبر است {regPhoneLiveCheck.operatorName ? `(${regPhoneLiveCheck.operatorName})` : ''}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    ایمیل معتبر (جهت بازیابی رمز) *
                   </label>
                   <input
                     type="email"
                     value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
+                    onChange={(e) => setRegEmail(e.target.value.trim())}
                     placeholder="email@gmail.com"
                     dir="ltr"
                     required
-                    className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-indigo-500"
+                    className={`w-full px-3 py-2.5 bg-slate-800 border rounded-xl text-xs text-white font-mono outline-none ${
+                      regEmailLiveCheck && !regEmailLiveCheck.isValid
+                        ? 'border-red-500 ring-1 ring-red-500/50'
+                        : regEmailLiveCheck?.isValid
+                        ? 'border-emerald-500'
+                        : 'border-slate-700 focus:border-indigo-500'
+                    }`}
                   />
+                  {regEmailLiveCheck && !regEmailLiveCheck.isValid && (
+                    <p className="mt-1 text-[11px] font-bold text-red-400 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{regEmailLiveCheck.error}</span>
+                    </p>
+                  )}
+                  {regEmailLiveCheck?.isValid && (
+                    <p className="mt-1 text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                      <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>ساختار ایمیل معتبر است.</span>
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    شماره کارت بانکی ۱۶ رقمی (شتاب) *
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={16}
+                    inputMode="numeric"
+                    value={regCardNumber}
+                    onChange={(e) => setRegCardNumber(sanitizeCardNumber(e.target.value))}
+                    placeholder="6037991234567890"
+                    dir="ltr"
+                    required
+                    className={`w-full px-3 py-2.5 bg-slate-800 border rounded-xl text-xs text-white font-mono tracking-widest outline-none ${
+                      regCardLiveCheck && !regCardLiveCheck.isValid
+                        ? 'border-red-500 ring-1 ring-red-500/50'
+                        : regCardLiveCheck?.isValid
+                        ? 'border-emerald-500'
+                        : 'border-slate-700 focus:border-indigo-500'
+                    }`}
+                  />
+                  {regCardLiveCheck && !regCardLiveCheck.isValid && (
+                    <p className="mt-1 text-[11px] font-bold text-red-400 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{regCardLiveCheck.error}</span>
+                    </p>
+                  )}
+                  {regCardLiveCheck?.isValid && (
+                    <p className="mt-1 text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                      <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>کارت معتبر ({regCardLiveCheck.bankName})</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -810,7 +963,7 @@ export const PartnerSection: React.FC = () => {
 
                 <div>
                   <label className="block text-slate-300 font-semibold mb-1">
-                    کد ملی ۱۰ رقمی *
+                    کد ملی ۱۰ رقمی (الگوریتم رسمی) *
                   </label>
                   <input
                     type="text"
@@ -818,10 +971,21 @@ export const PartnerSection: React.FC = () => {
                     maxLength={10}
                     dir="ltr"
                     value={seekerNationalId}
-                    onChange={(e) => setSeekerNationalId(e.target.value.replace(/\D/g, ''))}
+                    onChange={(e) => setSeekerNationalId(sanitizeNumericOnly(e.target.value, 10))}
                     placeholder="0012345678"
-                    className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono outline-none focus:border-indigo-500"
+                    className={`w-full px-3 py-2.5 bg-slate-800 border rounded-xl text-white font-mono outline-none ${
+                      seekerNatIdLiveCheck && !seekerNatIdLiveCheck.isValid
+                        ? 'border-red-500 ring-1 ring-red-500/50'
+                        : seekerNatIdLiveCheck?.isValid
+                        ? 'border-emerald-500'
+                        : 'border-slate-700 focus:border-indigo-500'
+                    }`}
                   />
+                  {seekerNatIdLiveCheck && !seekerNatIdLiveCheck.isValid && (
+                    <p className="mt-1 text-[11px] font-bold text-red-400">
+                      {seekerNatIdLiveCheck.error}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -846,11 +1010,22 @@ export const PartnerSection: React.FC = () => {
                       type="text"
                       required
                       value={seekerPhoneNumber}
-                      onChange={(e) => setSeekerPhoneNumber(e.target.value.replace(/\D/g, ''))}
-                      placeholder="9123456789"
-                      className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-mono outline-none focus:border-indigo-500"
+                      onChange={(e) => setSeekerPhoneNumber(sanitizeNumericOnly(e.target.value, 11))}
+                      placeholder="09123456789"
+                      className={`w-full px-3 py-2.5 bg-slate-800 border rounded-xl text-white font-mono outline-none ${
+                        seekerPhoneLiveCheck && !seekerPhoneLiveCheck.isValid
+                          ? 'border-red-500 ring-1 ring-red-500/50'
+                          : seekerPhoneLiveCheck?.isValid
+                          ? 'border-emerald-500'
+                          : 'border-slate-700 focus:border-indigo-500'
+                      }`}
                     />
                   </div>
+                  {seekerPhoneLiveCheck && !seekerPhoneLiveCheck.isValid && (
+                    <p className="mt-1 text-[11px] font-bold text-red-400">
+                      {seekerPhoneLiveCheck.error}
+                    </p>
+                  )}
                 </div>
 
                 <div>

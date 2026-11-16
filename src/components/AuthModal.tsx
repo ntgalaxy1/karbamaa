@@ -5,8 +5,10 @@ import { CommitmentModal } from './CommitmentModal';
 import {
   checkPasswordStrength,
   isValidEmail,
+  validateEmail,
   validatePhoneNumber,
   validateIranianBankCard,
+  validateIranianNationalId,
   validateNationalIdOrPassport,
 } from '../utils/validators';
 import {
@@ -256,8 +258,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
   // Partner Registration Form State
   const [partnerCompanyName, setPartnerCompanyName] = useState('');
   const [partnerFullName, setPartnerFullName] = useState('');
+  const [partnerNationalId, setPartnerNationalId] = useState('');
   const [partnerPhone, setPartnerPhone] = useState('');
   const [partnerEmail, setPartnerEmail] = useState('');
+  const [partnerCardNumber, setPartnerCardNumber] = useState('');
   const [partnerCity, setPartnerCity] = useState('استانبول');
   const [partnerUsername, setPartnerUsername] = useState('');
   const [partnerPassword, setPartnerPassword] = useState('');
@@ -412,7 +416,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     }
     const natIdValidation = validateNationalIdOrPassport(nationalId);
     if (!natIdValidation.isValid) {
-      setError(natIdValidation.error || 'لطفاً کد ملی ۱۰ رقمی واقعی یا شماره پاسپورت معتبر را وارد نمایید.');
+      setError(natIdValidation.error || 'لطفاً کد ملی ۱۰ رقمی واقعی (با رقم کنترلی معتبر) یا شماره پاسپورت معتبر را وارد نمایید.');
       return false;
     }
     const phoneValidation = validatePhoneNumber(phoneNumber, phoneCountryCode);
@@ -420,8 +424,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
       setError(phoneValidation.error || 'لطفاً شماره تلفن همراه واقعی و معتبر را وارد کنید.');
       return false;
     }
-    if (!email.trim() || !isValidEmail(email)) {
-      setError('لطفاً آدرس ایمیل معتبر وارد نمایید (جهت بازیابی رمز عبور).');
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      setError(emailValidation.error || 'لطفاً آدرس ایمیل معتبر وارد نمایید (جهت بازیابی رمز عبور).');
       return false;
     }
     if (!gender) {
@@ -861,14 +866,57 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
     }
   };
 
+  // Real-time validation state computations for Seeker & Partner forms
+  const seekerNatIdLiveCheck = nationalId.trim().length > 0 ? validateNationalIdOrPassport(nationalId) : null;
+  const seekerPhoneLiveCheck = phoneNumber.trim().length > 0 ? validatePhoneNumber(phoneNumber, phoneCountryCode) : null;
+  const seekerEmailLiveCheck = email.trim().length > 0 ? validateEmail(email) : null;
+
+  const partnerNatIdLiveCheck = partnerNationalId.trim().length > 0 ? validateIranianNationalId(partnerNationalId) : null;
+  const partnerPhoneLiveCheck = partnerPhone.trim().length > 0 ? validatePhoneNumber(partnerPhone, '+98') : null;
+  const partnerEmailLiveCheck = partnerEmail.trim().length > 0 ? validateEmail(partnerEmail) : null;
+  const partnerCardLiveCheck = partnerCardNumber.trim().length > 0 ? validateIranianBankCard(partnerCardNumber) : null;
+  const partnerPassCheck = checkPasswordStrength(partnerPassword);
+
   const handlePartnerRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const natCheck = validateIranianNationalId(partnerNationalId);
+    if (!natCheck.isValid) {
+      setError(natCheck.error || 'کد ملی وارد شده معتبر نیست.');
+      return;
+    }
+
+    const phoneCheck = validatePhoneNumber(partnerPhone, '+98');
+    if (!phoneCheck.isValid) {
+      setError(phoneCheck.error || 'شماره موبایل وارد شده معتبر نیست (باید با 09 شروع شود).');
+      return;
+    }
+
+    const emailCheck = validateEmail(partnerEmail);
+    if (!emailCheck.isValid) {
+      setError(emailCheck.error || 'آدرس ایمیل وارد شده معتبر نیست.');
+      return;
+    }
+
+    const cardCheck = validateIranianBankCard(partnerCardNumber);
+    if (!cardCheck.isValid) {
+      setError(cardCheck.error || 'شماره کارت بانکی ۱۶ رقمی وارد شده معتبر نیست.');
+      return;
+    }
+
+    if (!partnerPassCheck.isValid) {
+      setError(partnerPassCheck.error || 'رمز عبور باید حداقل ۸ کاراکتر و شامل حروف بزرگ، کوچک و اعداد انگلیسی باشد.');
+      return;
+    }
+
     const res = registerPartner({
       companyName: partnerCompanyName,
       fullName: partnerFullName,
+      nationalId: partnerNationalId,
       phone: partnerPhone,
       email: partnerEmail,
+      cardNumber: partnerCardNumber,
       city: partnerCity,
       username: partnerUsername,
       password: partnerPassword,
@@ -1079,8 +1127,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
-                        <span>کد ملی یا شماره پاسپورت <span className="text-red-400">*</span></span>
-                        <span className="text-[10px] text-slate-400 font-mono">0-9 انگلیسی</span>
+                        <span>کد ملی ۱۰ رقمی یا شماره پاسپورت <span className="text-red-400">*</span></span>
+                        <span className="text-[10px] text-slate-400 font-mono">الگوریتم رسمی ثبت احوال</span>
                       </label>
                       <div className="relative">
                         <IdCard className="w-4 h-4 text-slate-500 absolute right-3 top-3.5" />
@@ -1091,7 +1139,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                           lang="en"
                           dir="ltr"
                           inputMode="text"
-                          placeholder="کد ملی یا شماره پاسپورت..."
+                          placeholder="0012345678"
                           value={nationalId}
                           onChange={(e) => {
                             const sanitized = sanitizeNationalIdOrPassport(e.target.value);
@@ -1100,10 +1148,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                           }}
                           onBlur={() => checkFieldDuplicate('nationalId', nationalId)}
                           className={`w-full bg-slate-800/90 border rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden text-left font-mono ${
-                            duplicateErrors.nationalId ? 'border-red-500 ring-1 ring-red-500/50' : 'border-slate-700 focus:border-red-500'
+                            duplicateErrors.nationalId || (seekerNatIdLiveCheck && !seekerNatIdLiveCheck.isValid)
+                              ? 'border-red-500 ring-1 ring-red-500/50'
+                              : seekerNatIdLiveCheck?.isValid
+                              ? 'border-emerald-500/80 focus:border-emerald-500'
+                              : 'border-slate-700 focus:border-red-500'
                           }`}
                         />
                       </div>
+                      {seekerNatIdLiveCheck && !seekerNatIdLiveCheck.isValid && (
+                        <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                          <span>{seekerNatIdLiveCheck.error}</span>
+                        </div>
+                      )}
+                      {seekerNatIdLiveCheck?.isValid && !duplicateErrors.nationalId && (
+                        <div className="mt-1 text-emerald-400 text-[11px] font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                          <span>کد ملی / شماره پاسپورت معتبر و تایید شده است.</span>
+                        </div>
+                      )}
                       {duplicateErrors.nationalId && (
                         <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
                           <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
@@ -1116,8 +1180,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                   {/* Phone Number with Country Code */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
-                      <span>شماره تلفن همراه (با تعیین پیش‌شماره کشور) <span className="text-red-400">*</span></span>
-                      <span className="text-[10px] text-slate-400 font-mono">0-9 انگلیسی</span>
+                      <span>شماره تلفن همراه (موبایل معتبر ایران با 09) <span className="text-red-400">*</span></span>
+                      <span className="text-[10px] text-slate-400 font-mono">09123456789</span>
                     </label>
                     <div className="flex gap-2" dir="ltr">
                       <select
@@ -1140,7 +1204,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                           lang="en"
                           dir="ltr"
                           inputMode="numeric"
-                          placeholder="912 345 6789"
+                          placeholder="09123456789"
                           value={phoneNumber}
                           onChange={(e) => {
                             const sanitized = sanitizeNumericOnly(e.target.value, 11);
@@ -1149,11 +1213,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                           }}
                           onBlur={() => checkFieldDuplicate('phoneNumber', phoneNumber)}
                           className={`w-full bg-slate-800/90 border rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden font-mono ${
-                            duplicateErrors.phoneNumber ? 'border-red-500 ring-1 ring-red-500/50' : 'border-slate-700 focus:border-red-500'
+                            duplicateErrors.phoneNumber || (seekerPhoneLiveCheck && !seekerPhoneLiveCheck.isValid)
+                              ? 'border-red-500 ring-1 ring-red-500/50'
+                              : seekerPhoneLiveCheck?.isValid
+                              ? 'border-emerald-500/80 focus:border-emerald-500'
+                              : 'border-slate-700 focus:border-red-500'
                           }`}
                         />
                       </div>
                     </div>
+                    {seekerPhoneLiveCheck && !seekerPhoneLiveCheck.isValid && (
+                      <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                        <span>{seekerPhoneLiveCheck.error}</span>
+                      </div>
+                    )}
+                    {seekerPhoneLiveCheck?.isValid && !duplicateErrors.phoneNumber && (
+                      <div className="mt-1 text-emerald-400 text-[11px] font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>شماره همراه معتبر است {seekerPhoneLiveCheck.operatorName ? `(${seekerPhoneLiveCheck.operatorName})` : ''}</span>
+                      </div>
+                    )}
                     {duplicateErrors.phoneNumber && (
                       <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
                         <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
@@ -1184,10 +1264,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                         }}
                         onBlur={() => checkFieldDuplicate('email', email)}
                         className={`w-full bg-slate-800/90 border rounded-xl pr-9 pl-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-hidden text-left font-mono ${
-                          duplicateErrors.email ? 'border-red-500 ring-1 ring-red-500/50' : 'border-slate-700 focus:border-red-500'
+                          duplicateErrors.email || (seekerEmailLiveCheck && !seekerEmailLiveCheck.isValid)
+                            ? 'border-red-500 ring-1 ring-red-500/50'
+                            : seekerEmailLiveCheck?.isValid
+                            ? 'border-emerald-500/80 focus:border-emerald-500'
+                            : 'border-slate-700 focus:border-red-500'
                         }`}
                       />
                     </div>
+                    {seekerEmailLiveCheck && !seekerEmailLiveCheck.isValid && (
+                      <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                        <span>{seekerEmailLiveCheck.error}</span>
+                      </div>
+                    )}
+                    {seekerEmailLiveCheck?.isValid && !duplicateErrors.email && (
+                      <div className="mt-1 text-emerald-400 text-[11px] font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>ساختار آدرس ایمیل معتبر است.</span>
+                      </div>
+                    )}
                     {duplicateErrors.email && (
                       <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5 animate-in fade-in">
                         <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
@@ -2487,16 +2583,69 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-slate-300 font-medium">شماره موبایل و واتساپ *</label>
+                    <label className="text-slate-300 font-medium">کد ملی ۱۰ رقمی مدیر / نماینده *</label>
                     <input
                       type="text"
                       required
+                      maxLength={10}
                       dir="ltr"
-                      placeholder="09123456789 / +905..."
-                      value={partnerPhone}
-                      onChange={(e) => setPartnerPhone(toEnglishDigits(e.target.value))}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-indigo-500"
+                      inputMode="numeric"
+                      placeholder="0012345678"
+                      value={partnerNationalId}
+                      onChange={(e) => setPartnerNationalId(sanitizeNumericOnly(e.target.value, 10))}
+                      className={`w-full bg-slate-800 border rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden ${
+                        partnerNatIdLiveCheck && !partnerNatIdLiveCheck.isValid
+                          ? 'border-red-500 ring-1 ring-red-500/50'
+                          : partnerNatIdLiveCheck?.isValid
+                          ? 'border-emerald-500/80'
+                          : 'border-slate-700 focus:border-indigo-500'
+                      }`}
                     />
+                    {partnerNatIdLiveCheck && !partnerNatIdLiveCheck.isValid && (
+                      <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                        <span>{partnerNatIdLiveCheck.error}</span>
+                      </div>
+                    )}
+                    {partnerNatIdLiveCheck?.isValid && (
+                      <div className="mt-1 text-emerald-400 text-[11px] font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>کد ملی معتبر و تایید شده است.</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">شماره موبایل معتبر ایران (با 09) *</label>
+                    <input
+                      type="tel"
+                      required
+                      maxLength={11}
+                      dir="ltr"
+                      inputMode="numeric"
+                      placeholder="09123456789"
+                      value={partnerPhone}
+                      onChange={(e) => setPartnerPhone(sanitizeNumericOnly(e.target.value, 11))}
+                      className={`w-full bg-slate-800 border rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden ${
+                        partnerPhoneLiveCheck && !partnerPhoneLiveCheck.isValid
+                          ? 'border-red-500 ring-1 ring-red-500/50'
+                          : partnerPhoneLiveCheck?.isValid
+                          ? 'border-emerald-500/80'
+                          : 'border-slate-700 focus:border-indigo-500'
+                      }`}
+                    />
+                    {partnerPhoneLiveCheck && !partnerPhoneLiveCheck.isValid && (
+                      <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                        <span>{partnerPhoneLiveCheck.error}</span>
+                      </div>
+                    )}
+                    {partnerPhoneLiveCheck?.isValid && (
+                      <div className="mt-1 text-emerald-400 text-[11px] font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>شماره موبایل معتبر است {partnerPhoneLiveCheck.operatorName ? `(${partnerPhoneLiveCheck.operatorName})` : ''}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-1">
@@ -2511,8 +2660,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                     />
                   </div>
 
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-slate-300 font-medium">آدرس ایمیل (جهت بازیابی رمز عبور) *</label>
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">آدرس ایمیل معتبر (جهت بازیابی رمز عبور) *</label>
                     <input
                       type="email"
                       required
@@ -2520,8 +2669,59 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                       placeholder="partner@gmail.com"
                       value={partnerEmail}
                       onChange={(e) => setPartnerEmail(e.target.value.trim())}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden focus:border-indigo-500"
+                      className={`w-full bg-slate-800 border rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left focus:outline-hidden ${
+                        partnerEmailLiveCheck && !partnerEmailLiveCheck.isValid
+                          ? 'border-red-500 ring-1 ring-red-500/50'
+                          : partnerEmailLiveCheck?.isValid
+                          ? 'border-emerald-500/80'
+                          : 'border-slate-700 focus:border-indigo-500'
+                      }`}
                     />
+                    {partnerEmailLiveCheck && !partnerEmailLiveCheck.isValid && (
+                      <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                        <span>{partnerEmailLiveCheck.error}</span>
+                      </div>
+                    )}
+                    {partnerEmailLiveCheck?.isValid && (
+                      <div className="mt-1 text-emerald-400 text-[11px] font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>ساختار ایمیل معتبر است.</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-slate-300 font-medium">شماره کارت بانکی ۱۶ رقمی همکار (شبکه شتاب - الگوریتم Luhn) *</label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={16}
+                      dir="ltr"
+                      inputMode="numeric"
+                      placeholder="6037991234567890"
+                      value={partnerCardNumber}
+                      onChange={(e) => setPartnerCardNumber(sanitizeCardNumber(e.target.value))}
+                      className={`w-full bg-slate-800 border rounded-xl px-3 py-2.5 text-white placeholder-slate-500 font-mono text-left tracking-widest focus:outline-hidden ${
+                        partnerCardLiveCheck && !partnerCardLiveCheck.isValid
+                          ? 'border-red-500 ring-1 ring-red-500/50'
+                          : partnerCardLiveCheck?.isValid
+                          ? 'border-emerald-500/80'
+                          : 'border-slate-700 focus:border-indigo-500'
+                      }`}
+                    />
+                    {partnerCardLiveCheck && !partnerCardLiveCheck.isValid && (
+                      <div className="mt-1 p-2 bg-red-950/90 border border-red-500/80 rounded-xl text-red-300 text-[11px] font-bold flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                        <span>{partnerCardLiveCheck.error}</span>
+                      </div>
+                    )}
+                    {partnerCardLiveCheck?.isValid && (
+                      <div className="mt-1 text-emerald-400 text-[11px] font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>کارت بانکی معتبر است ({partnerCardLiveCheck.bankName})</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-1 sm:col-span-2">

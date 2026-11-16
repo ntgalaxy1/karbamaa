@@ -167,8 +167,10 @@ export interface RegisterSeekerInput {
 export interface RegisterPartnerInput {
   companyName: string;
   fullName: string;
+  nationalId?: string;
   phone: string;
   email?: string;
+  cardNumber?: string;
   username: string;
   password: string;
   city?: string;
@@ -261,8 +263,10 @@ export interface PartnerAccount {
   partnerCode: string;           // کد یکتای همکاری (مثلاً PART-8801)
   companyName: string;           // نام شرکت، آژانس یا دفتر همکار
   fullName: string;              // نام و نام خانوادگی مدیر/نماینده
+  nationalId?: string;           // کد ملی ۱۰ رقمی مدیر/نماینده
   phone: string;                 // شماره تماس و واتساپ
   email?: string;                // آدرس ایمیل جهت بازیابی رمز عبور
+  cardNumber?: string;           // شماره کارت بانکی ۱۶ رقمی همکار
   username: string;              // نام کاربری ورود
   password: string;              // رمز عبور
   city?: string;                 // شهر محل فعالیت (استانبول، تهران، آنکارا...)

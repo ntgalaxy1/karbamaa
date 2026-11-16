@@ -143,7 +143,22 @@ export const Header: React.FC = () => {
 
             {/* Header Right Actions */}
             <div className="flex items-center gap-1.5 sm:gap-2">
-              {/* Sleek Compact Dropdown Menu for Android APK, Resume Builder, Currency, About Us, Share, Palette, Theme & Language */}
+              {/* Compact Icon-Only Day / Night Theme Toggle Button (no text labels) */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-label={theme === 'dark' ? 'حالت روز' : 'حالت شب'}
+                title={theme === 'dark' ? 'حالت روز (روشن)' : 'حالت شب (تاریک)'}
+                className="p-2 rounded-xl bg-slate-800 dark:bg-slate-800 light:bg-slate-100 hover:bg-slate-700 light:hover:bg-slate-200 text-slate-200 dark:text-slate-200 light:text-slate-700 border border-slate-700/80 dark:border-slate-700/80 light:border-slate-300 transition flex items-center justify-center shrink-0 cursor-pointer shadow-xs"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="w-4 h-4 text-amber-400" />
+                ) : (
+                  <Moon className="w-4 h-4 text-blue-700" />
+                )}
+              </button>
+
+              {/* Sleek Compact Dropdown Menu for Android APK, Resume Builder, Currency, About Us, Share, Palette & Language */}
               <div className="relative">
                 <button
                   onClick={() => {
@@ -372,26 +387,6 @@ export const Header: React.FC = () => {
                         <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-md font-mono">
                           v{APP_VERSION}
                         </span>
-                      </button>
-
-                      {/* Day / Night Theme Toggle Option */}
-                      <button
-                        onClick={() => {
-                          toggleTheme();
-                          setToolsDropdown(false);
-                        }}
-                        className="w-full text-right px-3 py-2 rounded-xl text-slate-200 dark:text-slate-200 light:text-slate-800 hover:bg-slate-800/80 dark:hover:bg-slate-800/80 light:hover:bg-slate-100 flex items-center justify-between transition"
-                      >
-                        <div className="flex items-center gap-2">
-                          {theme === 'dark' ? (
-                            <Sun className="w-4 h-4 text-amber-400" />
-                          ) : (
-                            <Moon className="w-4 h-4 text-indigo-600" />
-                          )}
-                          <span className="font-bold">
-                            {theme === 'dark' ? t('themeToggleLight', appLanguage) : t('themeToggleDark', appLanguage)}
-                          </span>
-                        </div>
                       </button>
 
                       <button
