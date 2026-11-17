@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { X, CheckCircle, Eraser, FileText, Printer, CreditCard, Camera, ShieldCheck, MapPin, Phone, User, Calendar } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { KARBAMA_LOGO_DATA_URI } from '../utils/brandAssets';
 
 interface CommitmentModalProps {
   isOpen: boolean;
@@ -204,7 +205,15 @@ export const CommitmentModal: React.FC<CommitmentModalProps> = ({
           {/* Top Dates Bar (Left aligned as requested) */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 print:border-black/20 pb-4">
             <div className="flex items-center gap-2">
-              <img src="/logo.png" alt="کارباما" className="w-10 h-10 rounded-full border border-amber-400/80" />
+              <img
+                src={KARBAMA_LOGO_DATA_URI}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+                }}
+                alt="کارباما"
+                className="w-10 h-10 rounded-full border border-amber-400/80"
+              />
               <div>
                 <span className="font-black text-sm text-white print:text-black">کارباما | KARBAMA</span>
                 <span className="text-[10px] text-slate-400 print:text-black block">سامانه کاریابی و اقامت ترکیه</span>

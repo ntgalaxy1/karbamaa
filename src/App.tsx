@@ -35,6 +35,7 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { PrivacyPolicySection } from './components/PrivacyPolicySection';
 import { scanAndTranslateDOM } from './utils/autoDomTranslator';
+import { KARBAMA_LOGO_DATA_URI } from './utils/brandAssets';
 
 
 // Centered App Startup Splash Screen with Smooth Fade-out
@@ -67,7 +68,11 @@ const SplashScreen: React.FC<{ onFinish: () => void }> = ({ onFinish }) => {
         <div className="relative">
           <div className="absolute -inset-4 rounded-full bg-gradient-to-r from-red-600 to-amber-500 opacity-60 blur-xl animate-pulse" />
           <img
-            src="/logo.png"
+            src={KARBAMA_LOGO_DATA_URI}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+            }}
             alt="لوگوی رسمی کارباما"
             className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-amber-400 shadow-2xl relative z-10 animate-in zoom-in-75 duration-500 ring-4 ring-amber-500/20"
           />
@@ -252,6 +257,7 @@ const MainContent: React.FC = () => {
       <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
         <div style={{ background: 'var(--primary-topbar)' }} className="h-1 w-full shrink-0 shadow-xs" />
         <OfflineIndicator />
+        {isAdminLoggedIn && <AdminQuickToolbar />}
         {isAdminLoggedIn && <Header />}
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-20">
           <AdminPanel />
@@ -368,9 +374,6 @@ const MainContent: React.FC = () => {
           {/* Offline Mode Indicator (IndexedDB Cache Active) */}
           <OfflineIndicator />
 
-          {/* Floating Omnipresent Admin Quick Toolbar (When Admin Logged In) */}
-          <AdminQuickToolbar />
-
           {/* Main App Navigation Header */}
           <Header />
 
@@ -395,7 +398,11 @@ const MainContent: React.FC = () => {
               <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-right">
                 <div className="flex items-center gap-3">
                   <img
-                    src="/logo.png"
+                    src={KARBAMA_LOGO_DATA_URI}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+                    }}
                     alt="لوگوی کارباما"
                     className="w-8 h-8 rounded-full object-cover border border-amber-400/50 shadow-xs shrink-0"
                   />
@@ -465,19 +472,6 @@ const MainContent: React.FC = () => {
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                     حریم خصوصی
                   </button>
-
-                  {isAdminLoggedIn && (
-                    <button
-                      onClick={() => {
-                        setActiveTab('admin');
-                        window.history.pushState({}, '', '/admin');
-                      }}
-                      className="text-amber-400 flex items-center gap-1 font-bold hover:underline cursor-pointer"
-                    >
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      پنل مدیریت (/admin)
-                    </button>
-                  )}
                 </div>
               </div>
 

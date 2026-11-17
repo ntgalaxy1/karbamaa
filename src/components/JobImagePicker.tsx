@@ -347,7 +347,7 @@ export const JobImagePicker: React.FC<JobImagePickerProps> = ({
       {activeTab === 'presets' && (
         <div className="space-y-2.5">
           {/* Category Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px]">
+          <div className="flex flex-wrap items-center gap-1.5 pb-1 text-[11px]">
             {PRESET_JOB_PHOTOS.map((group) => (
               <button
                 key={group.category}

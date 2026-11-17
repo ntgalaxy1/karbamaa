@@ -174,7 +174,7 @@ export const MapLocationPicker: React.FC<MapLocationPickerProps> = ({
   return (
     <div className="space-y-2">
       {/* City Presets Quick Bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] scrollbar-none">
+      <div className="flex flex-wrap items-center gap-1.5 pb-1 text-[11px]">
         <span className="text-slate-400 shrink-0 font-medium ml-1">پرش سریع به منطقه:</span>
         {CITY_PRESETS.map((p, idx) => (
           <button

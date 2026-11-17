@@ -19,6 +19,7 @@ import {
   sanitizeCardNumber,
 } from '../utils/inputUtils';
 import { CommitmentModal } from './CommitmentModal';
+import { KARBAMA_LOGO_DATA_URI } from '../utils/brandAssets';
 import {
   Globe,
   CheckCircle,
@@ -563,7 +564,11 @@ export const OnboardingFlow: React.FC = () => {
         <div className="px-4 sm:px-6 py-3.5 flex items-center justify-between text-xs border-b border-slate-800/80 shrink-0 bg-slate-950/40">
           <div className="flex items-center gap-2.5 sm:gap-3">
             <img
-              src="/logo.png"
+              src={KARBAMA_LOGO_DATA_URI}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+              }}
               alt="کارباما"
               className="w-9 h-9 rounded-full object-cover border border-amber-400/80 shadow-sm"
             />
@@ -711,7 +716,11 @@ export const OnboardingFlow: React.FC = () => {
                         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                           <div className="flex items-center gap-2.5">
                             <img
-                              src="/logo.png"
+                              src={KARBAMA_LOGO_DATA_URI}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+                              }}
                               alt="کارباما"
                               className="w-9 h-9 rounded-full object-cover border border-amber-400 shadow-xs"
                             />
@@ -1935,7 +1944,7 @@ export const OnboardingFlow: React.FC = () => {
                             />
                           </div>
 
-                          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px]">
+                          <div className="flex flex-wrap items-center gap-1.5 pb-1 text-[11px]">
                             {JOB_CATEGORIES_DATA.map((cat) => (
                               <button
                                 key={cat.key}
@@ -2126,7 +2135,11 @@ export const OnboardingFlow: React.FC = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-2">
                       <div className="flex items-center gap-2.5">
                         <img
-                          src="/logo.png"
+                          src={KARBAMA_LOGO_DATA_URI}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+                          }}
                           alt="کارباما"
                           className="w-10 h-10 rounded-full border border-amber-400 shadow-md object-cover"
                         />
@@ -2464,9 +2477,13 @@ export const OnboardingFlow: React.FC = () => {
 
             <p className="text-xs text-slate-300 leading-relaxed">
               {loginRole === 'partner'
-                ? 'جهت بازیابی یا بازنشانی رمز عبور حساب همکار، آدرس ایمیل ثبت‌شده هنگام ثبت‌نام همکار را وارد نمایید.'
-                : 'جهت بازیابی یا بازنشانی رمز عبور حساب کارجو، آدرس ایمیل ثبت‌شده هنگام ثبت‌نام کارجو را وارد نمایید.'}
+                ? 'جهت بازیابی یا بازنشانی رمز عبور حساب همکار از طریق سرور ایمیل رسمی (mail.karbama34.ir)، آدرس ایمیل ثبت‌شده همکار را وارد نمایید.'
+                : 'جهت بازیابی یا بازنشانی رمز عبور حساب کارجو از طریق سرور ایمیل رسمی (mail.karbama34.ir)، آدرس ایمیل ثبت‌شده کارجو را وارد نمایید.'}
             </p>
+            <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-[11px]">
+              <span className="text-slate-400">سرور ایمیل احراز هویت و بازیابی:</span>
+              <span className="font-mono font-bold text-emerald-400" dir="ltr">mail.karbama34.ir</span>
+            </div>
 
             {recoverResult && (
               <div

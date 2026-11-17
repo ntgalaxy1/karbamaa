@@ -4,6 +4,7 @@ import { TurkishLevel, ResidenceStatus } from '../types';
 import { AuthModal } from './AuthModal';
 import { ResumeBuilder } from './ResumeBuilder';
 import { CVBuilder } from './CVBuilder';
+import { KARBAMA_USER_AVATAR_DATA_URI } from '../utils/brandAssets';
 import {
   User,
   Users,
@@ -249,82 +250,20 @@ export const SettingsProfile: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-
-      {/* Pending Verification & Direct Online Payment Section if Unapproved */}
-      {currentSeeker.verificationStatus !== 'approved' && (
-        <div className="bg-slate-900 border-2 border-amber-500/40 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center shrink-0 font-bold text-lg">
-                🔒
-              </div>
-              <div className="space-y-1">
-                <p className="font-bold text-white text-sm">
-                  بخش پرداخت آنلاین هزینه خدمات و فعال‌سازی حساب کارجو ({paymentSettings?.feeTL || 500} لیر / {seekerFeeToman.toLocaleString('fa-IR')} تومان)
-                </p>
-                <p className="text-slate-300 leading-relaxed">
-                  جهت فعال‌سازی کامل حساب کاربری، بازگشایی اطلاعات تماس کارفرمایان و ارسال رزومه، لطفاً از طریق درگاه پرداخت آنلاین شاپرک اقدام فرمایید.
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                try {
-                  localStorage.setItem('karbama_pending_seeker_payment', 'true');
-                } catch {
-                  // ignore
-                }
-                if (adminAmountUnit === 'toman') {
-                  window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}&unit=toman`;
-                } else {
-                  window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}`;
-                }
-              }}
-              className="px-6 py-3.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-2xl text-xs shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer transition"
-            >
-              <CreditCard className="w-4 h-4" />
-              <span>پرداخت آنلاین</span>
-            </button>
-          </div>
-
-          {(isPaymentSubmitted || currentSeeker.seekerPaymentStatus === 'paid' || Boolean(currentSeeker.seekerPaymentRefId)) && (
-            <div className="p-4 bg-emerald-950/50 border border-emerald-500/40 rounded-2xl text-emerald-200 space-y-2">
-              <div className="flex items-center gap-2 font-bold text-emerald-300 text-sm">
-                <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-                <span>اطلاعات پرداخت آنلاین شما ثبت و به پنل مدیریت ارجاع گردید!</span>
-              </div>
-              {currentSeeker.seekerPaymentRefId && (
-                <p className="text-xs text-slate-300">
-                  شماره پیگیری / ارجاع ثبت‌شده: <strong className="font-mono text-teal-300 select-all">{currentSeeker.seekerPaymentRefId}</strong>
-                </p>
-              )}
-              <p className="text-[11px] text-slate-300">
-                پس از بررسی و تایید مدیریت، قفل حساب شما به صورت خودکار باز خواهد شد.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Profile Header Card */}
       <div className="bg-gradient-to-r from-red-950 via-slate-900 to-slate-900 dark:from-red-950 dark:via-slate-900 dark:to-slate-900 light:from-red-900 light:via-slate-800 light:to-slate-900 border border-red-500/30 rounded-3xl p-6 shadow-xl print:hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-slate-900 border-2 border-red-500/50 flex items-center justify-center overflow-hidden shadow-lg shadow-red-600/30 shrink-0">
-              {currentSeeker.fullBodyPhotoUrl || currentSeeker.passportPhotoUrl ? (
-                <img
-                  src={currentSeeker.fullBodyPhotoUrl || currentSeeker.passportPhotoUrl}
-                  alt={currentSeeker.fullName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <img
-                  src="/logo.png"
-                  alt={currentSeeker.fullName}
-                  className="w-full h-full object-cover"
-                />
-              )}
+            <div className="w-16 h-16 rounded-2xl bg-slate-900 border-2 border-red-500/50 flex items-center justify-center overflow-hidden shadow-lg shrink-0">
+              <img
+                src={currentSeeker.fullBodyPhotoUrl || currentSeeker.passportPhotoUrl || KARBAMA_USER_AVATAR_DATA_URI}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = KARBAMA_USER_AVATAR_DATA_URI;
+                }}
+                alt={currentSeeker.fullName}
+                className="w-full h-full object-cover"
+              />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -371,7 +310,7 @@ export const SettingsProfile: React.FC = () => {
         </div>
 
         {/* Profile Tabs */}
-        <div className="flex items-center gap-2 mt-6 border-t border-slate-800/80 pt-4 overflow-x-auto pb-1">
+        <div className="flex flex-wrap items-center gap-2 mt-6 border-t border-slate-800/80 pt-4 pb-1">
           <button
             onClick={() => setProfileTab('turkish-cv')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${

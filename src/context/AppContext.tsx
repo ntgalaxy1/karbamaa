@@ -549,9 +549,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const stored = safeStorage.getItem('karbama_admin_notifications_v4');
       const parsed: any[] = stored ? JSON.parse(stored) : [];
       if (!Array.isArray(parsed)) return [];
-      return parsed
-        .filter((n) => n && n.id && !deletedIds.has(n.id))
-        .map((n) => (readIds.has(n.id) ? { ...n, read: true } : n));
+      return parsed.filter((n) => n && n.id && !deletedIds.has(n.id) && !readIds.has(n.id) && !n.read);
     } catch {
       return [];
     }
@@ -585,7 +583,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // ignore
     }
     setAdminNotifications((prev) => {
-      const next = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
+      const next = prev.filter((n) => n.id !== id);
       try {
         safeStorage.setItem('karbama_admin_notifications_v4', JSON.stringify(next));
       } catch (e) {
@@ -930,18 +928,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
       const stored = safeStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
       const parsed: JobNotification[] = stored ? JSON.parse(stored) : [];
-      return Array.isArray(parsed)
-        ? parsed
-            .filter(
-              (n) =>
-                n &&
-                n.id &&
-                !deletedIds.has(n.id) &&
-                n.id !== 'notif-welcome' &&
-                !String(n.message || '').includes('تست')
-            )
-            .map((n) => (readIds.has(n.id) ? { ...n, read: true } : n))
-        : [];
+      if (!Array.isArray(parsed)) return [];
+      const seenJobIds = new Set<string>();
+      return parsed.filter((n) => {
+        if (!n || !n.id) return false;
+        if (deletedIds.has(n.id) || readIds.has(n.id) || n.read) return false;
+        if (n.id === 'notif-welcome' || String(n.message || '').includes('تست')) return false;
+        const jKey = n.jobId || n.id;
+        if (readIds.has(`job-${jKey}`) || seenJobIds.has(jKey)) return false;
+        seenJobIds.add(jKey);
+        return true;
+      });
     } catch {
       return [];
     }
@@ -1031,8 +1028,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (typeof document !== 'undefined') {
       const root = document.documentElement;
-      root.style.setProperty('--primary-color', theme === 'light' && themeColor === 'red' ? '#10B981' : primaryHex);
-      root.style.setProperty('--primary-hover', theme === 'light' && themeColor === 'red' ? '#059669' : hoverHex);
+      root.style.setProperty('--primary-color', theme === 'light' && themeColor === 'red' ? '#2563EB' : primaryHex);
+      root.style.setProperty('--primary-hover', theme === 'light' && themeColor === 'red' ? '#1E3A8A' : hoverHex);
       root.style.setProperty('--primary-light', lightRgba);
       root.style.setProperty('--primary-border', borderRgba);
       root.style.setProperty('--primary-glow', glowRgba);
@@ -1334,36 +1331,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const firestoreNotifs: JobNotification[] = [];
           snapshot.forEach((docSnap) => {
             const data = docSnap.data() as JobNotification;
-            if (data && data.id && !deletedIds.has(data.id)) {
+            if (
+              data &&
+              data.id &&
+              !deletedIds.has(data.id) &&
+              !readIds.has(data.id) &&
+              !readIds.has(`job-${data.jobId || data.id}`) &&
+              !data.read
+            ) {
               firestoreNotifs.push(data);
             }
           });
 
-          if (firestoreNotifs.length > 0) {
-            setJobNotifications((prev) => {
-              const map = new Map<string, JobNotification>();
-              prev.forEach((n) => {
-                if (!deletedIds.has(n.id)) {
-                  map.set(n.id, readIds.has(n.id) ? { ...n, read: true } : n);
-                }
-              });
-              firestoreNotifs.forEach((n) => {
-                if (deletedIds.has(n.id)) return;
-                const existing = map.get(n.id);
-                const isAlreadyRead = Boolean(existing?.read || readIds.has(n.id) || n.read);
-                map.set(n.id, { ...n, read: isAlreadyRead });
-              });
-              const merged = Array.from(map.values()).sort(
-                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-              );
-              try {
-                safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(merged));
-              } catch {
-                // ignore
+          setJobNotifications((prev) => {
+            const map = new Map<string, JobNotification>();
+            const seenJobIds = new Set<string>();
+            prev.forEach((n) => {
+              const jKey = n.jobId || n.id;
+              if (
+                !deletedIds.has(n.id) &&
+                !readIds.has(n.id) &&
+                !readIds.has(`job-${jKey}`) &&
+                !n.read &&
+                !seenJobIds.has(jKey)
+              ) {
+                seenJobIds.add(jKey);
+                map.set(n.id, n);
               }
-              return merged;
             });
-          }
+            firestoreNotifs.forEach((n) => {
+              const jKey = n.jobId || n.id;
+              if (
+                deletedIds.has(n.id) ||
+                readIds.has(n.id) ||
+                readIds.has(`job-${jKey}`) ||
+                n.read ||
+                seenJobIds.has(jKey)
+              ) {
+                return;
+              }
+              seenJobIds.add(jKey);
+              map.set(n.id, { ...n, read: false });
+            });
+            const merged = Array.from(map.values()).sort(
+              (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+            try {
+              safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(merged));
+            } catch {
+              // ignore
+            }
+            return merged;
+          });
         }
       },
       (error) => {
@@ -2112,9 +2131,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // ignore
           }
           syncUserToFirestore({ ...seeker, password: updatedPass });
-          showToast('رمز عبور جدید حساب کارجوی شما با موفقیت ثبت و فعال شد.', 'success');
+          showToast('رمز عبور جدید حساب کارجوی شما از طریق سرور ایمیل mail.karbama34.ir ثبت و فعال شد.', 'success');
         } else {
-          showToast('اطلاعات ورود حساب کارجو با موفقیت بازیابی شد.', 'success');
+          showToast('اطلاعات ورود حساب کارجو از طریق سرور ایمیل mail.karbama34.ir بازیابی شد.', 'success');
+        }
+        try {
+          fetch('https://mail.karbama34.ir/api/recover-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              role: 'seeker',
+              email: seeker.email || cleanInput,
+              username: seeker.username,
+              fullName: seeker.fullName,
+              mailServer: 'mail.karbama34.ir',
+            }),
+          }).catch(() => {});
+        } catch {
+          // ignore
         }
         return {
           success: true,
@@ -2123,8 +2157,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           accountType: 'seeker',
           message:
             newPassword && newPassword.trim().length >= 6
-              ? `رمز عبور حساب کارجو (${seeker.fullName}) با موفقیت تغییر یافت! نام کاربری: ${seeker.username} | رمز عبور جدید: ${updatedPass}`
-              : `اطلاعات حساب کارجو (${seeker.fullName}) از طریق ایمیل تایید شد! نام کاربری: ${seeker.username} | رمز عبور: ${updatedPass}`,
+              ? `رمز عبور حساب کارجو (${seeker.fullName}) از طریق سرور ایمیل mail.karbama34.ir با موفقیت بازنشانی شد! نام کاربری: ${seeker.username} | رمز عبور جدید: ${updatedPass}`
+              : `اطلاعات حساب کارجو (${seeker.fullName}) از طریق ایمیل رسمی (mail.karbama34.ir) تایید و بازیابی شد! نام کاربری: ${seeker.username} | رمز عبور: ${updatedPass}`,
         };
       }
 
@@ -2165,9 +2199,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // ignore
           }
           syncPartnerToFirestore({ ...partner, password: updatedPass });
-          showToast('رمز عبور جدید حساب همکار با موفقیت ثبت و فعال شد.', 'success');
+          showToast('رمز عبور جدید حساب همکار از طریق سرور ایمیل mail.karbama34.ir ثبت و فعال شد.', 'success');
         } else {
-          showToast('اطلاعات ورود حساب همکار با موفقیت بازیابی شد.', 'success');
+          showToast('اطلاعات ورود حساب همکار از طریق سرور ایمیل mail.karbama34.ir بازیابی شد.', 'success');
+        }
+        try {
+          fetch('https://mail.karbama34.ir/api/recover-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              role: 'partner',
+              email: partner.email || cleanInput,
+              username: partner.username,
+              companyName: partner.companyName,
+              mailServer: 'mail.karbama34.ir',
+            }),
+          }).catch(() => {});
+        } catch {
+          // ignore
         }
         return {
           success: true,
@@ -2176,8 +2225,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           accountType: 'partner',
           message:
             newPassword && newPassword.trim().length >= 6
-              ? `رمز عبور حساب همکار (${partner.companyName}) با موفقیت تغییر یافت! نام کاربری: ${partner.username} | رمز عبور جدید: ${updatedPass}`
-              : `اطلاعات حساب همکار (${partner.companyName}) از طریق ایمیل تایید شد! نام کاربری: ${partner.username} | رمز عبور: ${updatedPass}`,
+              ? `رمز عبور حساب همکار (${partner.companyName}) از طریق سرور ایمیل mail.karbama34.ir با موفقیت بازنشانی شد! نام کاربری: ${partner.username} | رمز عبور جدید: ${updatedPass}`
+              : `اطلاعات حساب همکار (${partner.companyName}) از طریق ایمیل رسمی (mail.karbama34.ir) تایید و بازیابی شد! نام کاربری: ${partner.username} | رمز عبور: ${updatedPass}`,
         };
       }
 
@@ -2293,30 +2342,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const checkJobAlerts = (newJob: JobVacancy) => {
     let notifiedAlready = false;
 
-    // 1. Check user's Favorite Job Categories first
     const allFavCategories = Array.from(
       new Set([...favoriteJobCategories, ...(currentSeeker?.favoriteCategories || [])])
     );
 
     if (allFavCategories.includes(newJob.category)) {
       notifiedAlready = true;
-      const favNotif: JobNotification = {
-        id: 'notif-fav-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
-        alertId: `fav-cat-${newJob.category}`,
-        jobId: newJob.id,
-        jobTitle: newJob.title,
-        company: newJob.company,
-        city: newJob.city,
-        salaryText: `${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
-        imageUrl: newJob.imageUrl,
-        message: `🎯 شغل جدید در دسته‌بندی مورد علاقه شما ثبت شد: «${newJob.title}» در ${newJob.city}`,
-        read: false,
-        createdAt: new Date().toISOString(),
-      };
-
-      setJobNotifications((prev) => [favNotif, ...prev]);
-      syncNotificationToFirestore(favNotif);
-
       showToast(
         `🔔 فرصت شغلی جدید در دسته‌بندی مورد علاقه شما: «${newJob.title}» در ${newJob.city} با حقوق ${newJob.salaryMin.toLocaleString('fa-IR')} لیر ثبت شد!`,
         'success'
@@ -2334,7 +2365,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
     }
 
-    // 2. Check custom JobAlertSubscriptions
     jobAlerts.forEach((alert) => {
       if (!alert.isActive) return;
 
@@ -2354,34 +2384,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (!matchesAny) return;
       }
 
-      if (notifiedAlready && alert.id.startsWith('fav-cat-')) return;
+      if (notifiedAlready) return;
 
-      // Create matched Notification
-      const newNotif: JobNotification = {
-        id: 'notif-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
-        alertId: alert.id,
-        jobId: newJob.id,
-        jobTitle: newJob.title,
-        company: newJob.company,
-        city: newJob.city,
-        salaryText: `${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
-        imageUrl: newJob.imageUrl,
-        message: `فرصت شغلی جدید در کارباما منطبق با هشدار شما («${alert.title}»): ${newJob.title} در شهر ${newJob.city}`,
-        read: false,
-        createdAt: new Date().toISOString(),
-      };
-
-      setJobNotifications((prev) => [newNotif, ...prev]);
-      syncNotificationToFirestore(newNotif);
-
-      if (alert.enableInAppToast && !notifiedAlready) {
+      if (alert.enableInAppToast) {
         showToast(
           `🔔 فرصت شغلی جدید مطابق معیارهای شما: «${newJob.title}» در ${newJob.city} با حقوق ${newJob.salaryMin.toLocaleString('fa-IR')} لیر منتشر شد!`,
           'info'
         );
       }
 
-      if (alert.enableBrowserPush && !notifiedAlready) {
+      if (alert.enableBrowserPush) {
         showSafeNotification(
           `🔔 فرصت شغلی جدید در کارباما: ${newJob.title}`,
           {
@@ -2397,13 +2409,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const dispatchSingleJobNotification = (job: JobVacancy) => {
+    const notifId = `notif-job-${job.id}`;
+    const notifItem: JobNotification = {
+      id: notifId,
+      alertId: 'system-new-job',
+      jobId: job.id,
+      jobTitle: job.title,
+      company: job.company,
+      city: job.city,
+      salaryText: `${job.salaryMin.toLocaleString('fa-IR')} تا ${job.salaryMax.toLocaleString('fa-IR')} لیر`,
+      imageUrl: job.imageUrl,
+      message: `آگهی جدید استخدام: ${job.title} در ${job.city} (${job.company})`,
+      read: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    setJobNotifications((prev) => {
+      if (prev.some((n) => n.id === notifId || n.jobId === job.id)) return prev;
+      return [notifItem, ...prev];
+    });
+    syncNotificationToFirestore(notifItem);
+    playNewJobHotelDingSound();
+  };
+
   // Job management
   const addJob = (jobData: Omit<JobVacancy, 'id' | 'postedAt'>) => {
     const newJob: JobVacancy = {
       ...jobData,
       id: 'job-' + Date.now(),
       postedAt: new Date().toISOString(),
-      paymentStatus: jobData.paymentStatus || 'paid', // When added directly from admin, mark as paid
+      paymentStatus: jobData.paymentStatus || 'paid',
       paymentAmountTL: jobData.paymentAmountTL || paymentSettings.feeTL,
       paymentAmountToman: jobData.paymentAmountToman || (paymentSettings.feeTL * paymentSettings.exchangeRateToman),
     };
@@ -2414,27 +2450,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (newJob.isActive && (newJob.paymentStatus === 'paid' || !newJob.paymentStatus)) {
       checkJobAlerts(newJob);
-
-      // Create SINGLE notification entry for general users
-      const notifItem: JobNotification = {
-        id: 'notif-job-' + Date.now(),
-        alertId: 'system-new-job',
-        jobId: newJob.id,
-        jobTitle: newJob.title,
-        company: newJob.company,
-        city: newJob.city,
-        salaryText: `${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
-        imageUrl: newJob.imageUrl,
-        message: `آگهی جدید استخدام: ${newJob.title} در ${newJob.city} (${newJob.company})`,
-        read: false,
-        createdAt: new Date().toISOString(),
-      };
-
-      setJobNotifications((prev) => [notifItem, ...prev]);
-      syncNotificationToFirestore(notifItem);
-
-      // Play single distinct 4-tone ascending ding sound
-      playNewJobHotelDingSound();
+      dispatchSingleJobNotification(newJob);
     }
   };
 
@@ -2448,7 +2464,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...jobData,
       id,
       postedAt: new Date().toISOString(),
-      isActive: isOnlinePaid, // If paid online, directly active; if bank/card, awaiting admin approval
+      isActive: isOnlinePaid,
       paymentStatus: status,
       paymentAmountTL: paymentSettings.feeTL,
       paymentAmountToman: paymentSettings.feeTL * paymentSettings.exchangeRateToman,
@@ -2458,32 +2474,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setJobs((prev) => [newJob, ...prev]);
     syncJobToFirestore(newJob);
 
-    // Automated notification trigger: whenever a new job posting is created/published by an employer,
-    // dispatch an automatic notification to registered job seekers
     checkJobAlerts(newJob);
-
-    const notifItem: JobNotification = {
-      id: 'notif-job-' + Date.now(),
-      alertId: 'system-new-job',
-      jobId: newJob.id,
-      jobTitle: newJob.title,
-      company: newJob.company,
-      city: newJob.city,
-      salaryText: `${newJob.salaryMin.toLocaleString('fa-IR')} تا ${newJob.salaryMax.toLocaleString('fa-IR')} لیر`,
-      imageUrl: newJob.imageUrl,
-      message: `آگهی جدید استخدام: ${newJob.title} در ${newJob.city} (${newJob.company})`,
-      read: false,
-      createdAt: new Date().toISOString(),
-    };
-
-    setJobNotifications((prev) => [notifItem, ...prev]);
-    syncNotificationToFirestore(notifItem);
-    playNewJobHotelDingSound();
+    dispatchSingleJobNotification(newJob);
 
     if (isOnlinePaid) {
       showToast('پرداخت آنلاین تعرفه تایید شد و آگهی شما بلافاصله در سایت منتشر گردید و به کارجویان اطلاع‌رسانی شد.', 'success');
     } else {
-      // Notify Admin panel specifically about employer payment submission
       addAdminNotification({
         type: 'employer_payment',
         title: '💳 ثبت آگهی استخدام کارفرما',
@@ -2508,25 +2504,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
           syncJobToFirestore(updated);
           checkJobAlerts(updated);
-
-          const notifItem: JobNotification = {
-            id: 'notif-job-app-' + Date.now(),
-            alertId: 'system-new-job',
-            jobId: updated.id,
-            jobTitle: updated.title,
-            company: updated.company,
-            city: updated.city,
-            salaryText: `${updated.salaryMin.toLocaleString('fa-IR')} تا ${updated.salaryMax.toLocaleString('fa-IR')} لیر`,
-            imageUrl: updated.imageUrl,
-            message: `آگهی جدید استخدام تایید گردید: ${updated.title} در ${updated.city}`,
-            read: false,
-            createdAt: new Date().toISOString(),
-          };
-
-          setJobNotifications((notifs) => [notifItem, ...notifs]);
-          syncNotificationToFirestore(notifItem);
-          playNewJobHotelDingSound();
-
+          dispatchSingleJobNotification(updated);
           return updated;
         }
         return j;
@@ -2800,17 +2778,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const markNotificationAsRead = (id: string) => {
+    const target = jobNotifications.find((n) => n.id === id);
     try {
       const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
       const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
       readIds.add(id);
+      if (target?.jobId) readIds.add(`job-${target.jobId}`);
       safeStorage.setItem('karbama_read_notifications_v1', JSON.stringify(Array.from(readIds)));
+
+      const deletedRaw = safeStorage.getItem('karbama_deleted_notifications_v1');
+      const deletedIds = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+      deletedIds.add(id);
+      safeStorage.setItem('karbama_deleted_notifications_v1', JSON.stringify(Array.from(deletedIds)));
     } catch {
       // ignore
     }
 
     setJobNotifications((prev) => {
-      const next = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
+      const next = prev.filter((n) => n.id !== id && (!target?.jobId || n.jobId !== target.jobId));
       safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
       return next;
     });
@@ -2819,24 +2804,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const markAllNotificationsAsRead = () => {
     setJobNotifications((prev) => {
-      const next = prev.map((n) => ({ ...n, read: true }));
       try {
         const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
         const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
-        next.forEach((n) => readIds.add(n.id));
+        const deletedRaw = safeStorage.getItem('karbama_deleted_notifications_v1');
+        const deletedIds = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+        prev.forEach((n) => {
+          readIds.add(n.id);
+          deletedIds.add(n.id);
+          if (n.jobId) readIds.add(`job-${n.jobId}`);
+        });
         safeStorage.setItem('karbama_read_notifications_v1', JSON.stringify(Array.from(readIds)));
-        safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
+        safeStorage.setItem('karbama_deleted_notifications_v1', JSON.stringify(Array.from(deletedIds)));
+        safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify([]));
       } catch {
         // ignore
       }
-      return next;
+      return [];
     });
     jobNotifications.forEach((n) => {
-      if (!n.read) {
-        setDoc(doc(db, 'notifications', n.id), { isRead: true, read: true }, { merge: true }).catch(() => {});
-      }
+      setDoc(doc(db, 'notifications', n.id), { isRead: true, read: true }, { merge: true }).catch(() => {});
     });
-    showToast('تمام اعلان‌ها به عنوان خوانده شده علامت‌گذاری شدند.', 'info');
+    showToast('تمام اعلان‌ها خوانده شدند و از لیست اعلان‌های جدید پاک گردیدند.', 'info');
   };
 
   const deleteNotification = (id: string) => {

@@ -603,7 +603,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         {/* City jumps + Search bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
           {/* City Presets */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          <div className="flex flex-wrap items-center gap-1.5 pb-1 sm:pb-0">
             <span className="text-[11px] text-slate-400 shrink-0 font-medium ml-1">پرش به شهر:</span>
             {CITY_PRESETS.map((city) => (
               <button

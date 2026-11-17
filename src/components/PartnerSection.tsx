@@ -468,8 +468,12 @@ export const PartnerSection: React.FC = () => {
                       </button>
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed">
-                      آدرس ایمیل ثبت‌شده هنگام ثبت‌نام همکار را وارد نمایید تا رمز عبور شما بازیابی یا بازنشانی گردد.
+                      آدرس ایمیل ثبت‌شده هنگام ثبت‌نام همکار را وارد نمایید تا رمز عبور شما از طریق سرور ایمیل رسمی (mail.karbama34.ir) بازیابی یا بازنشانی گردد.
                     </p>
+                    <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400">سرور ایمیل احراز هویت همکاران:</span>
+                      <span className="font-mono font-bold text-emerald-400" dir="ltr">mail.karbama34.ir</span>
+                    </div>
                     {forgotResult && (
                       <div
                         className={`p-3 rounded-xl text-xs font-bold ${

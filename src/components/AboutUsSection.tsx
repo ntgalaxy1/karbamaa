@@ -17,6 +17,7 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { KARBAMA_LOGO_DATA_URI } from '../utils/brandAssets';
 
 export const AboutUsSection: React.FC = () => {
   const { setActiveTab, currentSeeker, isAdminLoggedIn, paymentSettings } = useApp();
@@ -52,7 +53,11 @@ export const AboutUsSection: React.FC = () => {
 
           <div className="flex sm:flex-col items-center gap-2 shrink-0">
             <img
-              src="/logo.png"
+              src={KARBAMA_LOGO_DATA_URI}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+              }}
               alt="لوگوی کارباما"
               className="w-20 h-20 rounded-2xl object-cover border-2 border-red-500/40 shadow-xl"
             />
@@ -318,7 +323,7 @@ export const AboutUsSection: React.FC = () => {
         <div className="p-6 bg-slate-900/90 border border-slate-800 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <h4 className="font-bold text-white text-sm">کارفرما هستید و می‌خواهید آگهی استخدام ثبت کنید؟</h4>
-            <p className="text-xs text-slate-400 mt-1">تعرفه ثبت آگهی معادل {feeRial.toLocaleString('fa-IR')} ریال ({feeToman.toLocaleString('fa-IR')} تومان) با بروزرسانی روزانه و امکان پرداخت از درگاه سپ / سپال، زرین‌پال یا کارت به کارت</p>
+            <p className="text-xs text-slate-400 mt-1">تعرفه ثبت آگهی معادل {feeRial.toLocaleString('fa-IR')} ریال ({feeToman.toLocaleString('fa-IR')} تومان) با بروزرسانی روزانه و امکان پرداخت مستقیم از درگاه آنلاین بانکی شاپرک</p>
           </div>
           <button
             onClick={() => setActiveTab('post-job')}

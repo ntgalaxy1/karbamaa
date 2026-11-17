@@ -10,7 +10,13 @@ export const BottomNav: React.FC = () => {
     ? applications.filter((a) => a.seekerId === currentSeeker.id).length
     : 0;
 
-  const totalTabs = 5 + (isAdminLoggedIn ? 1 : 0);
+  const isOnAdminRoute =
+    (typeof window !== 'undefined' &&
+      (window.location.pathname === '/admin' || window.location.pathname.startsWith('/admin/'))) ||
+    activeTab === 'admin';
+
+  const showAdminTab = isAdminLoggedIn && isOnAdminRoute;
+  const totalTabs = 5 + (showAdminTab ? 1 : 0);
   const colsClass = totalTabs === 6 ? 'grid-cols-6' : 'grid-cols-5';
 
   return (
@@ -107,8 +113,8 @@ export const BottomNav: React.FC = () => {
           <span className="text-[10px] truncate max-w-full">{t('aboutUs', appLanguage)}</span>
         </button>
 
-        {/* 6. داشبورد مدیریت (هنگام ورود مدیر) */}
-        {isAdminLoggedIn && (
+        {/* 6. داشبورد مدیریت (صرفاً در مسیر اختصاصی /admin) */}
+        {showAdminTab && (
           <button
             type="button"
             onClick={() => {

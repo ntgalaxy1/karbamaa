@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { TurkishLevel, ResidenceStatus, TargetCountry, Gender, JobSeeker } from '../types';
 import { CommitmentModal } from './CommitmentModal';
+import { KARBAMA_LOGO_DATA_URI } from '../utils/brandAssets';
 import {
   checkPasswordStrength,
   isValidEmail,
@@ -937,9 +938,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
         <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-red-700/30 via-slate-850 to-slate-900 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
             <img
-              src="/logo.png"
+              src={KARBAMA_LOGO_DATA_URI}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+              }}
               alt="لوگوی کارباما"
-              className="h-11 w-11 rounded-full object-cover border-2 border-amber-400/70 shadow-lg shadow-red-700/40 shrink-0"
+              className="h-11 w-11 rounded-full object-cover border-2 border-amber-400/70 shadow-lg shrink-0"
             />
             <div>
               <h2 className="text-lg font-black text-white">
@@ -2338,7 +2343,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
                       <div className="flex items-center gap-3">
                         <img
-                          src="/logo.png"
+                          src={KARBAMA_LOGO_DATA_URI}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+                          }}
                           alt="کارباما"
                           className="w-12 h-12 rounded-full border-2 border-amber-400 shadow-md object-cover"
                         />
@@ -2980,9 +2989,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
 
             <p className="text-xs text-slate-300 leading-relaxed">
               {loginUserRole === 'partner'
-                ? 'جهت بازیابی یا بازنشانی رمز عبور حساب همکار، آدرس ایمیل ثبت‌شده هنگام ثبت‌نام همکار را وارد نمایید.'
-                : 'جهت بازیابی یا بازنشانی رمز عبور حساب کارجو، آدرس ایمیل ثبت‌شده هنگام ثبت‌نام کارجو را وارد نمایید.'}
+                ? 'جهت بازیابی یا بازنشانی رمز عبور حساب همکار از طریق سرور ایمیل رسمی (mail.karbama34.ir)، آدرس ایمیل ثبت‌شده همکار را وارد نمایید.'
+                : 'جهت بازیابی یا بازنشانی رمز عبور حساب کارجو از طریق سرور ایمیل رسمی (mail.karbama34.ir)، آدرس ایمیل ثبت‌شده کارجو را وارد نمایید.'}
             </p>
+            <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-[11px]">
+              <span className="text-slate-400">سرور ایمیل احراز هویت و بازیابی:</span>
+              <span className="font-mono font-bold text-emerald-400" dir="ltr">mail.karbama34.ir</span>
+            </div>
 
             {recoverResult && (
               <div

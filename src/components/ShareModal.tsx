@@ -11,6 +11,7 @@ import {
   Smartphone,
   Sparkles,
 } from 'lucide-react';
+import { KARBAMA_LOGO_DATA_URI } from '../utils/brandAssets';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -132,9 +133,13 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
         <div className="px-6 py-4 bg-gradient-to-r from-red-700/30 via-slate-850 to-slate-900 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
-              src="/logo.png"
+              src={KARBAMA_LOGO_DATA_URI}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+              }}
               alt="لوگوی کارباما"
-              className="w-11 h-11 rounded-full object-cover border-2 border-amber-400/60 shadow-lg shadow-red-700/30 shrink-0"
+              className="w-11 h-11 rounded-full object-cover border-2 border-amber-400/60 shadow-lg shrink-0"
             />
             <div>
               <h3 className="font-extrabold text-white text-base">اشتراک‌گذاری برنامه کارباما</h3>
@@ -153,7 +158,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
           {/* Branded Card Preview */}
           <div className="p-3 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-2xl border border-amber-500/30 flex items-center gap-3">
             <img
-              src="/logo.png"
+              src={KARBAMA_LOGO_DATA_URI}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+              }}
               alt="لوگوی کارباما"
               className="w-14 h-14 rounded-full object-cover border border-amber-400/60 shadow-md shrink-0"
             />

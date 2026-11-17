@@ -727,12 +727,10 @@ export const PostJobSection: React.FC = () => {
               <span className="text-xs text-slate-400">روش پرداخت:</span>
               <span className="text-xs font-bold text-teal-300">
                 {paymentMethod === 'sepal'
-                  ? 'درگاه شاپرک سپال (Sepal)'
+                  ? 'درگاه آنلاین شاپرک (Sepal)'
                   : paymentMethod === 'zarinpal'
-                  ? 'درگاه زرین‌پال'
-                  : paymentMethod === 'turkey_bank'
-                  ? 'حساب بانکی ترکیه'
-                  : 'کارت به کارت ایران'}
+                  ? 'درگاه آنلاین زرین‌پال'
+                  : 'درگاه آنلاین بانکی شاپرک'}
               </span>
             </div>
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">

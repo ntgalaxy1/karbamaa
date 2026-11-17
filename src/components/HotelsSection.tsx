@@ -299,7 +299,7 @@ export const HotelsSection: React.FC = () => {
       {/* Filter Row */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
         {/* City & District Filter */}
-        <div className="flex items-center gap-2 overflow-x-auto">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-slate-400 font-medium ml-1">شهر و منطقه:</span>
           <select
             value={selectedCity}

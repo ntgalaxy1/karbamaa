@@ -11,6 +11,11 @@ import { AppLanguage } from '../types';
 import { t } from '../utils/translations';
 import { APP_VERSION } from '../version';
 import {
+  KARBAMA_LOGO_DATA_URI,
+  KARBAMA_USER_AVATAR_DATA_URI,
+  KARBAMA_PARTNER_AVATAR_DATA_URI,
+} from '../utils/brandAssets';
+import {
   Briefcase,
   MapPin,
   FileCheck2,
@@ -84,6 +89,11 @@ export const Header: React.FC = () => {
     setUserDropdown(false);
   };
 
+  const isOnAdminRoute =
+    (typeof window !== 'undefined' &&
+      (window.location.pathname === '/admin' || window.location.pathname.startsWith('/admin/'))) ||
+    activeTab === 'admin';
+
   const languages: { code: AppLanguage; label: string; flag: string }[] = [
     { code: 'fa', label: 'فارسی', flag: '🇮🇷' },
     { code: 'tr', label: 'Türkçe', flag: '🇹🇷' },
@@ -111,9 +121,13 @@ export const Header: React.FC = () => {
               >
                 <div className="relative shrink-0">
                   <img
-                    src="/logo.png"
+                    src={KARBAMA_LOGO_DATA_URI}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+                    }}
                     alt="لوگوی رسمی کارباما"
-                    className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover shadow-lg shadow-red-600/40 border-2 border-amber-400/90 group-hover:scale-105 group-hover:border-amber-300 transition-all duration-300 ring-2 ring-slate-800"
+                    className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover shadow-lg shadow-blue-900/20 border-2 border-amber-400/90 group-hover:scale-105 group-hover:border-amber-300 transition-all duration-300 ring-2 ring-slate-800"
                   />
                   <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-emerald-500 border-2 border-slate-900 shadow-sm" title="سامانه فعال است" />
                 </div>
@@ -132,8 +146,8 @@ export const Header: React.FC = () => {
                 </div>
               </div>
 
-              {/* Status Indicator (Only if admin is logged in) */}
-              {isAdminLoggedIn && (
+              {/* Status Indicator (Only if admin is logged in AND on /admin route) */}
+              {isAdminLoggedIn && isOnAdminRoute && (
                 <div className="hidden lg:flex items-center gap-1.5 bg-amber-500/20 border border-amber-500/50 px-3 py-1 rounded-full text-xs shrink-0">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
                   <span className="text-amber-300 font-black">{t('adminRole', appLanguage)}</span>
@@ -197,8 +211,8 @@ export const Header: React.FC = () => {
                         </button>
                       </div>
 
-                      {/* Admin Access Section (قسمت دسترسی مدیر فعال است) */}
-                      {isAdminLoggedIn && (
+                      {/* Admin Access Section (Strictly only on /admin route) */}
+                      {isAdminLoggedIn && isOnAdminRoute && (
                         <div className="bg-amber-500/10 border-2 border-amber-500/50 rounded-2xl p-2.5 mb-2 space-y-2 text-right">
                           <div className="flex items-center justify-between border-b border-amber-500/30 pb-1.5">
                             <div className="flex items-center gap-1.5">
@@ -225,11 +239,11 @@ export const Header: React.FC = () => {
                                 setAdminJobModalOpen(true);
                                 setToolsDropdown(false);
                               }}
-                              className="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 shadow-sm transition"
+                              className="px-2 py-1.5 bg-blue-700 hover:bg-blue-600 text-white font-bold rounded-xl text-[11px] flex items-center justify-center gap-1 shadow-sm transition"
                               title="افزودن سریع آگهی جدید"
                             >
                               <PlusCircle className="w-3.5 h-3.5 text-white" />
-                              <span>+ ثبت آگهی استخدام</span>
+                              <span>ثبت آگهی استخدام</span>
                             </button>
 
                             <button
@@ -241,7 +255,7 @@ export const Header: React.FC = () => {
                               title="افزودن هتل رو نقشه"
                             >
                               <Hotel className="w-3.5 h-3.5 text-white" />
-                              <span>+ هتل</span>
+                              <span>افزودن هتل</span>
                             </button>
 
                             <button
@@ -253,7 +267,7 @@ export const Header: React.FC = () => {
                               title="افزودن سفارت یا مرکز"
                             >
                               <Building2 className="w-3.5 h-3.5 text-white" />
-                              <span>+ آدرس</span>
+                              <span>افزودن آدرس</span>
                             </button>
 
                             <button
@@ -461,7 +475,7 @@ export const Header: React.FC = () => {
               </button>
 
               {/* Admin or User profile Badge without top bar logout buttons */}
-              {isAdminLoggedIn ? (
+              {isAdminLoggedIn && isOnAdminRoute ? (
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={() => {
@@ -484,9 +498,13 @@ export const Header: React.FC = () => {
                     className="flex items-center gap-1.5 bg-indigo-950/70 hover:bg-indigo-900/80 border border-indigo-500/40 px-2.5 py-1.5 rounded-xl transition text-right shadow-sm"
                   >
                     <img
-                      src="/logo.png"
+                      src={KARBAMA_PARTNER_AVATAR_DATA_URI}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = KARBAMA_PARTNER_AVATAR_DATA_URI;
+                      }}
                       alt={currentPartner.companyName}
-                      className="w-6 h-6 rounded-full object-cover border border-indigo-400/60 shrink-0 bg-slate-900"
+                      className="w-6 h-6 rounded-full object-cover border border-indigo-400/60 shrink-0"
                     />
                     <div className="hidden sm:flex items-center gap-1 text-right">
                       <p className="text-xs font-bold text-white leading-tight">
@@ -500,18 +518,22 @@ export const Header: React.FC = () => {
                 <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 relative">
                   <button
                     onClick={() => setUserDropdown(!userDropdown)}
-                    className="flex items-center gap-1.5 bg-slate-800 dark:bg-slate-800 light:bg-slate-100 hover:bg-slate-700/90 border border-red-500/30 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl transition text-right max-w-[120px] xs:max-w-[150px] sm:max-w-none shadow-md shadow-red-950/30 shrink-0"
+                    className="flex items-center gap-1.5 bg-slate-800 dark:bg-slate-800 light:bg-slate-100 hover:bg-slate-700/90 border border-blue-500/30 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl transition text-right max-w-[120px] xs:max-w-[150px] sm:max-w-none shadow-sm shrink-0"
                   >
                     <img
-                      src={currentSeeker.fullBodyPhotoUrl || currentSeeker.passportPhotoUrl || '/logo.png'}
+                      src={currentSeeker.fullBodyPhotoUrl || currentSeeker.passportPhotoUrl || KARBAMA_USER_AVATAR_DATA_URI}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = KARBAMA_USER_AVATAR_DATA_URI;
+                      }}
                       alt={currentSeeker.fullName}
-                      className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover shrink-0 shadow-sm border border-amber-400/70 bg-slate-900"
+                      className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover shrink-0 shadow-sm border border-amber-400/70"
                     />
                     <div className="flex items-center gap-1 truncate min-w-0">
                       <p className="text-xs font-black text-white dark:text-white light:text-slate-900 truncate">
                         {currentSeeker.fullName.split(' ')[0]}
                       </p>
-                      <span className="hidden md:inline-block px-2 py-0.5 rounded-lg bg-red-600/30 text-red-200 border border-red-500/50 text-[10px] font-black shrink-0 shadow-xs">
+                      <span className="hidden md:inline-block px-2 py-0.5 rounded-lg bg-blue-600/20 text-blue-200 border border-blue-500/40 text-[10px] font-black shrink-0 shadow-xs">
                         {t('jobseekerRole', appLanguage)} 👤
                       </span>
                     </div>
@@ -529,9 +551,13 @@ export const Header: React.FC = () => {
                         <div className="px-4 py-2.5 border-b border-slate-800 dark:border-slate-800 light:border-slate-200 text-right flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <img
-                              src={currentSeeker.fullBodyPhotoUrl || currentSeeker.passportPhotoUrl || '/logo.png'}
+                              src={currentSeeker.fullBodyPhotoUrl || currentSeeker.passportPhotoUrl || KARBAMA_USER_AVATAR_DATA_URI}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = KARBAMA_USER_AVATAR_DATA_URI;
+                              }}
                               alt={currentSeeker.fullName}
-                              className="w-9 h-9 rounded-full object-cover border border-amber-400/70 shrink-0 bg-slate-900"
+                              className="w-9 h-9 rounded-full object-cover border border-amber-400/70 shrink-0"
                             />
                             <div className="min-w-0">
                               <p className="font-bold text-white dark:text-white light:text-slate-900 truncate">{currentSeeker.fullName}</p>

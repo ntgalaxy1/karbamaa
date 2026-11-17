@@ -12,6 +12,11 @@ import {
   CreditCard,
   Sparkles,
 } from 'lucide-react';
+import {
+  KARBAMA_LOGO_DATA_URI,
+  KARBAMA_SUPPORT_AVATAR_DATA_URI,
+  KARBAMA_USER_AVATAR_DATA_URI,
+} from '../utils/brandAssets';
 
 export const LiveChatWidget: React.FC = () => {
   const {
@@ -84,15 +89,19 @@ export const LiveChatWidget: React.FC = () => {
       {isOpen && (
         <div className="mb-2 w-72 sm:w-80 max-h-[58vh] bg-slate-900 border border-red-500/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-200">
           {/* Header */}
-          <div className="bg-gradient-to-r from-red-700 via-red-600 to-amber-600 px-3 py-2.5 flex items-center justify-between text-white shrink-0">
+          <div className="bg-gradient-to-r from-blue-900 via-blue-700 to-indigo-800 px-3 py-2.5 flex items-center justify-between text-white shrink-0">
             <div className="flex items-center gap-2">
               <div className="relative shrink-0">
                 <img
-                  src="/logo.png"
+                  src={KARBAMA_SUPPORT_AVATAR_DATA_URI}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = KARBAMA_SUPPORT_AVATAR_DATA_URI;
+                  }}
                   alt="کارباما"
-                  className="w-8 h-8 rounded-full object-cover border-2 border-amber-300 shadow-sm bg-slate-950"
+                  className="w-8 h-8 rounded-full object-cover border-2 border-amber-300 shadow-sm"
                 />
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-red-700" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-blue-900" />
               </div>
               <div>
                 <h3 className="text-xs font-black leading-tight text-white">چت آنلاین با مدیر کارباما</h3>
@@ -106,7 +115,7 @@ export const LiveChatWidget: React.FC = () => {
               className="p-1 rounded-lg bg-black/20 hover:bg-black/40 text-white transition"
               title="بستن پنجره چت"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3.5 h-3.5 text-white" />
             </button>
           </div>
 
@@ -123,9 +132,13 @@ export const LiveChatWidget: React.FC = () => {
                 <div className="p-3 space-y-3 overflow-y-auto text-[11px]">
                   <div className="bg-gradient-to-br from-red-950/90 via-slate-900 to-amber-950/80 border border-amber-500/50 rounded-xl p-3 space-y-2 text-center shadow-md">
                     <img
-                      src="/logo.png"
+                      src={KARBAMA_LOGO_DATA_URI}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+                      }}
                       alt="کارباما"
-                      className="w-11 h-11 rounded-full object-cover border-2 border-amber-400 mx-auto shadow-md bg-slate-950"
+                      className="w-11 h-11 rounded-full object-cover border-2 border-amber-400 mx-auto shadow-md"
                     />
                     <h4 className="text-xs font-black text-amber-300 leading-snug">
                       از مبدا تا مقصد و محل کار با شما هستیم
@@ -214,17 +227,25 @@ export const LiveChatWidget: React.FC = () => {
                         >
                           <img
                             src={
-                              isMe && (currentSeeker?.fullBodyPhotoUrl || currentSeeker?.passportPhotoUrl)
-                                ? currentSeeker.fullBodyPhotoUrl || currentSeeker.passportPhotoUrl
-                                : '/logo.png'
+                              isMe
+                                ? currentSeeker?.fullBodyPhotoUrl ||
+                                  currentSeeker?.passportPhotoUrl ||
+                                  KARBAMA_USER_AVATAR_DATA_URI
+                                : KARBAMA_SUPPORT_AVATAR_DATA_URI
                             }
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = isMe
+                                ? KARBAMA_USER_AVATAR_DATA_URI
+                                : KARBAMA_SUPPORT_AVATAR_DATA_URI;
+                            }}
                             alt={isMe ? activeSeekerChat.fullName : 'مدیریت کارباما'}
-                            className="w-6 h-6 rounded-full object-cover border border-amber-400/60 shrink-0 bg-slate-900"
+                            className="w-6 h-6 rounded-full object-cover border border-amber-400/60 shrink-0"
                           />
                           <div
                             className={`max-w-[80%] rounded-xl px-2.5 py-1.5 text-[11px] leading-relaxed ${
                               isMe
-                                ? 'bg-red-600 text-white rounded-tr-xs'
+                                ? 'bg-blue-700 text-white rounded-tr-xs'
                                 : 'bg-slate-800 border border-amber-500/40 text-slate-100 rounded-tl-xs'
                             }`}
                           >
@@ -289,9 +310,13 @@ export const LiveChatWidget: React.FC = () => {
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <img
-                              src="/logo.png"
+                              src={KARBAMA_USER_AVATAR_DATA_URI}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = KARBAMA_USER_AVATAR_DATA_URI;
+                              }}
                               alt={chat.fullName}
-                              className="w-6 h-6 rounded-full object-cover border border-amber-400/50 shrink-0 bg-slate-950"
+                              className="w-6 h-6 rounded-full object-cover border border-amber-400/50 shrink-0"
                             />
                             <span className="font-bold text-white truncate">{chat.fullName}</span>
                           </div>
@@ -369,7 +394,11 @@ export const LiveChatWidget: React.FC = () => {
                     </button>
                     <div className="flex items-center gap-1.5 truncate max-w-[150px]">
                       <img
-                        src="/logo.png"
+                        src={KARBAMA_USER_AVATAR_DATA_URI}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = KARBAMA_USER_AVATAR_DATA_URI;
+                        }}
                         alt={selectedAdminChat.fullName}
                         className="w-5 h-5 rounded-full object-cover border border-amber-400/50 shrink-0"
                       />
@@ -404,9 +433,15 @@ export const LiveChatWidget: React.FC = () => {
                           className={`flex items-end gap-1.5 ${isAdmin ? 'flex-row' : 'flex-row-reverse'}`}
                         >
                           <img
-                            src="/logo.png"
+                            src={isAdmin ? KARBAMA_SUPPORT_AVATAR_DATA_URI : KARBAMA_USER_AVATAR_DATA_URI}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = isAdmin
+                                ? KARBAMA_SUPPORT_AVATAR_DATA_URI
+                                : KARBAMA_USER_AVATAR_DATA_URI;
+                            }}
                             alt={isAdmin ? 'مدیر' : selectedAdminChat.fullName}
-                            className="w-6 h-6 rounded-full object-cover border border-amber-400/60 shrink-0 bg-slate-900"
+                            className="w-6 h-6 rounded-full object-cover border border-amber-400/60 shrink-0"
                           />
                           <div
                             className={`max-w-[80%] rounded-xl px-2.5 py-1.5 text-[11px] ${
@@ -459,7 +494,11 @@ export const LiveChatWidget: React.FC = () => {
           className="px-2.5 py-1 rounded-full bg-slate-900/95 border border-amber-400/50 text-amber-300 text-[10px] font-black shadow-lg hover:bg-slate-800 transition cursor-pointer flex items-center gap-1.5"
         >
           <img
-            src="/logo.png"
+            src={KARBAMA_SUPPORT_AVATAR_DATA_URI}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = KARBAMA_SUPPORT_AVATAR_DATA_URI;
+            }}
             alt="کارباما"
             className="w-4 h-4 rounded-full object-cover border border-amber-400"
           />

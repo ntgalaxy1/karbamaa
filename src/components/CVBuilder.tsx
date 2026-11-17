@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { AuthModal } from './AuthModal';
+import { KARBAMA_LOGO_DATA_URI } from '../utils/brandAssets';
 import {
   FileText,
   Printer,
@@ -616,7 +617,11 @@ Karbama (کارباما) İş ve İstihdam Sistemi ile Oluşturulmuştur.
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start gap-4">
             <img
-              src="/logo.png"
+              src={KARBAMA_LOGO_DATA_URI}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+              }}
               alt="کارباما"
               className="w-14 h-14 rounded-full object-cover border-2 border-amber-400/80 shadow-lg shrink-0 mt-1"
             />
@@ -669,7 +674,7 @@ Karbama (کارباما) İş ve İstihdam Sistemi ile Oluşturulmuştur.
         </div>
 
         {/* Industry Fast Templates Bar */}
-        <div className="mt-5 pt-4 border-t border-slate-800/80 flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-wrap items-center gap-2 pb-1">
           <span className="text-[11px] text-slate-400 shrink-0 font-medium ml-1">
             ⚡ قالب‌های آماده بر اساس شغل:
           </span>
@@ -1609,7 +1614,15 @@ Karbama (کارباما) İş ve İstihdam Sistemi ile Oluşturulmuştur.
             {/* CV Footer Note */}
             <footer className="mt-8 pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400 flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <img src="/logo.png" alt="Karbama" className="w-4 h-4 rounded-full object-cover" />
+                <img
+                  src={KARBAMA_LOGO_DATA_URI}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
+                  }}
+                  alt="Karbama"
+                  className="w-4 h-4 rounded-full object-cover"
+                />
                 <span>Bu özgeçmiş Karbama (کارباما) İş ve İstihdam Sistemi ile oluşturulmuştur.</span>
               </div>
               <span className="font-mono">Tarih: {new Date().toLocaleDateString('tr-TR')}</span>

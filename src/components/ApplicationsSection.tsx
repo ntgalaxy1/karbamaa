@@ -218,7 +218,7 @@ export const ApplicationsSection: React.FC = () => {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Status Buttons */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5 pb-1 text-xs">
             <span className="text-slate-400 text-xs shrink-0 ml-1">وضعیت:</span>
             {[
               { key: 'all', label: `همه (${userApplications.length})` },

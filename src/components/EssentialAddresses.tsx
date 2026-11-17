@@ -395,7 +395,7 @@ export const EssentialAddresses: React.FC = () => {
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               {/* Category Pills */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none flex-1">
+              <div className="flex flex-wrap items-center gap-2 pb-1 flex-1">
                 {CATEGORY_TABS.map((tab) => {
                   const Icon = tab.icon;
                   const isSelected = selectedCategory === tab.key;
@@ -462,7 +462,7 @@ export const EssentialAddresses: React.FC = () => {
             {/* City & District Filter Row */}
             <div className="flex flex-wrap items-center gap-2 pb-1 pt-2 border-t border-slate-800">
               <span className="text-xs text-slate-400 shrink-0 font-medium ml-1">فیلتر شهر و منطقه:</span>
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-none flex-1">
+              <div className="flex flex-wrap items-center gap-2 flex-1">
                 {CITIES.map((c) => (
                   <button
                     key={c}
