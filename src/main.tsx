@@ -60,7 +60,7 @@ if (typeof window !== 'undefined') {
       .keys()
       .then((names) => {
         for (const name of names) {
-          if (name !== 'karbama-cache-v19') {
+          if (name !== 'karbama-cache-v59') {
             caches.delete(name);
           }
         }
@@ -79,8 +79,8 @@ if (typeof window !== 'undefined') {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (refreshing) return;
       try {
-        if (!sessionStorage.getItem('karbama_sw_v30_reloaded')) {
-          sessionStorage.setItem('karbama_sw_v30_reloaded', '1');
+        if (!sessionStorage.getItem('karbama_sw_v59_reloaded')) {
+          sessionStorage.setItem('karbama_sw_v59_reloaded', '1');
           refreshing = true;
           window.location.reload();
         }

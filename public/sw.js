@@ -4,10 +4,8 @@
  * and IndexedDB data synchronization for Job Listings & Essential Addresses.
  */
 
-const CACHE_NAME = 'karbama-cache-v49';
+const CACHE_NAME = 'karbama-cache-v59';
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/manifest.webmanifest',
   '/pwa-192x192.png',
@@ -100,12 +98,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Never intercept PHP gateway scripts (pay.php, callback.php, etc.), API routes, or binary downloads
+  // Never intercept PHP gateway scripts, API routes, Vite dev modules (/src/), or binary downloads
   if (
     url.pathname.endsWith('.php') ||
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/src/') ||
     url.pathname.includes('node_modules') ||
+    url.pathname.endsWith('.ts') ||
+    url.pathname.endsWith('.tsx') ||
     url.pathname.endsWith('.apk') ||
     url.pathname.endsWith('.aab') ||
     url.pathname.endsWith('.zip')
@@ -119,33 +120,39 @@ self.addEventListener('fetch', (event) => {
     url.pathname === '/install' ||
     url.pathname === '/index.html';
 
-  // Network-First for all HTML navigations, installation routes, JS/TS/TSX/CSS bundles, and JSON configs
+  // Network-First for all HTML navigations, installation routes, JS/CSS bundles, and JSON configs
   const isCodeOrPage =
     isInstallOrAppRoute ||
-    url.pathname.startsWith('/src/') ||
     url.pathname.startsWith('/assets/') ||
     url.pathname.endsWith('.js') ||
     url.pathname.endsWith('.mjs') ||
-    url.pathname.endsWith('.ts') ||
-    url.pathname.endsWith('.tsx') ||
     url.pathname.endsWith('.css') ||
     url.pathname.endsWith('.html') ||
     url.pathname.endsWith('.json');
 
   if (isCodeOrPage) {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: isInstallOrAppRoute ? 'no-cache' : 'default' })
         .then(async (response) => {
           if (response && response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseClone);
-            });
+            const contentType = (response.headers.get('content-type') || '').toLowerCase();
+            const isScriptOrStyle =
+              url.pathname.endsWith('.js') ||
+              url.pathname.endsWith('.mjs') ||
+              url.pathname.endsWith('.css');
+
+            // Never cache HTML fallback responses for JS/CSS assets
+            if (!isScriptOrStyle || !contentType.includes('text/html')) {
+              const responseClone = response.clone();
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseClone);
+              });
+            }
             return response;
           }
           // If navigating to /install on a static server that returns 404, serve cached or live /index.html
           if (isInstallOrAppRoute && (!response || response.status === 404)) {
-            const rootRes = await fetch('/index.html').catch(() => null);
+            const rootRes = await fetch('/index.html', { cache: 'no-cache' }).catch(() => null);
             if (rootRes && rootRes.status === 200) return rootRes;
             const cachedApp = (await caches.match('/index.html')) || (await caches.match('/'));
             if (cachedApp) return cachedApp;

@@ -525,10 +525,82 @@ const MainContent: React.FC = () => {
   );
 };
 
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; errorMessage: string }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, errorMessage: '' };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, errorMessage: error?.message || 'خطای غیرمنتظره' };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('[Karbama ErrorBoundary]:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center"
+          dir="rtl"
+        >
+          <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <img
+              src={KARBAMA_LOGO_DATA_URI}
+              alt="کارباما"
+              className="w-20 h-20 rounded-full mx-auto border-2 border-amber-400 object-cover"
+            />
+            <h2 className="text-lg font-black text-amber-400">
+              بروزرسانی سامانه کارباما
+            </h2>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              نسخه جدید سامانه بارگذاری شده است. لطفاً جهت نمایش صحیح، صفحه را بازنشانی نمایید.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl text-xs transition cursor-pointer"
+              >
+                بارگذاری مجدد صفحه
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    if ('caches' in window) {
+                      caches.keys().then((names) => names.forEach((n) => caches.delete(n)));
+                    }
+                    sessionStorage.clear();
+                  } catch {
+                    // ignore
+                  }
+                  window.location.href = '/';
+                }}
+                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition cursor-pointer"
+              >
+                پاکسازی کش مرورگر
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   return (
-    <AppProvider>
-      <MainContent />
-    </AppProvider>
+    <AppErrorBoundary>
+      <AppProvider>
+        <MainContent />
+      </AppProvider>
+    </AppErrorBoundary>
   );
 }
