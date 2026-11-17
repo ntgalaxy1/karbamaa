@@ -4,7 +4,7 @@
 const encodeSvgDataUri = (svg: string): string =>
   `data:image/svg+xml;utf8,${encodeURIComponent(svg.trim())}`;
 
-export const KARBAMA_LOGO_DATA_URI = encodeSvgDataUri(`
+export const KARBAMA_LOGO_FALLBACK_DATA_URI = encodeSvgDataUri(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
   <defs>
     <linearGradient id="kbBg" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -31,6 +31,8 @@ export const KARBAMA_LOGO_DATA_URI = encodeSvgDataUri(`
   <text x="128" y="206" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="900" fill="#FDE68A" text-anchor="middle" letter-spacing="2">KARBAMA</text>
 </svg>
 `);
+
+export const KARBAMA_LOGO_DATA_URI = '/logo.png';
 
 export const KARBAMA_USER_AVATAR_DATA_URI = encodeSvgDataUri(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
