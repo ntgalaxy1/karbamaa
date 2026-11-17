@@ -312,40 +312,40 @@ export const SettingsProfile: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2 mt-6 border-t border-slate-800/80 pt-4 pb-1">
           <button
             onClick={() => setProfileTab('turkish-cv')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
               profileTab === 'turkish-cv'
                 ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                : 'bg-slate-800/60 text-slate-200 hover:bg-slate-800 border border-slate-700/60'
             }`}
           >
-            <FileText className="w-4 h-4 text-amber-300" />
+            <FileText className="w-4 h-4 text-amber-400" />
             رزومه‌ساز آنلاین
             <span className="text-[10px] bg-amber-400 text-slate-900 px-1.5 py-0.2 rounded-full font-black">
-              به زودی اضافه خواهد شد
+              دو زبانه | PDF
             </span>
           </button>
 
           <button
             onClick={() => setProfileTab('resume')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
               profileTab === 'resume'
                 ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                : 'bg-slate-800/60 text-slate-200 hover:bg-slate-800 border border-slate-700/60'
             }`}
           >
             <Award className="w-4 h-4" />
             رزومه فارسی کارباما
-            <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded-full font-bold">
-              به زودی
+            <span className="text-[10px] bg-amber-400 text-slate-900 px-1.5 py-0.2 rounded-full font-black">
+              آنلاین
             </span>
           </button>
 
           <button
             onClick={() => setProfileTab('profile')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
               profileTab === 'profile'
                 ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                : 'bg-slate-800/60 text-slate-200 hover:bg-slate-800 border border-slate-700/60'
             }`}
           >
             <User className="w-4 h-4" />
@@ -354,10 +354,10 @@ export const SettingsProfile: React.FC = () => {
 
           <button
             onClick={() => setProfileTab('applications')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
               profileTab === 'applications'
                 ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                : 'bg-slate-800/60 text-slate-200 hover:bg-slate-800 border border-slate-700/60'
             }`}
           >
             <FileCheck2 className="w-4 h-4" />

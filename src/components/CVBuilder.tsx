@@ -165,8 +165,7 @@ export const CVBuilder: React.FC = () => {
     isAdminLoggedIn || (currentSeeker && currentSeeker.verificationStatus === 'approved')
   );
 
-  // Per user request: Display "به زودی اضافه خواهد شد" when Online Resume Builder is clicked
-  const showComingSoonScreen = true;
+  const showComingSoonScreen = false;
   if (showComingSoonScreen) {
     return (
       <div className="max-w-2xl mx-auto py-10 px-4">

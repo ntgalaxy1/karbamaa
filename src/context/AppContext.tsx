@@ -377,6 +377,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const merged = { ...prev, ...newSettings };
       try {
         safeStorage.setItem(STORAGE_KEYS.BROKER_SETTINGS, JSON.stringify(merged));
+        fetch('/api/users.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'upsert', type: 'broker_settings', record: merged }),
+        }).catch(() => {});
       } catch (e) {
         console.error('Failed to save broker settings', e);
       }
@@ -441,6 +446,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const next = { ...prev, ...updates };
       try {
         safeStorage.setItem(STORAGE_KEYS.PAYMENT_SETTINGS, JSON.stringify(next));
+        fetch('/api/users.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'upsert', type: 'payment_settings', record: next }),
+        }).catch(() => {});
       } catch (e) {
         console.error('Failed to save payment settings', e);
       }
@@ -638,19 +648,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const approveSeekerAccount = (seekerId: string, note?: string) => {
     const seeker = jobSeekers.find((s) => s.id === seekerId);
     setJobSeekers((prev) => {
-      const next = prev.map((s) =>
-        s.id === seekerId
-          ? {
-              ...s,
-              verificationStatus: 'approved' as const,
-              isPaymentVerified: true,
-              seekerPaymentStatus: 'paid' as const,
-              adminVerificationNote: note || s.adminVerificationNote || 'تایید و آزادسازی توسط مدیریت کارباما',
-            }
-          : s
-      );
+      const next = prev.map((s) => {
+        if (s.id === seekerId) {
+          const updated: JobSeeker = {
+            ...s,
+            verificationStatus: 'approved' as const,
+            isPaymentVerified: true,
+            seekerPaymentStatus: 'paid' as const,
+            adminVerificationNote: note || s.adminVerificationNote || 'تایید و آزادسازی توسط مدیریت کارباما',
+            ...({ updatedAt: new Date().toISOString() } as any),
+          };
+          syncUserToFirestore(updated);
+          return updated;
+        }
+        return s;
+      });
       try {
         safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(next));
+        idbCache.saveSeekers(next);
       } catch (e) {
         console.error(e);
       }
@@ -670,13 +685,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const rejectSeekerAccount = (seekerId: string, reason: string) => {
     const seeker = jobSeekers.find((s) => s.id === seekerId);
     setJobSeekers((prev) => {
-      const next = prev.map((s) =>
-        s.id === seekerId
-          ? { ...s, verificationStatus: 'rejected' as const, isPaymentVerified: false, adminVerificationNote: reason }
-          : s
-      );
+      const next = prev.map((s) => {
+        if (s.id === seekerId) {
+          const updated: JobSeeker = {
+            ...s,
+            verificationStatus: 'rejected' as const,
+            isPaymentVerified: false,
+            adminVerificationNote: reason,
+            ...({ updatedAt: new Date().toISOString() } as any),
+          };
+          syncUserToFirestore(updated);
+          return updated;
+        }
+        return s;
+      });
       try {
         safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(next));
+        idbCache.saveSeekers(next);
       } catch (e) {
         console.error(e);
       }
@@ -762,6 +787,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   };
 
+  // Persistent Tombstone Helpers (Prevent deleted jobs, seekers, hotels, or notifications from reappearing on F5)
+  const getTombstoneSet = (storageKey: string): Set<string> => {
+    try {
+      const raw = safeStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return new Set<string>(parsed.map(String));
+      }
+    } catch {
+      // ignore
+    }
+    return new Set<string>();
+  };
+
+  const addTombstoneIds = (storageKey: string, ids: string[]) => {
+    try {
+      const current = getTombstoneSet(storageKey);
+      let changed = false;
+      ids.forEach((id) => {
+        const clean = String(id || '').trim();
+        if (clean && !current.has(clean)) {
+          current.add(clean);
+          changed = true;
+        }
+      });
+      if (changed) {
+        safeStorage.setItem(storageKey, JSON.stringify(Array.from(current)));
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const removeTombstoneId = (storageKey: string, id: string) => {
+    try {
+      const current = getTombstoneSet(storageKey);
+      const clean = String(id || '').trim();
+      if (clean && current.has(clean)) {
+        current.delete(clean);
+        safeStorage.setItem(storageKey, JSON.stringify(Array.from(current)));
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const mergeRecordByTimestamp = <T extends Record<string, any>>(localRec: T | undefined, remoteRec: T): T => {
+    if (!localRec) return remoteRec;
+    const localTime = localRec.updatedAt ? new Date(localRec.updatedAt).getTime() : 0;
+    const remoteTime = remoteRec.updatedAt ? new Date(remoteRec.updatedAt).getTime() : 0;
+    if (localTime > remoteTime) {
+      return { ...remoteRec, ...localRec };
+    }
+    return { ...localRec, ...remoteRec };
+  };
+
   const [jobSeekers, setJobSeekers] = useState<JobSeeker[]>(() => {
     try {
       // Always purge all legacy seeker localStorage keys
@@ -772,9 +853,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       safeStorage.removeItem('karbama_seekers_v19_clean');
       safeStorage.removeItem('karbama_current_user_v19_clean');
 
+      const deletedSeekers = getTombstoneSet('karbama_deleted_seekers_v1');
       const stored = safeStorage.getItem(STORAGE_KEYS.SEEKERS);
       const parsed: JobSeeker[] = stored ? JSON.parse(stored) : [];
-      return Array.isArray(parsed) ? parsed.filter((s) => !isSampleOrLegacySeeker(s)) : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((s) => !isSampleOrLegacySeeker(s) && !deletedSeekers.has(s.id))
+        : [];
     } catch {
       return [];
     }
@@ -786,9 +870,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       safeStorage.removeItem('karbama_jobs_v2');
       safeStorage.removeItem('karbama_jobs_v3');
       safeStorage.removeItem('karbama_jobs_v4');
+      const deletedJobs = getTombstoneSet('karbama_deleted_jobs_v1');
       const stored = safeStorage.getItem(STORAGE_KEYS.JOBS);
       const parsed: JobVacancy[] = stored ? JSON.parse(stored) : INITIAL_JOBS;
-      return Array.isArray(parsed) ? parsed.filter((j) => !isSampleOrSeedJob(j)) : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((j) => !isSampleOrSeedJob(j) && !deletedJobs.has(j.id))
+        : [];
     } catch {
       return [];
     }
@@ -817,9 +904,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       safeStorage.removeItem('karbama_hotels');
       safeStorage.removeItem('karbama_hotels_v2');
       safeStorage.removeItem('karbama_hotels_v3');
+      const deletedHotels = getTombstoneSet('karbama_deleted_hotels_v1');
       const stored = safeStorage.getItem(STORAGE_KEYS.HOTELS);
       const parsed: Hotel[] = stored ? JSON.parse(stored) : INITIAL_HOTELS;
-      return Array.isArray(parsed) ? parsed.filter((h) => !isSampleOrSeedHotel(h)) : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((h) => !isSampleOrSeedHotel(h) && !deletedHotels.has(h.id))
+        : [];
     } catch {
       return [];
     }
@@ -1141,30 +1231,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const hydrateFromIndexedDBAndServer = async () => {
       try {
+        const deletedSeekers = getTombstoneSet('karbama_deleted_seekers_v1');
         const cachedSeekers = await idbCache.getSeekers();
         if (cachedSeekers && cachedSeekers.length > 0) {
           setJobSeekers((prev) => {
             const map = new Map<string, JobSeeker>();
-            cachedSeekers.filter((s) => !isSampleOrLegacySeeker(s)).forEach((s) => map.set(s.id, s));
-            prev.filter((s) => !isSampleOrLegacySeeker(s)).forEach((s) => {
-              const old = map.get(s.id);
-              map.set(s.id, old ? { ...old, ...s } : s);
-            });
+            cachedSeekers
+              .filter((s) => !isSampleOrLegacySeeker(s) && !deletedSeekers.has(s.id))
+              .forEach((s) => map.set(s.id, s));
+            prev
+              .filter((s) => !isSampleOrLegacySeeker(s) && !deletedSeekers.has(s.id))
+              .forEach((s) => {
+                const old = map.get(s.id);
+                map.set(s.id, mergeRecordByTimestamp(s, old || s));
+              });
             return Array.from(map.values());
           });
         }
 
+        const deletedJobs = getTombstoneSet('karbama_deleted_jobs_v1');
         const cachedJobs = await idbCache.getJobs();
         if (cachedJobs && cachedJobs.length > 0) {
-          const cleanCachedJobs = cachedJobs.filter((j) => !isSampleOrSeedJob(j));
+          const cleanCachedJobs = cachedJobs.filter((j) => !isSampleOrSeedJob(j) && !deletedJobs.has(j.id));
           if (cleanCachedJobs.length !== cachedJobs.length) {
             idbCache.saveJobs(cleanCachedJobs);
           }
           if (cleanCachedJobs.length > 0) {
             setJobs((prev) => {
-              const cleanPrev = (prev || []).filter((j) => !isSampleOrSeedJob(j));
+              const cleanPrev = (prev || []).filter((j) => !isSampleOrSeedJob(j) && !deletedJobs.has(j.id));
               if (cleanPrev.length === 0) return cleanCachedJobs;
-              return cleanPrev;
+              const map = new Map<string, JobVacancy>();
+              cleanCachedJobs.forEach((j) => map.set(j.id, j));
+              cleanPrev.forEach((j) => {
+                const existing = map.get(j.id);
+                map.set(j.id, mergeRecordByTimestamp(j, existing || j));
+              });
+              return Array.from(map.values());
             });
           }
         }
@@ -1177,15 +1279,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
         }
 
+        const deletedHotels = getTombstoneSet('karbama_deleted_hotels_v1');
         const cachedHotels = await idbCache.getHotels();
         if (cachedHotels && cachedHotels.length > 0) {
-          const cleanCachedHotels = cachedHotels.filter((h) => !isSampleOrSeedHotel(h));
+          const cleanCachedHotels = cachedHotels.filter((h) => !isSampleOrSeedHotel(h) && !deletedHotels.has(h.id));
           if (cleanCachedHotels.length !== cachedHotels.length) {
             idbCache.saveHotels(cleanCachedHotels);
           }
           if (cleanCachedHotels.length > 0) {
             setHotels((prev) => {
-              const cleanPrev = (prev || []).filter((h) => !isSampleOrSeedHotel(h));
+              const cleanPrev = (prev || []).filter((h) => !isSampleOrSeedHotel(h) && !deletedHotels.has(h.id));
               if (cleanPrev.length === 0) return cleanCachedHotels;
               return cleanPrev;
             });
@@ -1195,80 +1298,219 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn('[IDB Hydrate] Failed:', err);
       }
 
-      // Also hydrate & two-way sync registered seekers & partners with server (/api/users.php)
-      const syncWithServer = async () => {
+      // Full two-way sync of all entities & tombstones with server (/api/users.php)
+      const syncWithServer = async (isInitialSync = false) => {
         try {
           const res = await fetch(`/api/users.php?t=${Date.now()}`, { cache: 'no-store' });
-          if (res.ok) {
-            const data = await res.json();
-            const serverSeekers: JobSeeker[] = Array.isArray(data?.seekers) ? data.seekers : [];
-            const serverIds = new Set(serverSeekers.map((s) => s.id));
+          if (!res.ok) return;
+          const data = await res.json();
+          if (!data || typeof data !== 'object') return;
 
-            setJobSeekers((prev) => {
-              const map = new Map<string, JobSeeker>();
-              serverSeekers.filter((s) => !isSampleOrLegacySeeker(s)).forEach((s) => map.set(s.id, s));
-              prev.filter((s) => !isSampleOrLegacySeeker(s)).forEach((s) => {
+          // 1. Reconcile tombstone sets from server
+          if (Array.isArray(data.deletedJobIds) && data.deletedJobIds.length > 0) {
+            addTombstoneIds('karbama_deleted_jobs_v1', data.deletedJobIds);
+          }
+          if (Array.isArray(data.deletedSeekerIds) && data.deletedSeekerIds.length > 0) {
+            addTombstoneIds('karbama_deleted_seekers_v1', data.deletedSeekerIds);
+          }
+          if (Array.isArray(data.deletedHotelIds) && data.deletedHotelIds.length > 0) {
+            addTombstoneIds('karbama_deleted_hotels_v1', data.deletedHotelIds);
+          }
+          if (Array.isArray(data.deletedNotificationIds) && data.deletedNotificationIds.length > 0) {
+            addTombstoneIds('karbama_deleted_notifications_v1', data.deletedNotificationIds);
+          }
+          if (Array.isArray(data.readNotificationIds) && data.readNotificationIds.length > 0) {
+            addTombstoneIds('karbama_read_notifications_v1', data.readNotificationIds);
+          }
+
+          const deletedSeekers = getTombstoneSet('karbama_deleted_seekers_v1');
+          const deletedJobs = getTombstoneSet('karbama_deleted_jobs_v1');
+          const deletedHotels = getTombstoneSet('karbama_deleted_hotels_v1');
+          const deletedNotifs = getTombstoneSet('karbama_deleted_notifications_v1');
+          const readNotifs = getTombstoneSet('karbama_read_notifications_v1');
+
+          // 2. Sync Seekers
+          const serverSeekers: JobSeeker[] = Array.isArray(data.seekers) ? data.seekers : [];
+          const serverSeekerIds = new Set(serverSeekers.map((s) => s.id));
+          setJobSeekers((prev) => {
+            const map = new Map<string, JobSeeker>();
+            serverSeekers
+              .filter((s) => !isSampleOrLegacySeeker(s) && !deletedSeekers.has(s.id))
+              .forEach((s) => map.set(s.id, s));
+            prev
+              .filter((s) => !isSampleOrLegacySeeker(s) && !deletedSeekers.has(s.id))
+              .forEach((s) => {
                 const existing = map.get(s.id);
-                map.set(s.id, existing ? { ...existing, ...s } : s);
-                // If local device has a registered seeker not yet on server, push it now!
-                if (!serverIds.has(s.id)) {
-                  fetch('/api/users.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'upsert', seeker: s }),
-                  }).catch(() => {});
-                  syncUserToFirestore(s);
+                const mergedRec = mergeRecordByTimestamp(s, existing || s);
+                map.set(s.id, mergedRec);
+                if (isInitialSync && !serverSeekerIds.has(s.id)) {
+                  syncUserToFirestore(mergedRec);
+                }
+              });
+            const merged = Array.from(map.values());
+            safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(merged));
+            idbCache.saveSeekers(merged);
+            return merged;
+          });
+
+          // 3. Sync Partners
+          const serverPartners: PartnerAccount[] = Array.isArray(data.partners) ? data.partners : [];
+          const serverPartnerIds = new Set(serverPartners.map((p) => p.id));
+          if (serverPartners.length > 0 || isInitialSync) {
+            setPartners((prev) => {
+              const map = new Map<string, PartnerAccount>();
+              serverPartners.forEach((p: PartnerAccount) => {
+                if (p && p.id) map.set(p.id, p);
+              });
+              prev.forEach((p) => {
+                const existing = map.get(p.id);
+                const mergedRec = mergeRecordByTimestamp(p, existing || p);
+                map.set(p.id, mergedRec);
+                if (isInitialSync && !serverPartnerIds.has(p.id)) {
+                  syncPartnerToFirestore(mergedRec);
                 }
               });
               const merged = Array.from(map.values());
-              safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(merged));
+              safeStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify(merged));
               return merged;
             });
+          }
 
-            if (data && Array.isArray(data.partners) && data.partners.length > 0) {
-              setPartners((prev) => {
-                const map = new Map<string, PartnerAccount>();
-                data.partners.forEach((p: PartnerAccount) => {
-                  if (p && p.id) map.set(p.id, p);
-                });
-                prev.forEach((p) => {
-                  const existing = map.get(p.id);
-                  map.set(p.id, existing ? { ...existing, ...p } : p);
-                });
-                return Array.from(map.values());
+          // 4. Sync Jobs
+          const serverJobs: JobVacancy[] = Array.isArray(data.jobs) ? data.jobs : [];
+          const serverJobIds = new Set(serverJobs.map((j) => j.id));
+          setJobs((prev) => {
+            const map = new Map<string, JobVacancy>();
+            serverJobs
+              .filter((j) => !isSampleOrSeedJob(j) && !deletedJobs.has(j.id))
+              .forEach((j) => map.set(j.id, j));
+            prev
+              .filter((j) => !isSampleOrSeedJob(j) && !deletedJobs.has(j.id))
+              .forEach((j) => {
+                const existing = map.get(j.id);
+                const mergedRec = mergeRecordByTimestamp(j, existing || j);
+                map.set(j.id, mergedRec);
+                if (isInitialSync && !serverJobIds.has(j.id)) {
+                  syncJobToFirestore(mergedRec);
+                }
               });
-            }
+            const merged = Array.from(map.values());
+            safeStorage.setItem(STORAGE_KEYS.JOBS, JSON.stringify(merged));
+            idbCache.saveJobs(merged);
+            return merged;
+          });
+
+          // 5. Sync Hotels
+          const serverHotels: Hotel[] = Array.isArray(data.hotels) ? data.hotels : [];
+          if (serverHotels.length > 0 || deletedHotels.size > 0) {
+            setHotels((prev) => {
+              const map = new Map<string, Hotel>();
+              serverHotels
+                .filter((h) => !isSampleOrSeedHotel(h) && !deletedHotels.has(h.id))
+                .forEach((h) => map.set(h.id, h));
+              prev
+                .filter((h) => !isSampleOrSeedHotel(h) && !deletedHotels.has(h.id))
+                .forEach((h) => {
+                  const existing = map.get(h.id);
+                  map.set(h.id, mergeRecordByTimestamp(h, existing || h));
+                });
+              const merged = Array.from(map.values());
+              safeStorage.setItem(STORAGE_KEYS.HOTELS, JSON.stringify(merged));
+              idbCache.saveHotels(merged);
+              return merged;
+            });
+          }
+
+          // 6. Sync Applications
+          if (Array.isArray(data.applications) && data.applications.length > 0) {
+            setApplications((prev) => {
+              const map = new Map<string, JobApplication>();
+              data.applications.forEach((app: JobApplication) => {
+                if (app && app.id) map.set(app.id, app);
+              });
+              prev.forEach((app) => {
+                const existing = map.get(app.id);
+                map.set(app.id, mergeRecordByTimestamp(app, existing || app));
+              });
+              const merged = Array.from(map.values());
+              safeStorage.setItem(STORAGE_KEYS.APPLICATIONS, JSON.stringify(merged));
+              return merged;
+            });
+          }
+
+          // 7. Sync Notifications (strictly filtering out read & deleted notifications)
+          if (Array.isArray(data.notifications) || deletedNotifs.size > 0 || readNotifs.size > 0) {
+            const serverNotifs: JobNotification[] = Array.isArray(data.notifications) ? data.notifications : [];
+            setJobNotifications((prev) => {
+              const map = new Map<string, JobNotification>();
+              const seenJobIds = new Set<string>();
+              const combined = [...prev, ...serverNotifs];
+              combined.forEach((n) => {
+                if (!n || !n.id) return;
+                const jKey = n.jobId || n.id;
+                if (
+                  n.read ||
+                  deletedNotifs.has(n.id) ||
+                  readNotifs.has(n.id) ||
+                  deletedNotifs.has(`job-${jKey}`) ||
+                  readNotifs.has(`job-${jKey}`) ||
+                  deletedJobs.has(jKey) ||
+                  seenJobIds.has(jKey)
+                ) {
+                  return;
+                }
+                seenJobIds.add(jKey);
+                map.set(n.id, n);
+              });
+              const merged = Array.from(map.values()).sort(
+                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              );
+              safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(merged));
+              return merged;
+            });
+          }
+
+          // 8. Sync Payment Settings, Partner Plans & Broker Settings if present on server
+          if (data.paymentSettings && typeof data.paymentSettings === 'object') {
+            setPaymentSettings((prev) => {
+              const merged = { ...prev, ...data.paymentSettings };
+              safeStorage.setItem(STORAGE_KEYS.PAYMENT_SETTINGS, JSON.stringify(merged));
+              return merged;
+            });
+          }
+          if (Array.isArray(data.partnerPlans) && data.partnerPlans.length > 0) {
+            setPartnerPlans(data.partnerPlans);
+            safeStorage.setItem(STORAGE_KEYS.PARTNER_PLANS, JSON.stringify(data.partnerPlans));
+          }
+          if (data.brokerSettings && typeof data.brokerSettings === 'object') {
+            setBrokerSettings((prev) => {
+              const merged = { ...prev, ...data.brokerSettings };
+              safeStorage.setItem(STORAGE_KEYS.BROKER_SETTINGS, JSON.stringify(merged));
+              return merged;
+            });
           }
         } catch {
           // Ignore network error when offline
         }
       };
 
-      await syncWithServer();
+      await syncWithServer(true);
+
+      const interval = setInterval(() => {
+        syncWithServer(false);
+      }, 15000);
+
+      return () => clearInterval(interval);
     };
 
-    hydrateFromIndexedDBAndServer();
+    let cleanupInterval: (() => void) | undefined;
+    hydrateFromIndexedDBAndServer().then((cleanup) => {
+      cleanupInterval = cleanup;
+    });
 
-    const interval = setInterval(() => {
-      fetch(`/api/users.php?t=${Date.now()}`, { cache: 'no-store' })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          if (data && Array.isArray(data.seekers) && data.seekers.length > 0) {
-            setJobSeekers((prev) => {
-              const map = new Map<string, JobSeeker>();
-              data.seekers.filter((s: JobSeeker) => !isSampleOrLegacySeeker(s)).forEach((s: JobSeeker) => map.set(s.id, s));
-              prev.filter((s) => !isSampleOrLegacySeeker(s)).forEach((s) => {
-                const existing = map.get(s.id);
-                map.set(s.id, existing ? { ...existing, ...s } : s);
-              });
-              return Array.from(map.values());
-            });
-          }
-        })
-        .catch(() => {});
-    }, 15000);
-
-    return () => clearInterval(interval);
+    return () => {
+      if (cleanupInterval) cleanupInterval();
+    };
   }, []);
 
 
@@ -1328,14 +1570,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (!db) return;
 
-    // Listen to users collection (only remove sample/demo records, never real registered seekers)
+    // Listen to users collection (respecting deletedSeekers tombstones and updatedAt timestamps)
     const unsubUsers = onSnapshot(
       collection(db, 'users'),
       (snapshot) => {
+        const deletedSeekers = getTombstoneSet('karbama_deleted_seekers_v1');
         const firestoreUsers: JobSeeker[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data() as JobSeeker;
-          if (isSampleOrLegacySeeker(data)) {
+          if (isSampleOrLegacySeeker(data) || (data?.id && deletedSeekers.has(data.id))) {
             deleteDoc(doc(db, 'users', docSnap.id)).catch(() => {});
           } else if (data && data.id) {
             firestoreUsers.push(data);
@@ -1343,13 +1586,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         setJobSeekers((prev) => {
           const map = new Map<string, JobSeeker>();
-          prev.filter((s) => !isSampleOrLegacySeeker(s)).forEach((s) => map.set(s.id, s));
+          prev
+            .filter((s) => !isSampleOrLegacySeeker(s) && !deletedSeekers.has(s.id))
+            .forEach((s) => map.set(s.id, s));
           firestoreUsers.forEach((s) => {
             const existing = map.get(s.id);
-            map.set(s.id, existing ? { ...s, ...existing } : s);
+            map.set(s.id, mergeRecordByTimestamp(existing, s));
           });
           const merged = Array.from(map.values());
           safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(merged));
+          idbCache.saveSeekers(merged);
           return merged;
         });
       },
@@ -1363,32 +1609,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       collection(db, 'notifications'),
       (snapshot) => {
         if (!snapshot.empty) {
-          let deletedIds = new Set<string>();
-          let readIds = new Set<string>();
-          try {
-            const deletedRaw = safeStorage.getItem('karbama_deleted_notifications_v1');
-            if (deletedRaw) {
-              const parsedDel = JSON.parse(deletedRaw);
-              if (Array.isArray(parsedDel)) deletedIds = new Set<string>(parsedDel);
-            }
-            const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
-            if (readRaw) {
-              const parsedIds = JSON.parse(readRaw);
-              if (Array.isArray(parsedIds)) readIds = new Set<string>(parsedIds);
-            }
-          } catch {
-            // ignore
-          }
+          const deletedIds = getTombstoneSet('karbama_deleted_notifications_v1');
+          const readIds = getTombstoneSet('karbama_read_notifications_v1');
+          const deletedJobs = getTombstoneSet('karbama_deleted_jobs_v1');
 
           const firestoreNotifs: JobNotification[] = [];
           snapshot.forEach((docSnap) => {
             const data = docSnap.data() as JobNotification;
+            const jKey = data?.jobId || data?.id || '';
             if (
               data &&
               data.id &&
               !deletedIds.has(data.id) &&
               !readIds.has(data.id) &&
-              !readIds.has(`job-${data.jobId || data.id}`) &&
+              !deletedIds.has(`job-${jKey}`) &&
+              !readIds.has(`job-${jKey}`) &&
+              !deletedJobs.has(jKey) &&
               !data.read
             ) {
               firestoreNotifs.push(data);
@@ -1403,7 +1639,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               if (
                 !deletedIds.has(n.id) &&
                 !readIds.has(n.id) &&
+                !deletedIds.has(`job-${jKey}`) &&
                 !readIds.has(`job-${jKey}`) &&
+                !deletedJobs.has(jKey) &&
                 !n.read &&
                 !seenJobIds.has(jKey)
               ) {
@@ -1416,7 +1654,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               if (
                 deletedIds.has(n.id) ||
                 readIds.has(n.id) ||
+                deletedIds.has(`job-${jKey}`) ||
                 readIds.has(`job-${jKey}`) ||
+                deletedJobs.has(jKey) ||
                 n.read ||
                 seenJobIds.has(jKey)
               ) {
@@ -1442,14 +1682,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     );
 
-    // Listen to jobs collection (automatically purging sample/seed jobs)
+    // Listen to jobs collection (automatically purging sample/seed jobs & deleted jobs)
     const unsubJobs = onSnapshot(
       collection(db, 'jobs'),
       (snapshot) => {
+        const deletedJobs = getTombstoneSet('karbama_deleted_jobs_v1');
         const firestoreJobs: JobVacancy[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data() as JobVacancy;
-          if (isSampleOrSeedJob(data)) {
+          if (isSampleOrSeedJob(data) || (data?.id && deletedJobs.has(data.id))) {
             deleteDoc(doc(db, 'jobs', docSnap.id)).catch(() => {});
           } else if (data && data.id) {
             firestoreJobs.push(data);
@@ -1458,9 +1699,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         setJobs((prev) => {
           const map = new Map<string, JobVacancy>();
-          prev.filter((j) => !isSampleOrSeedJob(j)).forEach((j) => map.set(j.id, j));
-          firestoreJobs.forEach((j) => map.set(j.id, j));
-          return Array.from(map.values());
+          prev
+            .filter((j) => !isSampleOrSeedJob(j) && !deletedJobs.has(j.id))
+            .forEach((j) => map.set(j.id, j));
+          firestoreJobs.forEach((j) => {
+            const existing = map.get(j.id);
+            map.set(j.id, mergeRecordByTimestamp(existing, j));
+          });
+          const merged = Array.from(map.values());
+          safeStorage.setItem(STORAGE_KEYS.JOBS, JSON.stringify(merged));
+          idbCache.saveJobs(merged);
+          return merged;
         });
       },
       (error) => {
@@ -1513,8 +1762,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setPartners((prev) => {
               const map = new Map<string, PartnerAccount>();
               prev.forEach((p) => map.set(p.id, p));
-              firestorePartners.forEach((p) => map.set(p.id, p));
-              return Array.from(map.values());
+              firestorePartners.forEach((p) => {
+                const existing = map.get(p.id);
+                map.set(p.id, mergeRecordByTimestamp(existing, p));
+              });
+              const merged = Array.from(map.values());
+              safeStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify(merged));
+              return merged;
             });
           }
         }
@@ -1534,12 +1788,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const syncUserToFirestore = async (user: JobSeeker) => {
-    // 1. Always sync to backend server (/api/users.php) for PHP/MySQL & cross-device reliability
+    const nowIso = new Date().toISOString();
+    const userWithTimestamp = { ...user, updatedAt: (user as any).updatedAt || nowIso };
+    removeTombstoneId('karbama_deleted_seekers_v1', user.id);
+
+    // 1. Always sync to backend server (/api/users.php) for PHP/Node & cross-device reliability
     try {
       fetch('/api/users.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'upsert', seeker: user }),
+        body: JSON.stringify({
+          action: 'upsert',
+          type: 'seeker',
+          record: userWithTimestamp,
+          seeker: userWithTimestamp,
+        }),
       }).catch(() => {});
     } catch {
       // ignore
@@ -1552,7 +1815,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       let totalEstimatedBytes = 0;
       const imageKeys = ['passportPhotoUrl', 'fullBodyPhotoUrl', 'nationalCardPhotoUrl', 'signatureDataUrl'];
 
-      Object.entries(user).forEach(([k, v]) => {
+      Object.entries(userWithTimestamp).forEach(([k, v]) => {
         if (v !== undefined && !imageKeys.includes(k)) {
           sanitized[k] = v;
           totalEstimatedBytes += typeof v === 'string' ? v.length : 64;
@@ -1560,9 +1823,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       for (const imgKey of imageKeys) {
-        const val = (user as any)[imgKey];
+        const val = (userWithTimestamp as any)[imgKey];
         if (typeof val === 'string' && val.length > 0) {
-          // Only include valid image data URLs if total Firestore doc stays under 820KB (never slice base64!)
           if (val.length <= 210000 && totalEstimatedBytes + val.length < 820000) {
             sanitized[imgKey] = val;
             totalEstimatedBytes += val.length;
@@ -1575,7 +1837,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await setDoc(doc(db, 'users', user.id), {
         ...sanitized,
         pushNotificationEnabled: true,
-        updatedAt: new Date().toISOString(),
+        updatedAt: nowIso,
       });
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `users/${user.id}`);
@@ -1583,11 +1845,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const syncPartnerToFirestore = async (partner: PartnerAccount) => {
+    const nowIso = new Date().toISOString();
+    const partnerWithTimestamp = { ...partner, updatedAt: (partner as any).updatedAt || nowIso };
     try {
       fetch('/api/users.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'upsert', partner }),
+        body: JSON.stringify({
+          action: 'upsert',
+          type: 'partner',
+          record: partnerWithTimestamp,
+          partner: partnerWithTimestamp,
+        }),
       }).catch(() => {});
     } catch {
       // ignore
@@ -1596,8 +1865,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       if (!db) return;
       await setDoc(doc(db, 'partners', partner.id), {
-        ...partner,
-        updatedAt: new Date().toISOString(),
+        ...partnerWithTimestamp,
+        updatedAt: nowIso,
       });
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `partners/${partner.id}`);
@@ -1605,21 +1874,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const syncNotificationToFirestore = async (notif: JobNotification | any) => {
+    const notifWithDate = {
+      ...notif,
+      createdAt: notif.createdAt || new Date().toISOString(),
+    };
     try {
-      await setDoc(doc(db, 'notifications', notif.id), {
-        ...notif,
-        createdAt: notif.createdAt || new Date().toISOString(),
-      });
+      fetch('/api/users.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'upsert',
+          type: 'notification',
+          record: notifWithDate,
+          notification: notifWithDate,
+        }),
+      }).catch(() => {});
+    } catch {
+      // ignore
+    }
+    try {
+      if (!db) return;
+      await setDoc(doc(db, 'notifications', notif.id), notifWithDate);
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `notifications/${notif.id}`);
     }
   };
 
   const syncJobToFirestore = async (job: JobVacancy) => {
+    const nowIso = new Date().toISOString();
+    const jobWithTimestamp = { ...job, updatedAt: (job as any).updatedAt || nowIso };
+    removeTombstoneId('karbama_deleted_jobs_v1', job.id);
+
     try {
+      fetch('/api/users.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'upsert',
+          type: 'job',
+          record: jobWithTimestamp,
+          job: jobWithTimestamp,
+        }),
+      }).catch(() => {});
+    } catch {
+      // ignore
+    }
+
+    try {
+      if (!db) return;
       await setDoc(doc(db, 'jobs', job.id), {
-        ...job,
-        updatedAt: new Date().toISOString(),
+        ...jobWithTimestamp,
+        updatedAt: nowIso,
       });
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `jobs/${job.id}`);
@@ -2313,9 +2618,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'ابتدا وارد حساب کاربری خود شوید.' };
     }
 
-    setJobSeekers((prev) =>
-      prev.map((s) => (s.id === currentSeeker.id ? { ...s, ...updates } : s))
-    );
+    setJobSeekers((prev) => {
+      const next = prev.map((s) => {
+        if (s.id === currentSeeker.id) {
+          const updated: JobSeeker = {
+            ...s,
+            ...updates,
+            ...({ updatedAt: new Date().toISOString() } as any),
+          };
+          syncUserToFirestore(updated);
+          return updated;
+        }
+        return s;
+      });
+      try {
+        safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(next));
+        idbCache.saveSeekers(next);
+      } catch {
+        // ignore
+      }
+      return next;
+    });
 
     showToast('مشخصات پروفایل شما با موفقیت به روز شد.', 'success');
     return { success: true };
@@ -2327,18 +2650,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'کارجو وارد نشده است' };
     }
 
-    setJobSeekers((prev) =>
-      prev.map((s) =>
-        s.id === currentSeekerId
-          ? {
-              ...s,
-              skills: resume.skillsList && resume.skillsList.length > 0 ? resume.skillsList : s.skills,
-              bio: resume.summary || s.bio,
-              resume: { ...resume, updatedAt: new Date().toISOString().split('T')[0] },
-            }
-          : s
-      )
-    );
+    setJobSeekers((prev) => {
+      const next = prev.map((s) => {
+        if (s.id === currentSeekerId) {
+          const updated: JobSeeker = {
+            ...s,
+            skills: resume.skillsList && resume.skillsList.length > 0 ? resume.skillsList : s.skills,
+            bio: resume.summary || s.bio,
+            resume: { ...resume, updatedAt: new Date().toISOString().split('T')[0] },
+            ...({ updatedAt: new Date().toISOString() } as any),
+          };
+          syncUserToFirestore(updated);
+          return updated;
+        }
+        return s;
+      });
+      try {
+        safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify(next));
+        idbCache.saveSeekers(next);
+      } catch {
+        // ignore
+      }
+      return next;
+    });
 
     showToast('رزومه آنلاین شما در کارباما با موفقیت ذخیره شد 📄✨', 'success');
     return { success: true };
@@ -2382,23 +2716,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       adminNote: note ? `پیام کارجو: ${note}` : undefined,
     };
 
-    setApplications((prev) => [newApplication, ...prev]);
+    setApplications((prev) => {
+      const next = [newApplication, ...prev];
+      safeStorage.setItem(STORAGE_KEYS.APPLICATIONS, JSON.stringify(next));
+      return next;
+    });
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'upsert', type: 'application', record: newApplication }),
+    }).catch(() => {});
     showToast(`درخواست شما برای «${job.title}» با موفقیت ثبت شد!`, 'success');
     return { success: true };
   };
 
   const updateApplicationStatus = (appId: string, status: ApplicationStatus, adminNote?: string) => {
-    setApplications((prev) =>
-      prev.map((app) =>
-        app.id === appId
-          ? {
-              ...app,
-              status,
-              adminNote: adminNote !== undefined ? adminNote : app.adminNote,
-            }
-          : app
-      )
-    );
+    setApplications((prev) => {
+      const next = prev.map((app) => {
+        if (app.id === appId) {
+          const updated = {
+            ...app,
+            status,
+            adminNote: adminNote !== undefined ? adminNote : app.adminNote,
+            updatedAt: new Date().toISOString(),
+          };
+          fetch('/api/users.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'upsert', type: 'application', record: updated }),
+          }).catch(() => {});
+          return updated;
+        }
+        return app;
+      });
+      safeStorage.setItem(STORAGE_KEYS.APPLICATIONS, JSON.stringify(next));
+      return next;
+    });
     showToast('وضعیت درخواست کارجو بروزرسانی شد.', 'success');
   };
 
@@ -2578,36 +2931,99 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const rejectJobPayment = (jobId: string, reason: string) => {
-    setJobs((prev) =>
-      prev.map((j) => {
+    setJobs((prev) => {
+      const next = prev.map((j) => {
         if (j.id === jobId) {
-          return {
+          const updated: JobVacancy = {
             ...j,
             isActive: false,
             paymentStatus: 'rejected',
             paymentAdminNote: reason || 'فیش واریزی نامعتبر یا مبلغ ناقص است.',
+            ...({ updatedAt: new Date().toISOString() } as any),
           };
+          syncJobToFirestore(updated);
+          return updated;
         }
         return j;
-      })
-    );
+      });
+      safeStorage.setItem(STORAGE_KEYS.JOBS, JSON.stringify(next));
+      idbCache.saveJobs(next);
+      return next;
+    });
     showToast('پرداخت آگهی رد شد و وضعیت به‌روزرسانی گردید.', 'info');
   };
 
   const updateJob = (id: string, updates: Partial<JobVacancy>) => {
-    setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, ...updates } : j)));
+    setJobs((prev) => {
+      const next = prev.map((j) => {
+        if (j.id === id) {
+          const updated: JobVacancy = {
+            ...j,
+            ...updates,
+            ...({ updatedAt: new Date().toISOString() } as any),
+          };
+          syncJobToFirestore(updated);
+          return updated;
+        }
+        return j;
+      });
+      safeStorage.setItem(STORAGE_KEYS.JOBS, JSON.stringify(next));
+      idbCache.saveJobs(next);
+      return next;
+    });
     showToast('آگهی کار با موفقیت ویرایش شد.', 'success');
   };
 
   const deleteJob = (id: string) => {
-    setJobs((prev) => prev.filter((j) => j.id !== id));
-    showToast('آگهی کار حذف شد.', 'info');
+    addTombstoneIds('karbama_deleted_jobs_v1', [id]);
+    addTombstoneIds('karbama_deleted_notifications_v1', [`notif-job-${id}`, `job-${id}`]);
+    addTombstoneIds('karbama_read_notifications_v1', [`notif-job-${id}`, `job-${id}`]);
+
+    setJobs((prev) => {
+      const next = prev.filter((j) => j.id !== id);
+      safeStorage.setItem(STORAGE_KEYS.JOBS, JSON.stringify(next));
+      idbCache.saveJobs(next);
+      return next;
+    });
+
+    setJobNotifications((prev) => {
+      const next = prev.filter((n) => n.jobId !== id && n.id !== `notif-job-${id}`);
+      safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
+      return next;
+    });
+
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete_job', id }),
+    }).catch(() => {});
+
+    if (db) {
+      deleteDoc(doc(db, 'jobs', id)).catch(() => {});
+      deleteDoc(doc(db, 'notifications', `notif-job-${id}`)).catch(() => {});
+    }
+
+    showToast('آگهی کار به طور دائمی حذف شد.', 'info');
   };
 
   const toggleJobStatus = (id: string) => {
-    setJobs((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, isActive: !j.isActive } : j))
-    );
+    setJobs((prev) => {
+      const next = prev.map((j) => {
+        if (j.id === id) {
+          const updated: JobVacancy = {
+            ...j,
+            isActive: !j.isActive,
+            ...({ updatedAt: new Date().toISOString() } as any),
+          };
+          syncJobToFirestore(updated);
+          return updated;
+        }
+        return j;
+      });
+      safeStorage.setItem(STORAGE_KEYS.JOBS, JSON.stringify(next));
+      idbCache.saveJobs(next);
+      return next;
+    });
     showToast('وضعیت آگهی تغییر کرد.', 'info');
   };
 
@@ -2617,7 +3033,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...hotelData,
       id: 'hotel-' + Date.now(),
     };
-    setHotels((prev) => [newHotel, ...prev]);
+    setHotels((prev) => {
+      const next = [newHotel, ...prev];
+      safeStorage.setItem(STORAGE_KEYS.HOTELS, JSON.stringify(next));
+      idbCache.saveHotels(next);
+      return next;
+    });
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'upsert', type: 'hotel', record: newHotel, hotel: newHotel }),
+    }).catch(() => {});
 
     // Push notification entry for new Hotel to increment numeric badge counter
     const hotelNotifItem: JobNotification = {
@@ -2652,12 +3078,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateHotel = (id: string, updates: Partial<Hotel>) => {
-    setHotels((prev) => prev.map((h) => (h.id === id ? { ...h, ...updates } : h)));
+    setHotels((prev) => {
+      const next = prev.map((h) => {
+        if (h.id === id) {
+          const updated = { ...h, ...updates, updatedAt: new Date().toISOString() };
+          fetch('/api/users.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'upsert', type: 'hotel', record: updated, hotel: updated }),
+          }).catch(() => {});
+          return updated;
+        }
+        return h;
+      });
+      safeStorage.setItem(STORAGE_KEYS.HOTELS, JSON.stringify(next));
+      idbCache.saveHotels(next);
+      return next;
+    });
     showToast('مشخصات هتل بروزرسانی شد.', 'success');
   };
 
   const deleteHotel = (id: string) => {
-    setHotels((prev) => prev.filter((h) => h.id !== id));
+    addTombstoneIds('karbama_deleted_hotels_v1', [id]);
+    setHotels((prev) => {
+      const next = prev.filter((h) => h.id !== id);
+      safeStorage.setItem(STORAGE_KEYS.HOTELS, JSON.stringify(next));
+      idbCache.saveHotels(next);
+      return next;
+    });
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete_hotel', id }),
+    }).catch(() => {});
     showToast('هتل مورد نظر حذف شد.', 'info');
   };
 
@@ -2843,101 +3296,105 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const markNotificationAsRead = (id: string) => {
     const target = jobNotifications.find((n) => n.id === id);
-    try {
-      const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
-      const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
-      readIds.add(id);
-      if (target?.jobId) readIds.add(`job-${target.jobId}`);
-      safeStorage.setItem('karbama_read_notifications_v1', JSON.stringify(Array.from(readIds)));
-
-      const deletedRaw = safeStorage.getItem('karbama_deleted_notifications_v1');
-      const deletedIds = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
-      deletedIds.add(id);
-      safeStorage.setItem('karbama_deleted_notifications_v1', JSON.stringify(Array.from(deletedIds)));
-    } catch {
-      // ignore
+    const idsToMark = [id];
+    if (target?.jobId) {
+      idsToMark.push(`job-${target.jobId}`);
     }
+    addTombstoneIds('karbama_read_notifications_v1', idsToMark);
+    addTombstoneIds('karbama_deleted_notifications_v1', idsToMark);
 
     setJobNotifications((prev) => {
       const next = prev.filter((n) => n.id !== id && (!target?.jobId || n.jobId !== target.jobId));
       safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
       return next;
     });
-    setDoc(doc(db, 'notifications', id), { isRead: true, read: true }, { merge: true }).catch(() => {});
+
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'mark_notification_read', id, jobId: target?.jobId || '', ids: idsToMark }),
+    }).catch(() => {});
+
+    if (db) {
+      setDoc(doc(db, 'notifications', id), { isRead: true, read: true }, { merge: true }).catch(() => {});
+    }
   };
 
   const markAllNotificationsAsRead = () => {
-    setJobNotifications((prev) => {
-      try {
-        const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
-        const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
-        const deletedRaw = safeStorage.getItem('karbama_deleted_notifications_v1');
-        const deletedIds = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
-        prev.forEach((n) => {
-          readIds.add(n.id);
-          deletedIds.add(n.id);
-          if (n.jobId) readIds.add(`job-${n.jobId}`);
-        });
-        safeStorage.setItem('karbama_read_notifications_v1', JSON.stringify(Array.from(readIds)));
-        safeStorage.setItem('karbama_deleted_notifications_v1', JSON.stringify(Array.from(deletedIds)));
-        safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify([]));
-      } catch {
-        // ignore
-      }
-      return [];
-    });
+    const allIds: string[] = [];
     jobNotifications.forEach((n) => {
-      setDoc(doc(db, 'notifications', n.id), { isRead: true, read: true }, { merge: true }).catch(() => {});
+      if (n.id) allIds.push(n.id);
+      if (n.jobId) allIds.push(`job-${n.jobId}`);
     });
+    addTombstoneIds('karbama_read_notifications_v1', allIds);
+    addTombstoneIds('karbama_deleted_notifications_v1', allIds);
+
+    setJobNotifications([]);
+    safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify([]));
+
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'clear_notifications', ids: allIds }),
+    }).catch(() => {});
+
+    if (db) {
+      jobNotifications.forEach((n) => {
+        setDoc(doc(db, 'notifications', n.id), { isRead: true, read: true }, { merge: true }).catch(() => {});
+      });
+    }
     showToast('تمام اعلان‌ها خوانده شدند و از لیست اعلان‌های جدید پاک گردیدند.', 'info');
   };
 
   const deleteNotification = (id: string) => {
-    try {
-      const deletedRaw = safeStorage.getItem('karbama_deleted_notifications_v1');
-      const deletedIds = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
-      deletedIds.add(id);
-      safeStorage.setItem('karbama_deleted_notifications_v1', JSON.stringify(Array.from(deletedIds)));
-
-      const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
-      const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
-      readIds.add(id);
-      safeStorage.setItem('karbama_read_notifications_v1', JSON.stringify(Array.from(readIds)));
-    } catch {
-      // ignore
+    const target = jobNotifications.find((n) => n.id === id);
+    const idsToDelete = [id];
+    if (target?.jobId) {
+      idsToDelete.push(`job-${target.jobId}`);
     }
+    addTombstoneIds('karbama_deleted_notifications_v1', idsToDelete);
+    addTombstoneIds('karbama_read_notifications_v1', idsToDelete);
 
     setJobNotifications((prev) => {
-      const next = prev.filter((n) => n.id !== id);
+      const next = prev.filter((n) => n.id !== id && (!target?.jobId || n.jobId !== target.jobId));
       safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
       return next;
     });
-    deleteDoc(doc(db, 'notifications', id)).catch(() => {});
+
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete_notification', id, jobId: target?.jobId || '' }),
+    }).catch(() => {});
+
+    if (db) {
+      deleteDoc(doc(db, 'notifications', id)).catch(() => {});
+    }
   };
 
   const clearNotifications = () => {
-    try {
-      const deletedRaw = safeStorage.getItem('karbama_deleted_notifications_v1');
-      const deletedIds = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
-      const readRaw = safeStorage.getItem('karbama_read_notifications_v1');
-      const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
+    const allIds: string[] = [];
+    jobNotifications.forEach((n) => {
+      if (n.id) allIds.push(n.id);
+      if (n.jobId) allIds.push(`job-${n.jobId}`);
+    });
+    addTombstoneIds('karbama_deleted_notifications_v1', allIds);
+    addTombstoneIds('karbama_read_notifications_v1', allIds);
+    safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify([]));
+
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'clear_notifications', ids: allIds }),
+    }).catch(() => {});
+
+    if (db) {
       jobNotifications.forEach((n) => {
         if (n.id) {
-          deletedIds.add(n.id);
-          readIds.add(n.id);
+          deleteDoc(doc(db, 'notifications', n.id)).catch(() => {});
         }
       });
-      safeStorage.setItem('karbama_deleted_notifications_v1', JSON.stringify(Array.from(deletedIds)));
-      safeStorage.setItem('karbama_read_notifications_v1', JSON.stringify(Array.from(readIds)));
-      safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify([]));
-    } catch {
-      // ignore
     }
-    jobNotifications.forEach((n) => {
-      if (n.id) {
-        deleteDoc(doc(db, 'notifications', n.id)).catch(() => {});
-      }
-    });
     setJobNotifications([]);
     showToast('تاریخچه اعلان‌ها به طور کامل پاک شد.', 'info');
   };
@@ -3305,14 +3762,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updatePartnerPlanPricing = (planId: PartnerSubscriptionPlanId, priceTL: number, priceToman: number) => {
-    setPartnerPlans((prev) =>
-      prev.map((pl) => (pl.id === planId ? { ...pl, priceTL, priceToman } : pl))
-    );
+    setPartnerPlans((prev) => {
+      const next = prev.map((pl) => (pl.id === planId ? { ...pl, priceTL, priceToman } : pl));
+      safeStorage.setItem(STORAGE_KEYS.PARTNER_PLANS, JSON.stringify(next));
+      fetch('/api/users.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'upsert', type: 'partner_plans', record: next }),
+      }).catch(() => {});
+      return next;
+    });
     showToast('تعرفه اشتراک همکاران با موفقیت بروزرسانی شد.', 'success');
   };
 
   const updatePartnerPlans = (plans: PartnerSubscriptionPlan[]) => {
     setPartnerPlans(plans);
+    safeStorage.setItem(STORAGE_KEYS.PARTNER_PLANS, JSON.stringify(plans));
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'upsert', type: 'partner_plans', record: plans }),
+    }).catch(() => {});
     showToast('پلن‌های اشتراک همکاران ذخیره شد.', 'success');
   };
 
@@ -3423,6 +3893,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteSeekerRecord = (seekerId: string) => {
+    addTombstoneIds('karbama_deleted_seekers_v1', [seekerId]);
     setJobSeekers((prev) => {
       const next = prev.filter((s) => s.id !== seekerId);
       try {
@@ -3449,6 +3920,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const clearAllSeekers = () => {
     const ids = jobSeekers.map((s) => s.id);
+    addTombstoneIds('karbama_deleted_seekers_v1', ids);
     setJobSeekers([]);
     try {
       safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify([]));

@@ -26,6 +26,315 @@ app.use((req, res, next) => {
   next();
 });
 
+// ============================================================================
+// Central Persistent Data Store (/api/users & /api/users.php)
+// Persists Seekers, Partners, Jobs, Hotels, Applications, Addresses,
+// Notifications, Settings, and Tombstones across page reloads (F5).
+// ============================================================================
+const USERS_DATA_DIR = path.resolve(__dirname, 'public', 'api', 'sep', 'data');
+if (!fs.existsSync(USERS_DATA_DIR)) {
+  fs.mkdirSync(USERS_DATA_DIR, { recursive: true });
+}
+const USERS_DATA_FILE = path.resolve(USERS_DATA_DIR, 'users.json');
+
+interface ServerStore {
+  seekers: any[];
+  partners: any[];
+  jobs: any[];
+  hotels: any[];
+  applications: any[];
+  addresses: any[];
+  notifications: any[];
+  paymentSettings: any | null;
+  partnerPlans: any[] | null;
+  brokerSettings: any | null;
+  deletedJobIds: string[];
+  deletedSeekerIds: string[];
+  deletedHotelIds: string[];
+  deletedNotificationIds: string[];
+  readNotificationIds: string[];
+}
+
+function defaultServerStore(): ServerStore {
+  return {
+    seekers: [],
+    partners: [],
+    jobs: [],
+    hotels: [],
+    applications: [],
+    addresses: [],
+    notifications: [],
+    paymentSettings: null,
+    partnerPlans: null,
+    brokerSettings: null,
+    deletedJobIds: [],
+    deletedSeekerIds: [],
+    deletedHotelIds: [],
+    deletedNotificationIds: [],
+    readNotificationIds: [],
+  };
+}
+
+function readUsersStore(): ServerStore {
+  const defaults = defaultServerStore();
+  try {
+    if (fs.existsSync(USERS_DATA_FILE)) {
+      const raw = fs.readFileSync(USERS_DATA_FILE, 'utf8');
+      const parsed = JSON.parse(raw);
+      return {
+        seekers: Array.isArray(parsed.seekers) ? parsed.seekers : [],
+        partners: Array.isArray(parsed.partners) ? parsed.partners : [],
+        jobs: Array.isArray(parsed.jobs) ? parsed.jobs : [],
+        hotels: Array.isArray(parsed.hotels) ? parsed.hotels : [],
+        applications: Array.isArray(parsed.applications) ? parsed.applications : [],
+        addresses: Array.isArray(parsed.addresses) ? parsed.addresses : [],
+        notifications: Array.isArray(parsed.notifications) ? parsed.notifications : [],
+        paymentSettings: parsed.paymentSettings || null,
+        partnerPlans: Array.isArray(parsed.partnerPlans) ? parsed.partnerPlans : null,
+        brokerSettings: parsed.brokerSettings || null,
+        deletedJobIds: Array.isArray(parsed.deletedJobIds) ? parsed.deletedJobIds : [],
+        deletedSeekerIds: Array.isArray(parsed.deletedSeekerIds) ? parsed.deletedSeekerIds : [],
+        deletedHotelIds: Array.isArray(parsed.deletedHotelIds) ? parsed.deletedHotelIds : [],
+        deletedNotificationIds: Array.isArray(parsed.deletedNotificationIds) ? parsed.deletedNotificationIds : [],
+        readNotificationIds: Array.isArray(parsed.readNotificationIds) ? parsed.readNotificationIds : [],
+      };
+    }
+  } catch (err) {
+    console.warn('Could not read users.json:', err);
+  }
+  return defaults;
+}
+
+function writeUsersStore(store: ServerStore) {
+  try {
+    fs.writeFileSync(USERS_DATA_FILE, JSON.stringify(store, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Could not write users.json:', err);
+  }
+}
+
+function addUniqueStr(arr: string[], val: string) {
+  const clean = String(val || '').trim();
+  if (clean && !arr.includes(clean)) {
+    arr.push(clean);
+  }
+}
+
+function upsertRecordInList(list: any[], record: any) {
+  const id = String(record?.id || '');
+  if (!id) return;
+  const idx = list.findIndex((item: any) => String(item?.id || '') === id);
+  if (idx >= 0) {
+    list[idx] = { ...list[idx], ...record };
+  } else {
+    list.unshift(record);
+  }
+}
+
+app.get(['/api/users', '/api/users.php'], (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  const store = readUsersStore();
+  res.json({ ok: true, ...store });
+});
+
+app.post(['/api/users', '/api/users.php'], (req, res) => {
+  const store = readUsersStore();
+  const payload = req.body || {};
+  const action = payload.action || 'upsert';
+
+  if (action === 'upsert') {
+    let type = payload.type || null;
+    let record = payload.record || null;
+
+    if (!record) {
+      if (payload.seeker && typeof payload.seeker === 'object') {
+        type = 'seeker';
+        record = payload.seeker;
+      } else if (payload.partner && typeof payload.partner === 'object') {
+        type = 'partner';
+        record = payload.partner;
+      } else if (payload.job && typeof payload.job === 'object') {
+        type = 'job';
+        record = payload.job;
+      } else if (payload.hotel && typeof payload.hotel === 'object') {
+        type = 'hotel';
+        record = payload.hotel;
+      } else if (payload.application && typeof payload.application === 'object') {
+        type = 'application';
+        record = payload.application;
+      } else if (payload.address && typeof payload.address === 'object') {
+        type = 'address';
+        record = payload.address;
+      } else if (payload.notification && typeof payload.notification === 'object') {
+        type = 'notification';
+        record = payload.notification;
+      }
+    }
+    if (!type) type = 'seeker';
+
+    if (type === 'payment_settings' && record && typeof record === 'object') {
+      store.paymentSettings = { ...(store.paymentSettings || {}), ...record };
+      writeUsersStore(store);
+      return res.json({ ok: true });
+    }
+    if (type === 'partner_plans' && Array.isArray(record)) {
+      store.partnerPlans = record;
+      writeUsersStore(store);
+      return res.json({ ok: true });
+    }
+    if (type === 'broker_settings' && record && typeof record === 'object') {
+      store.brokerSettings = { ...(store.brokerSettings || {}), ...record };
+      writeUsersStore(store);
+      return res.json({ ok: true });
+    }
+
+    if (!record || !record.id) {
+      return res.status(400).json({ ok: false, error: 'Missing record id' });
+    }
+
+    const recordId = String(record.id);
+    if (type === 'partner') {
+      upsertRecordInList(store.partners, record);
+    } else if (type === 'job') {
+      store.deletedJobIds = store.deletedJobIds.filter((id) => id !== recordId);
+      upsertRecordInList(store.jobs, record);
+    } else if (type === 'hotel') {
+      store.deletedHotelIds = store.deletedHotelIds.filter((id) => id !== recordId);
+      upsertRecordInList(store.hotels, record);
+    } else if (type === 'application') {
+      upsertRecordInList(store.applications, record);
+    } else if (type === 'address') {
+      upsertRecordInList(store.addresses, record);
+    } else if (type === 'notification') {
+      if (!store.deletedNotificationIds.includes(recordId)) {
+        upsertRecordInList(store.notifications, record);
+      }
+    } else {
+      store.deletedSeekerIds = store.deletedSeekerIds.filter((id) => id !== recordId);
+      upsertRecordInList(store.seekers, record);
+    }
+    writeUsersStore(store);
+    return res.json({ ok: true });
+  }
+
+  if (action === 'delete_seeker') {
+    const id = String(payload.id || '');
+    if (id) {
+      addUniqueStr(store.deletedSeekerIds, id);
+      store.seekers = store.seekers.filter((s: any) => String(s?.id || '') !== id);
+      writeUsersStore(store);
+    }
+    return res.json({ ok: true });
+  }
+
+  if (action === 'clear_seekers') {
+    store.seekers.forEach((s: any) => {
+      if (s?.id) addUniqueStr(store.deletedSeekerIds, String(s.id));
+    });
+    store.seekers = [];
+    writeUsersStore(store);
+    return res.json({ ok: true });
+  }
+
+  if (action === 'delete_job') {
+    const id = String(payload.id || '');
+    if (id) {
+      addUniqueStr(store.deletedJobIds, id);
+      addUniqueStr(store.deletedNotificationIds, `job-${id}`);
+      addUniqueStr(store.readNotificationIds, `job-${id}`);
+      store.jobs = store.jobs.filter((j: any) => String(j?.id || '') !== id);
+      store.notifications = store.notifications.filter(
+        (n: any) => String(n?.jobId || '') !== id && String(n?.id || '') !== id
+      );
+      writeUsersStore(store);
+    }
+    return res.json({ ok: true });
+  }
+
+  if (action === 'delete_hotel') {
+    const id = String(payload.id || '');
+    if (id) {
+      addUniqueStr(store.deletedHotelIds, id);
+      store.hotels = store.hotels.filter((h: any) => String(h?.id || '') !== id);
+      writeUsersStore(store);
+    }
+    return res.json({ ok: true });
+  }
+
+  if (action === 'delete_address') {
+    const id = String(payload.id || '');
+    if (id) {
+      store.addresses = store.addresses.filter((a: any) => String(a?.id || '') !== id);
+      writeUsersStore(store);
+    }
+    return res.json({ ok: true });
+  }
+
+  if (action === 'mark_notification_read') {
+    const id = String(payload.id || '');
+    const jobId = String(payload.jobId || '');
+    const ids: string[] = Array.isArray(payload.ids) ? payload.ids.map(String) : id ? [id] : [];
+    ids.forEach((nid) => addUniqueStr(store.readNotificationIds, nid));
+    if (jobId) addUniqueStr(store.readNotificationIds, `job-${jobId}`);
+    store.notifications = store.notifications.map((n: any) => {
+      const nid = String(n?.id || '');
+      const njid = String(n?.jobId || '');
+      if (ids.includes(nid) || (jobId && njid === jobId)) {
+        if (njid) addUniqueStr(store.readNotificationIds, `job-${njid}`);
+        return { ...n, read: true };
+      }
+      return n;
+    });
+    writeUsersStore(store);
+    return res.json({ ok: true });
+  }
+
+  if (action === 'delete_notification') {
+    const id = String(payload.id || '');
+    const jobId = String(payload.jobId || '');
+    if (id) {
+      addUniqueStr(store.deletedNotificationIds, id);
+      addUniqueStr(store.readNotificationIds, id);
+    }
+    if (jobId) {
+      addUniqueStr(store.deletedNotificationIds, `job-${jobId}`);
+      addUniqueStr(store.readNotificationIds, `job-${jobId}`);
+    }
+    store.notifications = store.notifications.filter((n: any) => {
+      const nid = String(n?.id || '');
+      const njid = String(n?.jobId || '');
+      if (id && nid === id) return false;
+      if (jobId && njid === jobId) return false;
+      return true;
+    });
+    writeUsersStore(store);
+    return res.json({ ok: true });
+  }
+
+  if (action === 'clear_notifications') {
+    const ids: string[] = Array.isArray(payload.ids) ? payload.ids.map(String) : [];
+    ids.forEach((nid) => {
+      addUniqueStr(store.deletedNotificationIds, nid);
+      addUniqueStr(store.readNotificationIds, nid);
+    });
+    store.notifications.forEach((n: any) => {
+      if (n?.id) {
+        addUniqueStr(store.deletedNotificationIds, String(n.id));
+        addUniqueStr(store.readNotificationIds, String(n.id));
+      }
+      if (n?.jobId) {
+        addUniqueStr(store.deletedNotificationIds, `job-${n.jobId}`);
+        addUniqueStr(store.readNotificationIds, `job-${n.jobId}`);
+      }
+    });
+    store.notifications = [];
+    writeUsersStore(store);
+    return res.json({ ok: true });
+  }
+
+  return res.json({ ok: true });
+});
+
 // Helper to parse image dimensions from buffer (JPEG, PNG, WebP)
 function extractImageDimensions(buffer: Buffer): { width: number; height: number; format: string } | null {
   try {

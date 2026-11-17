@@ -314,8 +314,8 @@ html.light ::-webkit-scrollbar-thumb {
   background: #94A3B8;
 }
 
-/* Primary Cards & Containers in Light Mode (exclude <img> and transparent photo overlays) */
-html.light [class*="bg-slate-900"]:not(img):not(.to-transparent):not(.job-photo-badge) {
+/* Primary Cards & Containers in Light Mode (exclude <img>, transparent photo overlays, and hover-only classes) */
+html.light [class*="bg-slate-900"]:not(img):not(.to-transparent):not(.job-photo-badge):not([class*="hover:bg-slate-900"]) {
   background-color: #FFFFFF !important;
   border-color: #CBD5E1 !important;
   color: #0F172A !important;
@@ -323,25 +323,47 @@ html.light [class*="bg-slate-900"]:not(img):not(.to-transparent):not(.job-photo-
 }
 
 /* Recessed Surfaces & Root Canvas in Light Mode (#F8FAFC) */
-html.light [class*="bg-slate-950"]:not(img):not(.to-transparent):not(.job-photo-badge),
-html.light [class*="bg-slate-850"]:not(img):not(.to-transparent) {
+html.light [class*="bg-slate-950"]:not(img):not(.to-transparent):not(.job-photo-badge):not([class*="hover:bg-slate-950"]),
+html.light [class*="bg-slate-850"]:not(img):not(.to-transparent):not([class*="hover:bg-slate-850"]) {
   background-color: #F8FAFC !important;
   border-color: #CBD5E1 !important;
   color: #0F172A !important;
 }
 
-/* Secondary Interactive Surfaces & Pills in Light Mode (#F1F5F9) */
-html.light [class*="bg-slate-800"]:not(img):not(.to-transparent):not(.job-photo-container),
-html.light [class*="bg-slate-700"]:not(img):not(.to-transparent) {
+/* Secondary Interactive Surfaces & Pills in Light Mode (#F1F5F9) - strictly exclude hover-only bg-slate-800/700 classes */
+html.light .bg-slate-800:not(img):not(.to-transparent):not(.job-photo-container),
+html.light .bg-slate-800\/95:not(img):not(.to-transparent),
+html.light .bg-slate-800\/90:not(img):not(.to-transparent),
+html.light .bg-slate-800\/80:not(img):not(.to-transparent),
+html.light .bg-slate-800\/70:not(img):not(.to-transparent),
+html.light .bg-slate-800\/60:not(img):not(.to-transparent),
+html.light .bg-slate-800\/50:not(img):not(.to-transparent),
+html.light .bg-slate-800\/40:not(img):not(.to-transparent),
+html.light .bg-slate-800\/30:not(img):not(.to-transparent),
+html.light .bg-slate-700:not(img):not(.to-transparent),
+html.light .bg-slate-700\/90:not(img):not(.to-transparent),
+html.light .bg-slate-700\/80:not(img):not(.to-transparent),
+html.light .bg-slate-700\/70:not(img):not(.to-transparent),
+html.light .bg-slate-700\/60:not(img):not(.to-transparent),
+html.light .bg-slate-700\/50:not(img):not(.to-transparent) {
   background-color: #F1F5F9 !important;
   border-color: #CBD5E1 !important;
   color: #0F172A !important;
 }
 
+html.light .hover\:bg-slate-900:hover,
 html.light .hover\:bg-slate-800:hover,
+html.light .hover\:bg-slate-800\/80:hover,
+html.light .hover\:bg-slate-800\/60:hover,
+html.light .hover\:bg-slate-800\/40:hover,
+html.light .hover\:bg-slate-750:hover,
 html.light .hover\:bg-slate-700:hover,
 html.light .hover\:bg-slate-700\/90:hover {
   background-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+html.light .hover\:text-white:hover {
   color: #0F172A !important;
 }
 
@@ -632,6 +654,18 @@ html.light .from-teal-600 {
   background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
 }
 
+html.light .bg-amber-500,
+html.light .bg-amber-600 {
+  background-color: #D97706 !important;
+  border-color: #B45309 !important;
+}
+
+html.light .hover\:bg-amber-400:hover,
+html.light .hover\:bg-amber-500:hover {
+  background-color: #B45309 !important;
+  color: #FFFFFF !important;
+}
+
 html.light .from-amber-500,
 html.light .from-amber-600 {
   background: linear-gradient(135deg, #D97706 0%, #B45309 100%) !important;
@@ -681,9 +715,9 @@ html.light .from-cyan-600:not(.pointer-events-none) {
   color: #FFFFFF !important;
 }
 
-html.light .bg-red-600 *,
+html.light .bg-red-600 *:not(.bg-amber-400):not(.bg-white),
 html.light .bg-red-600\/90 *,
-html.light .bg-red-500 *,
+html.light .bg-red-500 *:not(.bg-amber-400):not(.bg-white),
 html.light .bg-red-700 *,
 html.light .bg-rose-600 *,
 html.light .bg-rose-500 *,
@@ -722,6 +756,12 @@ html.light .from-purple-600:not(.pointer-events-none) *,
 html.light .from-amber-600:not(.pointer-events-none) *,
 html.light .from-cyan-600:not(.pointer-events-none) * {
   color: #FFFFFF !important;
+}
+
+html.light .bg-amber-400,
+html.light .bg-amber-300 {
+  background-color: #FBBF24 !important;
+  color: #0F172A !important;
 }
 
 /* Light Mode Leaflet Popup */
