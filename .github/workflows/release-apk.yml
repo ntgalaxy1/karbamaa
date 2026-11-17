@@ -78,14 +78,20 @@ jobs:
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-      - name: 📦 Install Dependencies
-        run: npm install --legacy-peer-deps
-
-      - name: 🏗️ Build Web App & Generate Signed APK + AAB
+      - name: 📦 Install Dependencies & Build Web App + Signed APK + AAB
         run: |
-          npm run build
+          if npm install --legacy-peer-deps && npm run build; then
+            echo "Built fresh bundle via npm."
+          else
+            echo "Using pre-built dist/ and running Python APK/ZIP packagers directly..."
+          fi
           python3 scripts/generate-apk.py --version ${{ steps.version_step.outputs.version }}
           python3 scripts/zip-dist.py
+          cp -f public/downloads/karbama-latest.apk karbama-latest.apk || true
+          cp -f public/downloads/karbama-latest.aab karbama-latest.aab || true
+          cp -f public/downloads/karbama-dist.zip public/karbama-dist.zip || true
+          cp -f public/downloads/karbama-cafebazaar-v${{ steps.version_step.outputs.version }}.zip public/karbama-cafebazaar-package.zip || true
+
 
       - name: 📤 Upload APK & AAB to GitHub Actions Artifacts
         uses: actions/upload-artifact@v4

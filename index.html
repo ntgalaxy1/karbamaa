@@ -19,9 +19,33 @@
     <meta name="twitter:description" content="کارباما - سامانه جامع و هوشمند کاریابی، ساخت رزومه آنلاین، هتل‌ها و آدرس‌های ضروری ترکیه برای فارسی‌زبانان با پشتیبانی از وب‌اپلیکیشن PWA" />
     <meta name="twitter:image" content="/logo.png" />
     
-    <!-- Suppress disabled HMR WebSocket / Vite runner warnings in preview iframe -->
+    <!-- Suppress disabled HMR WebSocket / Vite runner warnings and purge stale caches on version upgrade -->
     <script>
       (function() {
+        try {
+          var CURRENT_VER = '10.0.0.60';
+          var savedVer = localStorage.getItem('karbama_sw_ver');
+          if (savedVer !== CURRENT_VER) {
+            localStorage.setItem('karbama_sw_ver', CURRENT_VER);
+            if ('caches' in window) {
+              caches.keys().then(function(names) {
+                for (var i = 0; i < names.length; i++) {
+                  if (names[i] !== 'karbama-cache-v60') {
+                    caches.delete(names[i]);
+                  }
+                }
+              }).catch(function() {});
+            }
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function(regs) {
+                for (var j = 0; j < regs.length; j++) {
+                  regs[j].update().catch(function() {});
+                }
+              }).catch(function() {});
+            }
+          }
+        } catch (err) {}
+
         function shouldSuppress(msg) {
           var s = String(msg || '');
           return s.indexOf('WebSocket') !== -1 ||

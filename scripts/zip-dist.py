@@ -9,9 +9,9 @@ def get_package_version():
     try:
         with open("package.json", "r", encoding="utf-8") as f:
             data = json.load(f)
-            return data.get("version", "10.0.0.49")
+            return data.get("version", "10.0.0.60")
     except Exception:
-        return "10.0.0.49"
+        return "10.0.0.60"
 
 
 def zip_dist():
@@ -20,13 +20,14 @@ def zip_dist():
     os.makedirs("public/downloads", exist_ok=True)
 
     output_public_dl = "public/downloads/karbama-dist.zip"
+    output_root_public = "public/karbama-dist.zip"
     bazaar_zip_dl = f"public/downloads/karbama-cafebazaar-v{version}.zip"
 
     if not os.path.exists(dist_dir):
         print("dist directory does not exist. Run build first.")
         return
 
-    print(f"Creating karbama-dist.zip (v{version}) from dist/ contents (including updated APK & AAB)...")
+    print(f"Creating karbama-dist.zip (v{version}) from dist/ contents...")
     apk_src = f"public/downloads/karbama-v{version}.apk"
     aab_src = f"public/downloads/karbama-v{version}.aab"
 
@@ -46,17 +47,15 @@ def zip_dist():
                 rel_path = os.path.relpath(full_path, dist_dir)
                 zipf.write(full_path, rel_path)
         if os.path.exists(apk_src):
-            zipf.write(apk_src, f"downloads/karbama-v{version}.apk")
             zipf.write(apk_src, "downloads/karbama-latest.apk")
-        if os.path.exists(aab_src):
-            zipf.write(aab_src, f"downloads/karbama-v{version}.aab")
-            zipf.write(aab_src, "downloads/karbama-latest.aab")
+
+    shutil.copyfile(output_public_dl, output_root_public)
 
     try:
         parts = version.split('.')
-        version_code = 100000 + int(parts[-1]) if len(parts) >= 4 else 100042
+        version_code = 100000 + int(parts[-1]) if len(parts) >= 4 else 100060
     except Exception:
-        version_code = 100042
+        version_code = 100060
 
     readme_bazaar = f"""راهنمای آپلود نسخه {version} کارباما در پیشخوان کافه‌بازار
 ==========================================================
@@ -82,6 +81,7 @@ def zip_dist():
     if os.path.exists(dist_dir):
         os.makedirs("dist/downloads", exist_ok=True)
         shutil.copyfile(output_public_dl, "dist/downloads/karbama-dist.zip")
+        shutil.copyfile(output_public_dl, "dist/karbama-dist.zip")
         shutil.copyfile(bazaar_zip_dl, f"dist/downloads/karbama-cafebazaar-v{version}.zip")
 
     dist_mb = os.path.getsize(output_public_dl) / (1024 * 1024)
@@ -93,3 +93,4 @@ def zip_dist():
 
 if __name__ == "__main__":
     zip_dist()
+

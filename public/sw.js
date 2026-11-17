@@ -4,7 +4,7 @@
  * and IndexedDB data synchronization for Job Listings & Essential Addresses.
  */
 
-const CACHE_NAME = 'karbama-cache-v59';
+const CACHE_NAME = 'karbama-cache-v60';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/manifest.webmanifest',

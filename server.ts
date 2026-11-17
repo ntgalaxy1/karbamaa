@@ -1516,8 +1516,9 @@ app.get('/favicon.ico', (req, res) => sendStaticFile(res, 'favicon.ico', 'image/
 app.get('/icon.svg', (req, res) => sendStaticFile(res, 'icon.svg', 'image/svg+xml'));
 
 // Explicit Web App Zip Build Download Route for cPanel/DirectAdmin deployment
-app.get(['/karbama-dist.zip', '/dist.zip', '/karbama-latest-build.zip', '/*.zip', '/downloads/*.zip'], (req, res) => {
-  const filename = path.basename(req.path) || 'karbama-dist.zip';
+app.get(['/zip', '/download-zip', '/karbama-dist.zip', '/dist.zip', '/karbama-latest-build.zip', '/*.zip', '/downloads/*.zip'], (req, res) => {
+  const rawBase = path.basename(req.path);
+  const filename = rawBase && rawBase.endsWith('.zip') ? rawBase : 'karbama-dist.zip';
   const isBazaar = filename.includes('cafebazaar');
   const dlDir = path.resolve(__dirname, 'public', 'downloads');
   const candidates = [
@@ -1526,6 +1527,7 @@ app.get(['/karbama-dist.zip', '/dist.zip', '/karbama-latest-build.zip', '/*.zip'
     path.resolve(__dirname, 'dist', 'downloads', filename),
     path.resolve(__dirname, 'dist', filename),
     path.resolve(dlDir, 'karbama-dist.zip'),
+    path.resolve(__dirname, 'public', 'karbama-dist.zip'),
   ];
   if (isBazaar && fs.existsSync(dlDir)) {
     const bazaarFiles = fs.readdirSync(dlDir).filter((f) => f.startsWith('karbama-cafebazaar') && f.endsWith('.zip'));
@@ -1537,7 +1539,7 @@ app.get(['/karbama-dist.zip', '/dist.zip', '/karbama-latest-build.zip', '/*.zip'
     if (fs.existsSync(c)) {
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
       return res.sendFile(c);
     }
   }
@@ -1586,17 +1588,42 @@ app.get(['/karbama.apk', '/karbama-latest.apk', '/*.apk', '/downloads/*.apk'], (
   return res.status(404).setHeader('Content-Type', 'text/plain').send('APK file not found');
 });
 
+// Serve pre-compiled production bundle from dist/ first when available for instant, zero-waterfall loading
+app.use(express.static(path.resolve(__dirname, 'dist'), {
+  index: false,
+  maxAge: '1h',
+  setHeaders: (res, filePath) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    }
+  },
+}));
+
 // Serve static assets from public/
 app.use(express.static(path.resolve(__dirname, 'public'), {
+  index: false,
   maxAge: '1h',
   setHeaders: (res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
   },
 }));
 
+// Serve compiled dist/index.html for SPA navigation routes if built
+app.get(['/', '/admin', '/admin/*', '/install', '/privacy-policy'], (req, res, next) => {
+  const distIndexPath = path.resolve(__dirname, 'dist/index.html');
+  if (fs.existsSync(distIndexPath)) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    return res.sendFile(distIndexPath);
+  }
+  next();
+});
+
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Initialize Vite middleware in dev mode and wait for it on incoming requests so /src/main.tsx is never served as raw HTML
+// Initialize Vite middleware in dev mode as fallback for /src/* or if dist/ is not built
 let viteMiddleware: any = null;
 let viteInitPromise: Promise<void> | null = null;
 
@@ -1627,19 +1654,6 @@ if (!isProduction) {
     }
     next();
   });
-}
-
-// Fallback static serving from dist/ if built
-if (fs.existsSync(path.resolve(__dirname, 'dist'))) {
-  app.use(express.static(path.resolve(__dirname, 'dist'), {
-    maxAge: '1h',
-    setHeaders: (res, filePath) => {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      if (filePath.endsWith('.html')) {
-        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-      }
-    },
-  }));
 }
 
 app.get('*', (req, res) => {

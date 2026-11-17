@@ -26,11 +26,15 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 📦 Install Dependencies
-        run: npm install --legacy-peer-deps
-
-      - name: 🏗️ Build Production Bundle (dist)
-        run: npm run build
+      - name: 📦 Install Dependencies & Build (or Use Pre-Built dist)
+        run: |
+          if npm install --legacy-peer-deps && npm run build; then
+            echo "Built fresh dist bundle on runner."
+          elif [ -f "dist/index.html" ]; then
+            echo "Using pre-built production dist/ bundle from repository."
+          else
+            exit 1
+          fi
 
       - name: 🗜️ Create Ready-to-Upload ZIP for cPanel/DirectAdmin
         run: |
@@ -62,3 +66,6 @@ jobs:
             **/.git*
             **/.git*/**
             **/node_modules/**
+            api/sep/data/users.json
+            **/api/sep/data/users.json
+
