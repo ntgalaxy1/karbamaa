@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ShieldAlert,
+  AlertTriangle,
   Send,
   MessageCircle,
   Instagram,
@@ -75,7 +76,7 @@ export const AboutUsSection: React.FC = () => {
           <div className="w-12 h-12 rounded-2xl bg-red-600/30 border border-red-500 text-red-300 flex items-center justify-center shrink-0 shadow-lg">
             <ShieldAlert className="w-7 h-7 animate-pulse" />
           </div>
-          <div className="space-y-2 flex-1">
+          <div className="space-y-3 flex-1">
             <div className="inline-block px-3 py-1 rounded-lg bg-red-600 text-white text-[11px] font-extrabold shadow-sm">
               هشدار بسیار مهم و سلب مسئولیت
             </div>
@@ -85,9 +86,20 @@ export const AboutUsSection: React.FC = () => {
             <p className="text-sm font-bold text-red-100 leading-relaxed">
               توجه داشته باشید که کارباما در هیچ یک از شهرهای ایران یا ترکیه دارای نماینده، وکیل یا دفتر رابط نمی‌باشد. تمامی هماهنگی‌ها، مشاوره‌ها و پیگیری امور متقاضیان صرفاً و منحصراً از طریق راه‌های ارتباطی زیر انجام می‌پذیرد.
             </p>
-            <p className="text-xs text-red-200/90 leading-relaxed">
-              لطفاً از پرداخت وجه یا تحویل مدارک به هر شخص یا کانال متفرقه‌ای که ادعای نمایندگی کارباما را دارد جداً خودداری فرمایید.
-            </p>
+            <div
+              role="alert"
+              className="mt-3 p-4 rounded-2xl bg-rose-600 border-2 border-amber-400 shadow-lg flex items-start gap-3"
+            >
+              <div className="w-9 h-9 rounded-xl bg-black/30 border border-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+                <AlertTriangle className="w-5 h-5 text-amber-300 animate-bounce" />
+              </div>
+              <p className="text-xs sm:text-sm font-extrabold text-white leading-relaxed">
+                <span className="inline-block px-2.5 py-0.5 ml-2 rounded-md bg-amber-600 border border-amber-300 text-white text-[11px] font-black shadow-sm">
+                  ⚠️ اخطار جدی:
+                </span>
+                لطفاً از پرداخت وجه یا تحویل مدارک به هر شخص یا کانال متفرقه‌ای که ادعای نمایندگی کارباما را دارد جداً خودداری فرمایید.
+              </p>
+            </div>
           </div>
         </div>
       </div>
