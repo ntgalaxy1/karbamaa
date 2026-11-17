@@ -43,7 +43,6 @@ export const SettingsProfile: React.FC = () => {
     applications,
     logoutSeeker,
     showToast,
-    switchToDemoUser,
     activeTab,
     paymentSettings,
     addAdminNotification,

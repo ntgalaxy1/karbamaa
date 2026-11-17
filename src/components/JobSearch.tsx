@@ -2131,18 +2131,24 @@ export const JobSearch: React.FC = () => {
           </button>
         </div>
       ) : filteredJobs.length === 0 ? (
-        <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-12 text-center">
-          <AlertCircle className="w-12 h-12 text-slate-500 mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-white mb-1">فرصت شغلی با این مشخصات یافت نشد</h3>
-          <p className="text-xs text-slate-400 mb-4">
-            می‌توانید کلمات کلیدی، نوع قرارداد (تمام وقت/پاره وقت) یا عنوان جستجو شده را بازنشانی فرمایید.
+        <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-12 text-center space-y-3">
+          <AlertCircle className="w-12 h-12 text-slate-500 mx-auto" />
+          <h3 className="text-lg font-bold text-white">
+            {hasActiveFilters ? 'فرصت شغلی با این مشخصات یافت نشد' : 'در حال حاضر آگهی شغلی فعالی ثبت نشده است'}
+          </h3>
+          <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+            {hasActiveFilters
+              ? 'می‌توانید کلمات کلیدی، نوع قرارداد (تمام وقت/پاره وقت) یا عنوان جستجو شده را بازنشانی فرمایید.'
+              : 'تمامی آگهی‌های آزمایشی حذف شده‌اند. به‌محض ثبت و تایید آگهی‌های جدید توسط کارفرمایان یا مدیریت، در این بخش نمایش داده خواهند شد.'}
           </p>
-          <button
-            onClick={resetAllFilters}
-            className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition"
-          >
-            مشاهده تمام آگهی‌های کار
-          </button>
+          {hasActiveFilters && (
+            <button
+              onClick={resetAllFilters}
+              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition"
+            >
+              بازنشانی فیلترها
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

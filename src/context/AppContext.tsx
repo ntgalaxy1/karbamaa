@@ -336,10 +336,10 @@ const DEFAULT_BROKER_SETTINGS: BrokerSettings = {
 
 const STORAGE_KEYS = {
   SEEKERS: 'karbama_seekers_v20_clean_final',
-  JOBS: 'karbama_jobs_v4',
+  JOBS: 'karbama_jobs_v21_clean_final',
   APPLICATIONS: 'karbama_applications_v19_clean',
   ADDRESSES: 'karbama_addresses_v4',
-  HOTELS: 'karbama_hotels_v3',
+  HOTELS: 'karbama_hotels_v21_clean_final',
   BOOKINGS: 'karbama_bookings_v3',
   TRANSIT: 'karbama_transit_v3',
   TRANSIT_HUBS: 'karbama_transit_hubs_v3',
@@ -729,6 +729,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   };
 
+  const isSampleOrSeedJob = (j?: Partial<JobVacancy> | null): boolean => {
+    if (!j || !j.id) return true;
+    const idLower = String(j.id).trim().toLowerCase();
+    // Filter out hardcoded seed IDs (job-1 through job-25) and demo/test IDs
+    if (/^job-([1-9]|1[0-9]|2[0-5])$/.test(idLower) || idLower === 'job-demo' || idLower === 'job-test') {
+      return true;
+    }
+    const title = String(j.title || '').toLowerCase();
+    const company = String(j.company || '').toLowerCase();
+    if (
+      title.includes('تست') ||
+      title.includes('آزمایشی') ||
+      company.includes('تست') ||
+      company.includes('آزمایشی')
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  const isSampleOrSeedHotel = (h?: Partial<Hotel> | null): boolean => {
+    if (!h || !h.id) return true;
+    const idLower = String(h.id).trim().toLowerCase();
+    if (/^hotel-[1-4]$/.test(idLower) || idLower === 'hotel-demo' || idLower === 'hotel-test') {
+      return true;
+    }
+    const name = String(h.name || '').toLowerCase();
+    if (name.includes('تست') || name.includes('آزمایشی')) {
+      return true;
+    }
+    return false;
+  };
+
   const [jobSeekers, setJobSeekers] = useState<JobSeeker[]>(() => {
     try {
       // Always purge all legacy seeker localStorage keys
@@ -749,10 +782,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [jobs, setJobs] = useState<JobVacancy[]>(() => {
     try {
+      safeStorage.removeItem('karbama_jobs');
+      safeStorage.removeItem('karbama_jobs_v2');
+      safeStorage.removeItem('karbama_jobs_v3');
+      safeStorage.removeItem('karbama_jobs_v4');
       const stored = safeStorage.getItem(STORAGE_KEYS.JOBS);
-      return stored ? JSON.parse(stored) : INITIAL_JOBS;
+      const parsed: JobVacancy[] = stored ? JSON.parse(stored) : INITIAL_JOBS;
+      return Array.isArray(parsed) ? parsed.filter((j) => !isSampleOrSeedJob(j)) : [];
     } catch {
-      return INITIAL_JOBS;
+      return [];
     }
   });
 
@@ -776,10 +814,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [hotels, setHotels] = useState<Hotel[]>(() => {
     try {
+      safeStorage.removeItem('karbama_hotels');
+      safeStorage.removeItem('karbama_hotels_v2');
+      safeStorage.removeItem('karbama_hotels_v3');
       const stored = safeStorage.getItem(STORAGE_KEYS.HOTELS);
-      return stored ? JSON.parse(stored) : INITIAL_HOTELS;
+      const parsed: Hotel[] = stored ? JSON.parse(stored) : INITIAL_HOTELS;
+      return Array.isArray(parsed) ? parsed.filter((h) => !isSampleOrSeedHotel(h)) : [];
     } catch {
-      return INITIAL_HOTELS;
+      return [];
     }
   });
 
@@ -1076,9 +1118,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     safeStorage.setItem(STORAGE_KEYS.JOBS, JSON.stringify(jobs));
-    if (jobs && jobs.length > 0) {
-      idbCache.saveJobs(jobs);
-    }
+    idbCache.saveJobs(jobs);
   }, [jobs]);
 
   useEffect(() => {
@@ -1094,9 +1134,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     safeStorage.setItem(STORAGE_KEYS.HOTELS, JSON.stringify(hotels));
-    if (hotels && hotels.length > 0) {
-      idbCache.saveHotels(hotels);
-    }
+    idbCache.saveHotels(hotels);
   }, [hotels]);
 
   // Initial IndexedDB & Server API hydration fallback when offline or on first load
@@ -1118,10 +1156,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const cachedJobs = await idbCache.getJobs();
         if (cachedJobs && cachedJobs.length > 0) {
-          setJobs((prev) => {
-            if (!prev || prev.length === 0) return cachedJobs;
-            return prev;
-          });
+          const cleanCachedJobs = cachedJobs.filter((j) => !isSampleOrSeedJob(j));
+          if (cleanCachedJobs.length !== cachedJobs.length) {
+            idbCache.saveJobs(cleanCachedJobs);
+          }
+          if (cleanCachedJobs.length > 0) {
+            setJobs((prev) => {
+              const cleanPrev = (prev || []).filter((j) => !isSampleOrSeedJob(j));
+              if (cleanPrev.length === 0) return cleanCachedJobs;
+              return cleanPrev;
+            });
+          }
         }
 
         const cachedAddrs = await idbCache.getAddresses();
@@ -1134,10 +1179,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const cachedHotels = await idbCache.getHotels();
         if (cachedHotels && cachedHotels.length > 0) {
-          setHotels((prev) => {
-            if (!prev || prev.length === 0) return cachedHotels;
-            return prev;
-          });
+          const cleanCachedHotels = cachedHotels.filter((h) => !isSampleOrSeedHotel(h));
+          if (cleanCachedHotels.length !== cachedHotels.length) {
+            idbCache.saveHotels(cleanCachedHotels);
+          }
+          if (cleanCachedHotels.length > 0) {
+            setHotels((prev) => {
+              const cleanPrev = (prev || []).filter((h) => !isSampleOrSeedHotel(h));
+              if (cleanPrev.length === 0) return cleanCachedHotels;
+              return cleanPrev;
+            });
+          }
         }
       } catch (err) {
         console.warn('[IDB Hydrate] Failed:', err);
@@ -1390,28 +1442,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     );
 
-    // Listen to jobs collection
+    // Listen to jobs collection (automatically purging sample/seed jobs)
     const unsubJobs = onSnapshot(
       collection(db, 'jobs'),
       (snapshot) => {
-        if (!snapshot.empty) {
-          const firestoreJobs: JobVacancy[] = [];
-          snapshot.forEach((docSnap) => {
-            const data = docSnap.data() as JobVacancy;
-            if (data && data.id) {
-              firestoreJobs.push(data);
-            }
-          });
-
-          if (firestoreJobs.length > 0) {
-            setJobs((prev) => {
-              const map = new Map<string, JobVacancy>();
-              prev.forEach((j) => map.set(j.id, j));
-              firestoreJobs.forEach((j) => map.set(j.id, j));
-              return Array.from(map.values());
-            });
+        const firestoreJobs: JobVacancy[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data() as JobVacancy;
+          if (isSampleOrSeedJob(data)) {
+            deleteDoc(doc(db, 'jobs', docSnap.id)).catch(() => {});
+          } else if (data && data.id) {
+            firestoreJobs.push(data);
           }
-        }
+        });
+
+        setJobs((prev) => {
+          const map = new Map<string, JobVacancy>();
+          prev.filter((j) => !isSampleOrSeedJob(j)).forEach((j) => map.set(j.id, j));
+          firestoreJobs.forEach((j) => map.set(j.id, j));
+          return Array.from(map.values());
+        });
       },
       (error) => {
         handleFirestoreError(error, OperationType.GET, 'jobs');
@@ -1633,6 +1683,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         }
 
+        // 3.5. Purge test/seed jobs from Firestore
+        const jobsSnap = await getDocs(collection(db, 'jobs'));
+        for (const docSnap of jobsSnap.docs) {
+          const data = docSnap.data() as JobVacancy;
+          if (fullReset || isSampleOrSeedJob(data)) {
+            await deleteDoc(docSnap.ref);
+            deletedCount++;
+          }
+        }
+
         // 4. Test doc
         try {
           await deleteDoc(doc(db, 'test', 'connection'));
@@ -1644,11 +1704,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Update local state
       if (fullReset) {
         setJobSeekers([]);
+        setJobs([]);
         safeStorage.setItem(STORAGE_KEYS.SEEKERS, JSON.stringify([]));
+        safeStorage.setItem(STORAGE_KEYS.JOBS, JSON.stringify([]));
         safeStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
         setCurrentSeekerId(null);
       } else {
         setJobSeekers((prev) => prev.filter((s) => !isSampleOrLegacySeeker(s)));
+        setJobs((prev) => prev.filter((j) => !isSampleOrSeedJob(j)));
+        setHotels((prev) => prev.filter((h) => !isSampleOrSeedHotel(h)));
       }
 
       safeStorage.setItem('karbama_purge_all_default_seekers_v20_final', 'done');
