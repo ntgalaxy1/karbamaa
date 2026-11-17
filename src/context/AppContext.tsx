@@ -647,16 +647,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const approveSeekerAccount = (seekerId: string, note?: string) => {
     const seeker = jobSeekers.find((s) => s.id === seekerId);
+    const nowIso = new Date().toISOString();
+    const approvalNote = note || seeker?.adminVerificationNote || 'تایید پرداخت و آزادسازی کامل حساب توسط مدیریت کارباما';
     setJobSeekers((prev) => {
       const next = prev.map((s) => {
         if (s.id === seekerId) {
           const updated: JobSeeker = {
             ...s,
             verificationStatus: 'approved' as const,
+            paymentStatus: 'approved' as const,
+            accountStatus: 'approved' as const,
             isPaymentVerified: true,
             seekerPaymentStatus: 'paid' as const,
-            adminVerificationNote: note || s.adminVerificationNote || 'تایید و آزادسازی توسط مدیریت کارباما',
-            ...({ updatedAt: new Date().toISOString() } as any),
+            adminVerificationNote: approvalNote,
+            ...({ updatedAt: nowIso } as any),
           };
           syncUserToFirestore(updated);
           return updated;
@@ -673,6 +677,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     showToast('قفل حساب کارجو با موفقیت باز شد و دسترسی کامل فعال گردید.', 'success');
 
+    const notifId = `notif-seeker-approve-${seekerId}-${Date.now()}`;
+    const approvalNotif: JobNotification = {
+      id: notifId,
+      alertId: 'admin-payment-approval',
+      jobId: `status-approve-${seekerId}`,
+      jobTitle: '✅ پرداخت و حساب کاربری شما تأیید شد!',
+      company: seeker ? `${seeker.fullName} (مدیریت کارباما)` : 'مدیریت کارباما',
+      city: seeker?.targetCity || 'ترکیه',
+      salaryText: 'دسترسی کامل فعال شد ✓',
+      message: approvalNote,
+      read: false,
+      createdAt: nowIso,
+      targetUserId: seekerId,
+      targetRole: 'seeker',
+      notificationType: 'payment_approved',
+    };
+    setJobNotifications((prev) => {
+      const next = [approvalNotif, ...prev];
+      safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
+      return next;
+    });
+    syncNotificationToFirestore(approvalNotif);
+
     if (seeker) {
       showSafeNotification(`✅ قفل حساب کاربری شما باز شد!`, {
         body: `کارجوی گرامی ${seeker.fullName}، پرداخت و مدارک شما توسط مدیریت کارباما تایید گردید و قفل تمامی بخش‌ها باز شد.`,
@@ -684,15 +711,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const rejectSeekerAccount = (seekerId: string, reason: string) => {
     const seeker = jobSeekers.find((s) => s.id === seekerId);
+    const nowIso = new Date().toISOString();
+    const cleanReason =
+      reason && reason.trim()
+        ? reason.trim()
+        : 'پرداخت شما توسط مدیریت تایید نشد؛ لطفاً رسید معتبر ارسال کرده یا مجدداً از طریق درگاه آنلاین اقدام فرمایید.';
     setJobSeekers((prev) => {
       const next = prev.map((s) => {
         if (s.id === seekerId) {
           const updated: JobSeeker = {
             ...s,
             verificationStatus: 'rejected' as const,
+            paymentStatus: 'rejected' as const,
+            accountStatus: 'rejected' as const,
+            seekerPaymentStatus: 'rejected' as const,
             isPaymentVerified: false,
-            adminVerificationNote: reason,
-            ...({ updatedAt: new Date().toISOString() } as any),
+            adminVerificationNote: cleanReason,
+            ...({ updatedAt: nowIso } as any),
           };
           syncUserToFirestore(updated);
           return updated;
@@ -707,11 +742,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return next;
     });
-    showToast('حساب کارجو رد شد.', 'info');
+    showToast('پرداخت کارجو رد شد و اطلاع‌رسانی به پنل کارجو ارسال گردید.', 'info');
+
+    const notifId = `notif-seeker-reject-${seekerId}-${Date.now()}`;
+    const rejectNotif: JobNotification = {
+      id: notifId,
+      alertId: 'admin-payment-rejection',
+      jobId: `status-reject-${seekerId}`,
+      jobTitle: '❌ رد پرداخت توسط مدیریت کارباما',
+      company: seeker ? `${seeker.fullName} (مدیریت کارباما)` : 'مدیریت کارباما',
+      city: seeker?.targetCity || 'ترکیه',
+      salaryText: 'نیازمند بررسی و پرداخت مجدد',
+      message: cleanReason,
+      read: false,
+      createdAt: nowIso,
+      targetUserId: seekerId,
+      targetRole: 'seeker',
+      notificationType: 'payment_rejected',
+    };
+    setJobNotifications((prev) => {
+      const next = [rejectNotif, ...prev];
+      safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
+      return next;
+    });
+    syncNotificationToFirestore(rejectNotif);
 
     if (seeker) {
-      showSafeNotification(`⚠️ به‌روزرسانی در وضعیت حساب کارجو`, {
-        body: `کارجوی گرامی ${seeker.fullName}، پرونده شما به‌روزرسانی شد: ${reason || 'لطفاً مشخصات را بررسی کنید.'}`,
+      showSafeNotification(`⚠️ عدم تایید پرداخت حساب کارجو`, {
+        body: `کارجوی گرامی ${seeker.fullName}، علت عدم تایید: ${cleanReason}`,
         icon: '/pwa-192x192.png',
         tag: `seeker-status-${seekerId}`,
       });
@@ -1470,6 +1528,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             });
           }
 
+          // 7.5. Sync Live Chat Sessions
+          if (Array.isArray(data.chats) && data.chats.length > 0) {
+            setChatSessions((prev) => {
+              const map = new Map<string, LiveChatSession>();
+              data.chats.forEach((c: LiveChatSession) => {
+                if (c && c.id) map.set(c.id, c);
+              });
+              prev.forEach((c) => {
+                const existing = map.get(c.id);
+                if (!existing) {
+                  map.set(c.id, c);
+                } else {
+                  const localMsgs = Array.isArray(c.messages) ? c.messages.length : 0;
+                  const serverMsgs = Array.isArray(existing.messages) ? existing.messages.length : 0;
+                  if (localMsgs > serverMsgs) {
+                    map.set(c.id, c);
+                  } else if (serverMsgs > localMsgs) {
+                    map.set(c.id, existing);
+                  } else {
+                    map.set(c.id, mergeRecordByTimestamp(c, existing));
+                  }
+                }
+              });
+              const merged = Array.from(map.values()).sort(
+                (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+              );
+              safeStorage.setItem(STORAGE_KEYS.CHAT_SESSIONS, JSON.stringify(merged));
+              return merged;
+            });
+          }
+
           // 8. Sync Payment Settings, Partner Plans & Broker Settings if present on server
           if (data.paymentSettings && typeof data.paymentSettings === 'object') {
             setPaymentSettings((prev) => {
@@ -1498,9 +1587,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const interval = setInterval(() => {
         syncWithServer(false);
-      }, 15000);
+      }, 4000);
 
-      return () => clearInterval(interval);
+      const handleFocusOrStorage = () => {
+        syncWithServer(false);
+      };
+      window.addEventListener('focus', handleFocusOrStorage);
+      window.addEventListener('storage', handleFocusOrStorage);
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('focus', handleFocusOrStorage);
+        window.removeEventListener('storage', handleFocusOrStorage);
+      };
     };
 
     let cleanupInterval: (() => void) | undefined;
@@ -2731,6 +2830,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateApplicationStatus = (appId: string, status: ApplicationStatus, adminNote?: string) => {
+    const targetApp = applications.find((a) => a.id === appId);
+    const nowIso = new Date().toISOString();
     setApplications((prev) => {
       const next = prev.map((app) => {
         if (app.id === appId) {
@@ -2738,7 +2839,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...app,
             status,
             adminNote: adminNote !== undefined ? adminNote : app.adminNote,
-            updatedAt: new Date().toISOString(),
+            updatedAt: nowIso,
           };
           fetch('/api/users.php', {
             method: 'POST',
@@ -2752,7 +2853,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       safeStorage.setItem(STORAGE_KEYS.APPLICATIONS, JSON.stringify(next));
       return next;
     });
-    showToast('وضعیت درخواست کارجو بروزرسانی شد.', 'success');
+
+    if (targetApp && targetApp.seekerId) {
+      const statusLabel =
+        status === 'accepted'
+          ? 'تایید و استخدام نهایی ✓'
+          : status === 'interview'
+            ? 'دعوت به مصاحبه 📞'
+            : status === 'rejected'
+              ? 'رد درخواست ❌'
+              : status === 'reviewed'
+                ? 'بررسی شده 👀'
+                : 'در حال بررسی ⏳';
+      const notifId = `notif-app-${appId}-${Date.now()}`;
+      const appNotif: JobNotification = {
+        id: notifId,
+        alertId: 'application-status-update',
+        jobId: targetApp.jobId,
+        jobTitle: `وضعیت درخواست شما برای «${targetApp.jobTitle}»: ${statusLabel}`,
+        company: targetApp.companyName,
+        city: targetApp.city,
+        salaryText: statusLabel,
+        message: adminNote || `وضعیت درخواست استخدامی شما برای موقعیت شغلی «${targetApp.jobTitle}» به «${statusLabel}» تغییر یافت.`,
+        read: false,
+        createdAt: nowIso,
+        targetUserId: targetApp.seekerId,
+        targetRole: 'seeker',
+        notificationType: 'application_status',
+      };
+      setJobNotifications((prev) => {
+        const next = [appNotif, ...prev];
+        safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
+        return next;
+      });
+      syncNotificationToFirestore(appNotif);
+    }
+
+    showToast('وضعیت درخواست کارجو بروزرسانی شد و اعلان به کارجو ارسال گردید.', 'success');
   };
 
   // Check if a newly posted job matches any active JobAlertSubscription or Favorite Job Categories
@@ -2852,18 +2989,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Job management
   const addJob = (jobData: Omit<JobVacancy, 'id' | 'postedAt'>) => {
+    const effectiveFeeTL = paymentSettings.jobPostingFeeTL || paymentSettings.feeTL || 500;
+    const effectiveFeeToman =
+      paymentSettings.jobPostingFeeToman && paymentSettings.jobPostingFeeToman > 0
+        ? paymentSettings.jobPostingFeeToman
+        : effectiveFeeTL * (paymentSettings.exchangeRateToman || 5460);
+    const nowIso = new Date().toISOString();
     const newJob: JobVacancy = {
       ...jobData,
       id: 'job-' + Date.now(),
-      postedAt: new Date().toISOString(),
+      postedAt: nowIso,
       paymentStatus: jobData.paymentStatus || 'paid',
-      paymentAmountTL: jobData.paymentAmountTL || paymentSettings.feeTL,
-      paymentAmountToman: jobData.paymentAmountToman || (paymentSettings.feeTL * paymentSettings.exchangeRateToman),
+      paymentAmountTL: jobData.paymentAmountTL || effectiveFeeTL,
+      paymentAmountToman: jobData.paymentAmountToman || effectiveFeeToman,
+      ...({ updatedAt: nowIso } as any),
     };
 
-    setJobs((prev) => [newJob, ...prev]);
+    setJobs((prev) => {
+      const next = [newJob, ...prev];
+      safeStorage.setItem(STORAGE_KEYS.JOBS, JSON.stringify(next));
+      idbCache.saveJobs(next);
+      return next;
+    });
     syncJobToFirestore(newJob);
-    showToast('آگهی کار با موفقیت ایجاد شد.', 'success');
+    showToast('آگهی کار با موفقیت ایجاد و در سامانه منتشر شد.', 'success');
 
     if (newJob.isActive && (newJob.paymentStatus === 'paid' || !newJob.paymentStatus)) {
       checkJobAlerts(newJob);
@@ -2874,33 +3023,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Employer Job Posting with Fee Payment
   const submitJobWithPayment = (jobData: Omit<JobVacancy, 'id' | 'postedAt' | 'isActive'>): { success: boolean; jobId: string } => {
     const isOnlinePaid = jobData.paymentMethod === 'zarinpal' || jobData.paymentMethod === 'sepal';
-    const status: JobPaymentStatus = isOnlinePaid ? 'paid' : 'pending_approval';
+    const status: JobPaymentStatus = jobData.paymentStatus || (isOnlinePaid ? 'paid' : 'pending_approval');
     const id = 'job-' + Date.now();
+    const nowIso = new Date().toISOString();
+    const effectiveFeeTL = paymentSettings.jobPostingFeeTL || paymentSettings.feeTL || 500;
+    const effectiveFeeToman =
+      paymentSettings.jobPostingFeeToman && paymentSettings.jobPostingFeeToman > 0
+        ? paymentSettings.jobPostingFeeToman
+        : effectiveFeeTL * (paymentSettings.exchangeRateToman || 5460);
 
     const newJob: JobVacancy = {
       ...jobData,
       id,
-      postedAt: new Date().toISOString(),
-      isActive: isOnlinePaid,
+      postedAt: nowIso,
+      isActive: status === 'paid',
       paymentStatus: status,
-      paymentAmountTL: paymentSettings.feeTL,
-      paymentAmountToman: paymentSettings.feeTL * paymentSettings.exchangeRateToman,
-      paymentDate: new Date().toISOString(),
+      paymentAmountTL: jobData.paymentAmountTL || effectiveFeeTL,
+      paymentAmountToman: jobData.paymentAmountToman || effectiveFeeToman,
+      paymentDate: nowIso,
+      ...({ updatedAt: nowIso } as any),
     };
 
-    setJobs((prev) => [newJob, ...prev]);
+    setJobs((prev) => {
+      const next = [newJob, ...prev];
+      safeStorage.setItem(STORAGE_KEYS.JOBS, JSON.stringify(next));
+      idbCache.saveJobs(next);
+      return next;
+    });
     syncJobToFirestore(newJob);
 
-    checkJobAlerts(newJob);
-    dispatchSingleJobNotification(newJob);
-
-    if (isOnlinePaid) {
+    if (newJob.isActive) {
+      checkJobAlerts(newJob);
+      dispatchSingleJobNotification(newJob);
       showToast('پرداخت آنلاین تعرفه تایید شد و آگهی شما بلافاصله در سایت منتشر گردید و به کارجویان اطلاع‌رسانی شد.', 'success');
     } else {
       addAdminNotification({
-        type: 'employer_payment',
-        title: '💳 ثبت آگهی استخدام کارفرما',
-        message: `کارفرما آگهی استخدام «${newJob.title}» را جهت بررسی و تایید ثبت نمود.`,
+        type: 'job_posted',
+        title: '💳 ثبت آگهی استخدام کارفرما (نیازمند تایید)',
+        message: `کارفرما آگهی استخدام «${newJob.title}» (${newJob.company}) را جهت بررسی و تایید ثبت نمود.`,
         data: { jobId: newJob.id },
       });
       showToast('آگهی شما با موفقیت ثبت شد و پس از بررسی مدیر منتشر خواهد شد.', 'success');
@@ -2910,14 +3070,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveJobPayment = (jobId: string, adminNote?: string) => {
-    setJobs((prev) =>
-      prev.map((j) => {
+    const nowIso = new Date().toISOString();
+    setJobs((prev) => {
+      const next = prev.map((j) => {
         if (j.id === jobId) {
           const updated: JobVacancy = {
             ...j,
             isActive: true,
             paymentStatus: 'paid',
             paymentAdminNote: adminNote || 'پرداخت تعرفه تایید شد و آگهی فعال گردید.',
+            ...({ updatedAt: nowIso } as any),
           };
           syncJobToFirestore(updated);
           checkJobAlerts(updated);
@@ -2925,12 +3087,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return updated;
         }
         return j;
-      })
-    );
+      });
+      safeStorage.setItem(STORAGE_KEYS.JOBS, JSON.stringify(next));
+      idbCache.saveJobs(next);
+      return next;
+    });
     showToast('پرداخت آگهی تایید شد و آگهی با موفقیت در سایت فعال و منتشر گردید.', 'success');
   };
 
   const rejectJobPayment = (jobId: string, reason: string) => {
+    const nowIso = new Date().toISOString();
     setJobs((prev) => {
       const next = prev.map((j) => {
         if (j.id === jobId) {
@@ -2939,7 +3105,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             isActive: false,
             paymentStatus: 'rejected',
             paymentAdminNote: reason || 'فیش واریزی نامعتبر یا مبلغ ناقص است.',
-            ...({ updatedAt: new Date().toISOString() } as any),
+            ...({ updatedAt: nowIso } as any),
           };
           syncJobToFirestore(updated);
           return updated;
@@ -3554,6 +3720,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       partnerPlans[0] ||
       DEFAULT_PARTNER_PLANS[0];
 
+    const nowIso = new Date().toISOString();
     const newPartner: PartnerAccount = {
       id: 'partner-' + Date.now(),
       partnerCode: `PART-${randomNum}`,
@@ -3566,16 +3733,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       username: cleanUser,
       password: input.password,
       city: input.city?.trim() || 'استانبول',
+      paymentStatus: 'pending',
+      accountStatus: 'pending',
       subscriptionStatus: 'unpaid',
       planId: selectedPlan.id,
       planTitle: selectedPlan.title,
       paymentAmountTL: selectedPlan.priceTL,
       paymentAmountToman: selectedPlan.priceToman,
       daysRemaining: 0,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      ...({ updatedAt: nowIso } as any),
     };
 
-    setPartners((prev) => [newPartner, ...prev]);
+    setPartners((prev) => {
+      const next = [newPartner, ...prev];
+      safeStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify(next));
+      return next;
+    });
     syncPartnerToFirestore(newPartner);
     setCurrentPartnerId(newPartner.id);
     setRole('partner');
@@ -3616,6 +3790,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const plan = input.planId ? partnerPlans.find(p => p.id === input.planId) : undefined;
     const initialStatus = input.subscriptionStatus || 'active';
     const initialDays = input.daysRemaining !== undefined ? input.daysRemaining : (initialStatus === 'active' ? 365 : 0);
+    const nowIso = new Date().toISOString();
 
     const newPartner: PartnerAccount = {
       id: 'partner-' + Date.now(),
@@ -3627,15 +3802,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       username: cleanUser,
       password: input.password,
       city: input.city?.trim() || 'استانبول',
+      paymentStatus: initialStatus === 'active' ? 'approved' : 'pending',
+      accountStatus: initialStatus === 'active' ? 'approved' : 'pending',
       subscriptionStatus: initialStatus,
       planId: input.planId || '1_year',
       planTitle: plan?.title || 'اشتراک ۱ ساله همکاران کارباما',
       daysRemaining: initialDays,
       adminApprovalNote: input.adminNote?.trim() || 'ثبت و تایید مستقیم توسط مدیریت سامانه',
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      ...({ updatedAt: nowIso } as any),
     };
 
-    setPartners((prev) => [newPartner, ...prev]);
+    setPartners((prev) => {
+      const next = [newPartner, ...prev];
+      safeStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify(next));
+      return next;
+    });
     syncPartnerToFirestore(newPartner);
 
     addAdminNotification({
@@ -3666,12 +3848,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const plan = partnerPlans.find((p) => p.id === planId) || DEFAULT_PARTNER_PLANS[0];
+    const nowIso = new Date().toISOString();
 
     let targetUpdatedPartner: PartnerAccount | undefined;
     const updatedPartners = partners.map((p) => {
       if (p.id === currentPartner.id) {
-        const updated = {
+        const updated: PartnerAccount = {
           ...p,
+          paymentStatus: 'pending',
+          accountStatus: 'pending',
           subscriptionStatus: 'pending_approval' as PartnerSubscriptionStatus,
           planId: plan.id,
           planTitle: plan.title,
@@ -3681,7 +3866,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           paymentReceiptUrl: paymentReceiptUrl || p.paymentReceiptUrl,
           paymentReferenceId: paymentReferenceId || 'REF-' + Math.floor(100000 + Math.random() * 900000),
           paymentPayerName: paymentPayerName || currentPartner.fullName,
-          paymentDate: new Date().toISOString().split('T')[0],
+          paymentDate: nowIso.split('T')[0],
+          adminApprovalNote: 'پرداخت ثبت شد و در انتظار بررسی و تایید مدیریت است.',
+          ...({ updatedAt: nowIso } as any),
         };
         targetUpdatedPartner = updated;
         return updated;
@@ -3690,24 +3877,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     setPartners(updatedPartners);
+    safeStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify(updatedPartners));
     if (targetUpdatedPartner) {
       syncPartnerToFirestore(targetUpdatedPartner);
     }
 
     addAdminNotification({
       type: 'partner_payment',
-      title: 'فیش پرداخت حق اشتراک همکار ثبت شد',
-      message: `همکار «${currentPartner.companyName}» فیش واریزی برای ${plan.title} (${plan.priceTL.toLocaleString('fa-IR')} لیر) را ارسال نمود. جهت فعال‌سازی بررسی شود.`,
+      title: '💳 فیش / تراکنش پرداخت حق اشتراک همکار ثبت شد',
+      message: `همکار «${currentPartner.companyName}» (${currentPartner.fullName}) پرداخت برای ${plan.title} (${plan.priceToman.toLocaleString('fa-IR')} تومان) را ارسال نمود. جهت فعال‌سازی بررسی شود.`,
     });
 
-    showToast('رسید پرداخت حق اشتراک ثبت شد و پس از بررسی مدیر فعال می‌گردد.', 'success');
+    showToast('اطلاعات پرداخت حق اشتراک ثبت شد و پس از بررسی مدیر فعال می‌گردد.', 'success');
     return { success: true };
   };
 
   const approvePartnerSubscription = (partnerId: string, note?: string) => {
     let approvedPartner: PartnerAccount | undefined;
-    setPartners((prev) =>
-      prev.map((p) => {
+    const nowIso = new Date().toISOString();
+    const approvalNote = note || 'پرداخت و اشتراک پنل همکار توسط مدیریت تایید و فعال گردید.';
+    setPartners((prev) => {
+      const next = prev.map((p) => {
         if (p.id === partnerId) {
           const plan = partnerPlans.find((pl) => pl.id === p.planId) || DEFAULT_PARTNER_PLANS[0];
           const durationDays = plan.durationMonths * 30;
@@ -3715,50 +3905,109 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const expireDate = new Date();
           expireDate.setDate(expireDate.getDate() + durationDays);
 
-          const updated = {
+          const updated: PartnerAccount = {
             ...p,
+            paymentStatus: 'approved',
+            accountStatus: 'approved',
             subscriptionStatus: 'active' as PartnerSubscriptionStatus,
             subscriptionStartDate: startDate.toISOString(),
             subscriptionExpiresAt: expireDate.toISOString(),
             daysRemaining: durationDays,
-            adminApprovalNote: note || 'اشتراک توسط مدیریت تایید و فعال شد.',
+            adminApprovalNote: approvalNote,
+            ...({ updatedAt: nowIso } as any),
           };
           approvedPartner = updated;
           return updated;
         }
         return p;
-      })
-    );
+      });
+      safeStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify(next));
+      return next;
+    });
 
     if (approvedPartner) {
       syncPartnerToFirestore(approvedPartner);
+      const notifId = `notif-partner-approve-${partnerId}-${Date.now()}`;
+      const partnerNotif: JobNotification = {
+        id: notifId,
+        alertId: 'partner-payment-approval',
+        jobId: `status-partner-approve-${partnerId}`,
+        jobTitle: '✅ پرداخت و اشتراک پنل همکار تأیید شد!',
+        company: approvedPartner.companyName,
+        city: approvedPartner.city || 'استانبول',
+        salaryText: 'پنل همکار فعال شد ✓',
+        message: approvalNote,
+        read: false,
+        createdAt: nowIso,
+        targetUserId: partnerId,
+        targetRole: 'partner',
+        notificationType: 'payment_approved',
+      };
+      setJobNotifications((prev) => {
+        const next = [partnerNotif, ...prev];
+        safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
+        return next;
+      });
+      syncNotificationToFirestore(partnerNotif);
     }
 
-    showToast('اشتراک همکار با موفقیت فعال شد و دسترسی ثبت کارجو باز گردید.', 'success');
+    showToast('اشتراک همکار با موفقیت فعال شد و دسترسی کامل پنل همکار باز گردید.', 'success');
   };
 
   const rejectPartnerSubscription = (partnerId: string, reason: string) => {
     let rejectedPartner: PartnerAccount | undefined;
-    setPartners((prev) =>
-      prev.map((p) => {
+    const nowIso = new Date().toISOString();
+    const cleanReason =
+      reason && reason.trim()
+        ? reason.trim()
+        : 'پرداخت اشتراک همکار توسط مدیریت تایید نشد؛ لطفاً مجدداً از طریق درگاه آنلاین یا ثبت فیش معتبر اقدام نمایید.';
+    setPartners((prev) => {
+      const next = prev.map((p) => {
         if (p.id === partnerId) {
-          const updated = {
+          const updated: PartnerAccount = {
             ...p,
-            subscriptionStatus: 'unpaid' as PartnerSubscriptionStatus,
-            adminApprovalNote: reason || 'فیش پرداخت توسط مدیریت رد شد.',
+            paymentStatus: 'rejected',
+            accountStatus: 'rejected',
+            subscriptionStatus: 'rejected' as PartnerSubscriptionStatus,
+            adminApprovalNote: cleanReason,
+            ...({ updatedAt: nowIso } as any),
           };
           rejectedPartner = updated;
           return updated;
         }
         return p;
-      })
-    );
+      });
+      safeStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify(next));
+      return next;
+    });
 
     if (rejectedPartner) {
       syncPartnerToFirestore(rejectedPartner);
+      const notifId = `notif-partner-reject-${partnerId}-${Date.now()}`;
+      const partnerNotif: JobNotification = {
+        id: notifId,
+        alertId: 'partner-payment-rejection',
+        jobId: `status-partner-reject-${partnerId}`,
+        jobTitle: '❌ رد پرداخت اشتراک همکار توسط مدیریت',
+        company: rejectedPartner.companyName,
+        city: rejectedPartner.city || 'استانبول',
+        salaryText: 'نیازمند بررسی و پرداخت مجدد',
+        message: cleanReason,
+        read: false,
+        createdAt: nowIso,
+        targetUserId: partnerId,
+        targetRole: 'partner',
+        notificationType: 'payment_rejected',
+      };
+      setJobNotifications((prev) => {
+        const next = [partnerNotif, ...prev];
+        safeStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(next));
+        return next;
+      });
+      syncNotificationToFirestore(partnerNotif);
     }
 
-    showToast('درخواست اشتراک همکار رد شد.', 'info');
+    showToast('پرداخت اشتراک همکار رد شد و اطلاع‌رسانی به پنل همکار ارسال گردید.', 'info');
   };
 
   const updatePartnerPlanPricing = (planId: PartnerSubscriptionPlanId, priceTL: number, priceToman: number) => {
@@ -3990,6 +4239,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const syncChatToFirestore = async (chat: LiveChatSession) => {
     try {
+      fetch('/api/users.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'upsert',
+          type: 'chat',
+          record: chat,
+          chat,
+        }),
+      }).catch(() => {});
+    } catch {
+      // ignore
+    }
+    try {
+      if (!db) return;
       await setDoc(doc(db, 'chats', chat.id), chat);
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, `chats/${chat.id}`);
@@ -4005,7 +4269,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             c.status !== 'closed' &&
             c.status !== 'rejected'
         ) || null
-      : null);
+      : currentPartner
+        ? chatSessions.find(
+            (c) =>
+              (c.seekerId === currentPartner.id || c.nationalId === currentPartner.partnerCode) &&
+              c.status !== 'closed' &&
+              c.status !== 'rejected'
+          ) || null
+        : null);
 
   const requestLiveChat = (input: {
     firstName: string;
@@ -4013,30 +4284,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     phone: string;
     nationalId: string;
   }): { success: boolean; error?: string; chat?: LiveChatSession } => {
-    const cleanFirst = input.firstName.trim() || currentSeeker?.fullName?.split(' ')[0] || 'کارجو';
-    const cleanLast = input.lastName.trim() || currentSeeker?.fullName?.split(' ').slice(1).join(' ') || 'عزیز';
-    const cleanPhone = input.phone.trim() || currentSeeker?.phone || '۰۹۱۲۰۰۰۰۰۰۰';
-    const cleanNatId = input.nationalId.replace(/\D/g, '') || currentSeeker?.nationalId || '۰۰۰۰۰۰۰۰۰۰';
+    const cleanFirst = input.firstName.trim() || currentSeeker?.fullName?.split(' ')[0] || currentPartner?.fullName?.split(' ')[0] || 'کاربر';
+    const cleanLast = input.lastName.trim() || currentSeeker?.fullName?.split(' ').slice(1).join(' ') || currentPartner?.companyName || 'عزیز';
+    const cleanPhone = input.phone.trim() || currentSeeker?.phone || currentPartner?.phone || '۰۹۱۲۰۰۰۰۰۰۰';
+    const cleanNatId = input.nationalId.replace(/\D/g, '') || currentSeeker?.nationalId || currentPartner?.partnerCode || '۰۰۰۰۰۰۰۰۰۰';
 
-    const fullName = currentSeeker?.fullName || `${cleanFirst} ${cleanLast}`.trim();
+    const fullName = currentSeeker?.fullName || (currentPartner ? `${currentPartner.companyName} (${currentPartner.fullName})` : `${cleanFirst} ${cleanLast}`.trim());
     const now = new Date().toISOString();
+    const effectiveConsultFee =
+      paymentSettings.consultationFeeToman && paymentSettings.consultationFeeToman > 0
+        ? paymentSettings.consultationFeeToman
+        : (paymentSettings.consultationFeeTL || 150) * (paymentSettings.exchangeRateToman || 5460);
 
     const newSession: LiveChatSession = {
       id: 'chat-' + Date.now(),
-      seekerId: currentSeeker?.id,
+      seekerId: currentSeeker?.id || currentPartner?.id,
       firstName: cleanFirst,
       lastName: cleanLast,
       fullName,
       phone: cleanPhone,
       nationalId: cleanNatId,
-      status: 'pending',
+      status: currentPartner?.subscriptionStatus === 'active' || currentSeeker?.verificationStatus === 'approved' ? 'approved' : 'pending',
       isConsultationPaid: true,
       messages: [
         {
           id: 'msg-' + Date.now(),
           sender: 'seeker',
           senderName: fullName,
-          text: `حق مشاوره (۷۵۰,۰۰۰ تومان) واریز شد. درخواست گفتگوی آنلاین توسط «${fullName}» ثبت گردید.`,
+          text:
+            currentPartner?.subscriptionStatus === 'active'
+              ? `شروع گفتگوی آنلاین همکار رسمی «${fullName}» با مدیریت کارباما.`
+              : currentSeeker?.verificationStatus === 'approved'
+                ? `شروع گفتگوی آنلاین کارجوی تاییدشده «${fullName}» با مدیریت کارباما.`
+                : `حق مشاوره (${effectiveConsultFee.toLocaleString('fa-IR')} تومان) واریز شد. درخواست گفتگوی آنلاین توسط «${fullName}» ثبت گردید.`,
           createdAt: now,
         },
       ],
@@ -4053,18 +4333,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Play ding sound & trigger system notification
     playNotificationDingSound();
     showSafeNotification(`💬 درخواست چت آنلاین جدید: ${fullName}`, {
-      body: `کارجو «${fullName}» (تلفن: ${cleanPhone}) درخواست گفتگو ثبت کرد.`,
+      body: `کاربر «${fullName}» (تلفن: ${cleanPhone}) درخواست گفتگو ثبت کرد.`,
       tag: `new-chat-${newSession.id}`,
     });
 
     addAdminNotification({
       type: 'seeker_registered',
       title: '💬 درخواست جدید چت آنلاین با مدیر',
-      message: `کارجو «${fullName}» با کد ملی ${cleanNatId} و شماره تلفن ${cleanPhone} درخواست چت آنلاین با مدیر را ثبت کرده و منتظر تایید شماست.`,
+      message: `کاربر «${fullName}» با شناسه ${cleanNatId} و شماره تلفن ${cleanPhone} درخواست چت آنلاین با مدیر را ثبت نمود.`,
       data: { chatId: newSession.id },
     });
 
-    showToast('درخواست چت آنلاین شما ثبت شد. لطفاً منتظر تایید مدیر بمانید.', 'success');
+    showToast(
+      newSession.status === 'approved'
+        ? 'گفتگوی آنلاین شما با مدیریت کارباما فعال شد.'
+        : 'درخواست چت آنلاین شما ثبت شد. لطفاً منتظر تایید مدیر بمانید.',
+      'success'
+    );
     return { success: true, chat: newSession };
   };
 
@@ -4181,6 +4466,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveChatId(null);
   };
 
+  const visibleJobNotifications = jobNotifications.filter((n) => {
+    if (!n.targetUserId) return true;
+    if (isAdminLoggedIn) return true;
+    if (currentSeeker && n.targetUserId === currentSeeker.id) return true;
+    if (currentPartner && n.targetUserId === currentPartner.id) return true;
+    return false;
+  });
+
+  const visibleUnreadNotificationCount = visibleJobNotifications.filter((n) => !n.read).length;
+
   return (
     <AppContext.Provider
       value={{
@@ -4243,8 +4538,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         saveJobAlert,
         deleteJobAlert,
         toggleJobAlert,
-        jobNotifications,
-        unreadNotificationCount,
+        jobNotifications: visibleJobNotifications,
+        unreadNotificationCount: visibleUnreadNotificationCount,
         markNotificationAsRead,
         markAllNotificationsAsRead,
         deleteNotification,

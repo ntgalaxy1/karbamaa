@@ -62,6 +62,8 @@ import {
   Award,
   CheckCircle2,
   ShieldCheck,
+  XCircle,
+  FileText,
 } from 'lucide-react';
 import { JobImagePicker } from './JobImagePicker';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
@@ -169,7 +171,10 @@ export const JobSearch: React.FC = () => {
     submitJobWithPayment,
   } = useApp();
 
-  const computedFeeToman = (paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460);
+  const computedFeeToman =
+    paymentSettings.seekerFeeToman && paymentSettings.seekerFeeToman > 0
+      ? paymentSettings.seekerFeeToman
+      : (paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460);
   const adminAmountUnit = paymentSettings.paymentAmountUnit || 'toman';
   const adminConfiguredAmount =
     paymentSettings.directPaymentAmount && paymentSettings.directPaymentAmount > 0
@@ -798,9 +803,54 @@ export const JobSearch: React.FC = () => {
   // Check if current user is admin, verified seeker, or active partner
   const isAccessUnlocked = Boolean(
     isAdminLoggedIn ||
-      (currentSeeker && currentSeeker.verificationStatus === 'approved') ||
+      (currentSeeker &&
+        (currentSeeker.verificationStatus === 'approved' ||
+          currentSeeker.paymentStatus === 'approved' ||
+          Boolean(currentSeeker.isPaymentVerified))) ||
       (currentPartner && currentPartner.subscriptionStatus === 'active')
   );
+
+  const isCurrentSeekerRejected = Boolean(
+    currentSeeker &&
+      !isAccessUnlocked &&
+      (currentSeeker.verificationStatus === 'rejected' ||
+        currentSeeker.paymentStatus === 'rejected' ||
+        currentSeeker.seekerPaymentStatus === 'rejected')
+  );
+
+  const handleSubmitSeekerPaymentReference = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentSeeker) return;
+    if (!paymentRefNote.trim() && !paymentReceiptPhoto) {
+      showToast('لطفاً شماره پیگیری تراکنش را وارد کنید یا تصویر فیش را بارگذاری نمایید.', 'error');
+      return;
+    }
+    const cleanRef = paymentRefNote.trim() || `REF-${Date.now().toString().slice(-6)}`;
+    updateProfile({
+      seekerPaymentStatus: 'paid',
+      paymentStatus: 'pending',
+      accountStatus: 'pending',
+      verificationStatus: 'pending',
+      isPaymentVerified: false,
+      seekerPaymentRefId: cleanRef,
+      seekerPaidAmount: `${seekerFeeToman.toLocaleString('fa-IR')} تومان`,
+      paymentReceiptPhotoUrl: paymentReceiptPhoto || currentSeeker.paymentReceiptPhotoUrl,
+      adminVerificationNote: `ثبت اطلاعات پرداخت توسط کارجو | کد پیگیری: ${cleanRef} | تاریخ: ${new Date().toLocaleDateString('fa-IR')}`,
+    });
+    addAdminNotification({
+      type: 'seeker_payment_referred',
+      title: '💳 ثبت فیش / کد پیگیری پرداخت توسط کارجو',
+      message: `کارجو «${currentSeeker.fullName}» با کد ملی ${currentSeeker.nationalId} مشخصات پرداخت (${seekerFeeToman.toLocaleString('fa-IR')} تومان - کد پیگیری: ${cleanRef}) را جهت تایید و بازگشایی قفل ارسال نمود.`,
+      data: {
+        seekerId: currentSeeker.id,
+        paymentRefId: cleanRef,
+        receiptPhotoUrl: paymentReceiptPhoto || undefined,
+      },
+    });
+    setIsReferredToAdmin(true);
+    setPaymentRefNote('');
+    showToast('✅ اطلاعات پرداخت شما ثبت شد و به پنل مدیریت جهت تایید فوری ارسال گردید.', 'success');
+  };
 
   const handleApplyClick = (job: JobVacancy) => {
     if (!currentSeeker) {
@@ -1199,15 +1249,27 @@ export const JobSearch: React.FC = () => {
           <div className="mt-5 pt-4 border-t border-slate-800/80 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300">
               <div className="flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${currentSeeker.verificationStatus === 'approved' ? 'bg-emerald-400' : 'bg-amber-400 animate-ping'}`} />
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    isAccessUnlocked
+                      ? 'bg-emerald-400'
+                      : isCurrentSeekerRejected
+                        ? 'bg-red-500 animate-ping'
+                        : 'bg-amber-400 animate-ping'
+                  }`}
+                />
                 <span>
                   {t('loggedInAsNotice', appLanguage)} <strong>{currentSeeker.fullName}</strong> ({t('fatherNameLabel', appLanguage)} {currentSeeker.fatherName} - {t('nationalIdLabel', appLanguage)} {currentSeeker.nationalId}) {t('loggedNoticeEnd', appLanguage)}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {currentSeeker.verificationStatus === 'approved' ? (
+                {isAccessUnlocked ? (
                   <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-lg text-xs font-bold">
                     حساب فعال و تاییدشده ✓
+                  </span>
+                ) : isCurrentSeekerRejected ? (
+                  <span className="px-2.5 py-1 bg-red-500/25 text-red-200 border border-red-500/50 rounded-lg text-xs font-bold">
+                    رد پرداخت توسط مدیریت ❌ (نیازمند پرداخت مجدد)
                   </span>
                 ) : (
                   <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold">
@@ -1949,16 +2011,30 @@ export const JobSearch: React.FC = () => {
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0">
-                    <Lock className="w-7 h-7" />
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border ${
+                    isCurrentSeekerRejected
+                      ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                      : 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                  }`}>
+                    {isCurrentSeekerRejected ? <XCircle className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-bold text-white">
-                        پرونده کارجو ثبت گردید | قفل نمایش آگهی‌های کارفرما
+                        {isCurrentSeekerRejected
+                          ? 'عدم تایید پرداخت توسط مدیریت | محدودیت دسترسی به آگهی‌ها'
+                          : 'پرونده کارجو ثبت گردید | قفل نمایش آگهی‌های کارفرما'}
                       </h3>
-                      <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold">
-                        {isReferredToAdmin ? 'در انتظار تایید مدیریت ⏳' : 'در انتظار واریز و ارجاع 🔒'}
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                        isCurrentSeekerRejected
+                          ? 'bg-red-500/25 text-red-200 border-red-500/50'
+                          : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                      }`}>
+                        {isCurrentSeekerRejected
+                          ? 'رد پرداخت ❌'
+                          : isReferredToAdmin || currentSeeker.seekerPaymentStatus === 'paid'
+                            ? 'در انتظار تایید مدیریت ⏳'
+                            : 'در انتظار واریز و ارجاع 🔒'}
                       </span>
                     </div>
                     <p className="text-xs text-slate-300 mt-1 leading-relaxed">
@@ -1973,6 +2049,22 @@ export const JobSearch: React.FC = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Prominent Rejection Notice if Admin Rejected Payment */}
+              {isCurrentSeekerRejected && (
+                <div className="p-5 bg-red-950/80 border-2 border-red-500/70 rounded-2xl space-y-2 shadow-xl">
+                  <div className="flex items-center gap-2 text-red-200 font-black text-sm">
+                    <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+                    <span>اطلاعیه مدیریت: پرداخت قبلی شما مورد تایید قرار نگرفت</span>
+                  </div>
+                  <p className="text-xs text-white font-bold leading-relaxed">
+                    علت رد پرداخت: {currentSeeker.adminVerificationNote || 'عدم تطابق مبلغ واریزی یا نامعتبر بودن شماره پیگیری تراکنش. لطفاً مجدداً از طریق درگاه آنلاین یا ارسال فیش معتبر اقدام فرمایید.'}
+                  </p>
+                  <p className="text-[11px] text-red-200/90 leading-relaxed">
+                    جهت بازگشایی قفل آگهی‌ها و ارسال رزومه، لطفاً از طریق دکمه «پرداخت آنلاین» مجدداً پرداخت را انجام دهید و یا شماره پیگیری / تصویر فیش صحیح خود را در بخش زیر ثبت نمایید.
+                  </p>
+                </div>
+              )}
 
               {/* Seeker Profile Summary Card */}
               <div className="p-4 bg-slate-950/70 border border-slate-800 rounded-2xl grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -2024,17 +2116,57 @@ export const JobSearch: React.FC = () => {
                   className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer transition"
                 >
                   <CreditCard className="w-4 h-4 text-slate-950" />
-                  <span>پرداخت آنلاین</span>
+                  <span>{isCurrentSeekerRejected ? 'تلاش مجدد پرداخت آنلاین' : 'پرداخت آنلاین'}</span>
                 </button>
               </div>
 
-              {/* Online Payment Status Box (Manual Card-to-Card disabled) */}
-              {(isReferredToAdmin || currentSeeker.seekerPaymentStatus === 'paid' || Boolean(currentSeeker.seekerPaymentRefId)) && (
+              {/* Submit Payment Reference / Receipt Photo Form */}
+              <form onSubmit={handleSubmitSeekerPaymentReference} className="p-5 bg-slate-950/90 border border-slate-800 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h4 className="text-xs font-extrabold text-amber-300 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-amber-400" />
+                    <span>ثبت شماره پیگیری تراکنش یا بارگذاری تصویر فیش واریزی جهت تایید مدیریت</span>
+                  </h4>
+                  <span className="text-[11px] text-slate-400">بررسی و بازگشایی فوری پس از ارسال</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <input
+                    type="text"
+                    value={paymentRefNote}
+                    onChange={(e) => setPaymentRefNote(e.target.value)}
+                    placeholder="شماره پیگیری شاپرک یا کد ارجاع بانکی..."
+                    className="sm:col-span-2 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"
+                  />
+                  <label className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition">
+                    <Camera className="w-4 h-4 text-amber-400" />
+                    <span>{paymentReceiptPhoto ? 'تصویر فیش ضمیمه شد ✓' : 'انتخاب تصویر فیش'}</span>
+                    <input
+                      ref={receiptFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePaymentReceiptPhotoUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>ثبت و ارسال مشخصات پرداخت به مدیریت</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Online Payment Status Box (Only when pending review, not rejected) */}
+              {!isCurrentSeekerRejected && (isReferredToAdmin || currentSeeker.seekerPaymentStatus === 'paid' || Boolean(currentSeeker.seekerPaymentRefId)) && (
                 <div className="p-5 bg-slate-950/80 border border-emerald-500/40 rounded-2xl space-y-3">
                   <div className="p-4 bg-emerald-950/40 border border-emerald-500/40 rounded-xl text-emerald-200 text-xs space-y-2.5">
                     <div className="flex items-center gap-2 font-bold text-emerald-300">
                       <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-                      <span>اطلاعات پرداخت آنلاین هزینه خدمات ثبت و به مدیریت ارجاع گردید!</span>
+                      <span>اطلاعات پرداخت هزینه خدمات ثبت و به مدیریت ارجاع گردید!</span>
                     </div>
                     {currentSeeker.seekerPaymentRefId && (
                       <div className="p-2.5 bg-slate-900/80 rounded-xl border border-teal-500/30 flex items-center justify-between">
@@ -2053,21 +2185,36 @@ export const JobSearch: React.FC = () => {
             </div>
           ) : currentPartner ? (
             <div className="text-center py-8 space-y-4 max-w-lg mx-auto">
-              <div className="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center mx-auto">
-                <Lock className="w-8 h-8" />
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto border ${
+                currentPartner.subscriptionStatus === 'rejected' || currentPartner.paymentStatus === 'rejected'
+                  ? 'bg-red-500/20 text-red-400 border-red-500/50'
+                  : 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+              }`}>
+                {currentPartner.subscriptionStatus === 'rejected' || currentPartner.paymentStatus === 'rejected' ? (
+                  <XCircle className="w-8 h-8" />
+                ) : (
+                  <Lock className="w-8 h-8" />
+                )}
               </div>
               <h3 className="text-lg font-bold text-white">
-                حساب همکار شما در انتظار تکمیل پرداخت آنلاین و تایید مدیریت است
+                {currentPartner.subscriptionStatus === 'rejected' || currentPartner.paymentStatus === 'rejected'
+                  ? '❌ پرداخت اشتراک همکار شما توسط مدیریت تایید نشد'
+                  : 'حساب همکار شما در انتظار تکمیل پرداخت آنلاین و تایید مدیریت است'}
               </h3>
+              {(currentPartner.subscriptionStatus === 'rejected' || currentPartner.paymentStatus === 'rejected') && currentPartner.adminApprovalNote && (
+                <div className="p-3.5 rounded-xl bg-red-950/80 border border-red-500/60 text-xs text-red-200 font-bold">
+                  علت اعلام‌شده توسط مدیریت: {currentPartner.adminApprovalNote}
+                </div>
+              )}
               <p className="text-xs text-slate-300 leading-relaxed">
-                همکار گرامی ({currentPartner.companyName})، جهت فعال‌سازی کامل پنل همکاری و دسترسی به تمام امکانات سامانه، لطفاً از طریق پنل همکار اشتراک خود را به صورت آنلاین پرداخت نمایید.
+                همکار گرامی ({currentPartner.companyName})، جهت فعال‌سازی کامل پنل همکاری و دسترسی به تمام امکانات سامانه، لطفاً از طریق پنل همکار اشتراک خود را پرداخت یا مجدداً ثبت نمایید.
               </p>
               <button
                 type="button"
                 onClick={() => setActiveTab('partner')}
                 className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition shadow-lg cursor-pointer"
               >
-                ورود به پنل همکار و پرداخت آنلاین اشتراک
+                ورود به پنل همکار و پرداخت اشتراک
               </button>
             </div>
           ) : (

@@ -21,9 +21,11 @@ import {
 export const LiveChatWidget: React.FC = () => {
   const {
     currentSeeker,
+    currentPartner,
     isAdminLoggedIn,
     chatSessions,
     activeSeekerChat,
+    requestLiveChat,
     approveLiveChat,
     rejectLiveChat,
     sendLiveChatMessage,
@@ -40,6 +42,14 @@ export const LiveChatWidget: React.FC = () => {
   const [selectedAdminChatId, setSelectedAdminChatId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const isUserApprovedForDirectChat = Boolean(
+    (currentSeeker &&
+      (currentSeeker.verificationStatus === 'approved' ||
+        currentSeeker.paymentStatus === 'approved' ||
+        currentSeeker.isPaymentVerified)) ||
+      (currentPartner && currentPartner.subscriptionStatus === 'active')
+  );
 
   // Dynamic consultation fee configured in Admin Panel
   const consultationFeeToman =
@@ -120,7 +130,7 @@ export const LiveChatWidget: React.FC = () => {
           </div>
 
           {/* ========================================================= */}
-          {/* SEEKER VIEW (When Admin is NOT logged in) */}
+          {/* SEEKER / PARTNER VIEW (When Admin is NOT logged in) */}
           {/* ========================================================= */}
           {!isAdminLoggedIn && (
             <div className="flex-1 flex flex-col overflow-hidden">
@@ -128,7 +138,7 @@ export const LiveChatWidget: React.FC = () => {
               {!activeSeekerChat ||
               activeSeekerChat.status === 'rejected' ||
               activeSeekerChat.status === 'closed' ||
-              !activeSeekerChat.isConsultationPaid ? (
+              (!activeSeekerChat.isConsultationPaid && !isUserApprovedForDirectChat) ? (
                 <div className="p-3 space-y-3 overflow-y-auto text-[11px]">
                   <div className="bg-gradient-to-br from-red-950/90 via-slate-900 to-amber-950/80 border border-amber-500/50 rounded-xl p-3 space-y-2 text-center shadow-md">
                     <img
@@ -144,7 +154,9 @@ export const LiveChatWidget: React.FC = () => {
                       از مبدا تا مقصد و محل کار با شما هستیم
                     </h4>
                     <p className="text-[11px] text-white leading-relaxed font-bold">
-                      حق مشاوره {consultationFeeToman.toLocaleString('fa-IR')} تومان
+                      {isUserApprovedForDirectChat
+                        ? 'حساب شما تایید شده است — گفتگوی آنلاین رایگان'
+                        : `حق مشاوره ${consultationFeeToman.toLocaleString('fa-IR')} تومان`}
                     </p>
 
                     <ul className="text-right text-[10px] text-slate-300 space-y-1.5 pt-2 border-t border-slate-800">
@@ -163,28 +175,49 @@ export const LiveChatWidget: React.FC = () => {
                     </ul>
                   </div>
 
-                  {/* Payment Trigger Button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const adminAmountUnit = paymentSettings?.paymentAmountUnit || 'toman';
-                      const adminConfiguredAmount =
-                        adminAmountUnit === 'rial'
-                          ? consultationFeeToman * 10
-                          : consultationFeeToman;
-                      if (adminAmountUnit === 'toman') {
-                        window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}&unit=toman`;
-                      } else {
-                        window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}`;
-                      }
-                    }}
-                    className="w-full py-2.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black rounded-xl shadow-lg shadow-amber-600/30 transition flex items-center justify-center gap-1.5 text-xs cursor-pointer"
-                  >
-                    <CreditCard className="w-4 h-4 text-slate-950" />
-                    <span>پرداخت آنلاین ({consultationFeeToman.toLocaleString('fa-IR')} تومان)</span>
-                  </button>
+                  {isUserApprovedForDirectChat ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const res = requestLiveChat({
+                          firstName: currentSeeker?.fullName || currentPartner?.companyName || 'کاربر',
+                          lastName: currentPartner?.fullName || 'تاییدشده',
+                          phone: currentSeeker?.phone || currentPartner?.phone || '09120000000',
+                          nationalId: currentSeeker?.nationalId || currentPartner?.nationalId || '0012345678',
+                        });
+                        if (res.chat) {
+                          approveLiveChat(res.chat.id);
+                        }
+                      }}
+                      className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black rounded-xl shadow-lg transition flex items-center justify-center gap-1.5 text-xs cursor-pointer"
+                    >
+                      <MessageCircle className="w-4 h-4 text-slate-950" />
+                      <span>آغاز فوری گفتگوی آنلاین با مدیریت</span>
+                    </button>
+                  ) : (
+                    /* Payment Trigger Button */
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const adminAmountUnit = paymentSettings?.paymentAmountUnit || 'toman';
+                        const adminConfiguredAmount =
+                          adminAmountUnit === 'rial'
+                            ? consultationFeeToman * 10
+                            : consultationFeeToman;
+                        if (adminAmountUnit === 'toman') {
+                          window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}&unit=toman`;
+                        } else {
+                          window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}`;
+                        }
+                      }}
+                      className="w-full py-2.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black rounded-xl shadow-lg shadow-amber-600/30 transition flex items-center justify-center gap-1.5 text-xs cursor-pointer"
+                    >
+                      <CreditCard className="w-4 h-4 text-slate-950" />
+                      <span>پرداخت آنلاین ({consultationFeeToman.toLocaleString('fa-IR')} تومان)</span>
+                    </button>
+                  )}
                 </div>
-              ) : activeSeekerChat.status === 'pending' ? (
+              ) : activeSeekerChat.status === 'pending' && !isUserApprovedForDirectChat ? (
                 /* STATE 2: PAID, WAITING FOR ADMIN APPROVAL */
                 <div className="p-4 text-center space-y-2.5 overflow-y-auto">
                   <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto animate-pulse">

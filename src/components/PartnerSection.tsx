@@ -10,7 +10,7 @@ import {
 import { sanitizeNumericOnly, sanitizeCardNumber } from '../utils/inputUtils';
 import { getDistrictsForCity } from '../data/turkeyData';
 import { ALL_TURKEY_CITIES_FA } from '../data/turkeyCities';
-import { Gender, JobSeeker, TargetCountry } from '../types';
+import { Gender, JobSeeker, JobVacancy, JobCategory, TurkishLevel, TargetCountry } from '../types';
 import {
   Users,
   CheckCircle,
@@ -33,6 +33,12 @@ import {
   X,
   IdCard,
   FileText,
+  Upload,
+  Send,
+  MessageSquare,
+  XCircle,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
 
 export const PartnerSection: React.FC = () => {
@@ -46,15 +52,44 @@ export const PartnerSection: React.FC = () => {
     registerPartner,
     logoutPartner,
     recoverPassword,
+    submitPartnerSubscriptionPayment,
     registerSeekerByPartner,
     updateSeekerRecord,
     deleteSeekerRecord,
     jobSeekers,
     jobs,
+    addJob,
+    updateJob,
+    deleteJob,
+    applications,
+    updateApplicationStatus,
+    activeSeekerChat,
+    requestLiveChat,
+    sendLiveChatMessage,
     showToast,
     setActiveTab,
     isAdminLoggedIn,
   } = useApp();
+
+  // Partner Dashboard Active Tab (when unlocked)
+  const [partnerDashTab, setPartnerDashTab] = useState<'seekers' | 'jobs' | 'applications' | 'chat'>('seekers');
+
+  // Partner Subscription Manual Receipt / Ref State
+  const [partnerPayRefInput, setPartnerPayRefInput] = useState('');
+  const [partnerPayReceiptPhoto, setPartnerPayReceiptPhoto] = useState<string | null>(null);
+
+  // Partner Job Management State
+  const [partnerJobTitle, setPartnerJobTitle] = useState('');
+  const [partnerJobCity, setPartnerJobCity] = useState(currentPartner?.city || 'استانبول');
+  const [partnerJobDistrict, setPartnerJobDistrict] = useState('فاتیح (Fatih)');
+  const [partnerJobCategory, setPartnerJobCategory] = useState<JobCategory>('textile');
+  const [partnerJobSalaryMin, setPartnerJobSalaryMin] = useState(32000);
+  const [partnerJobSalaryMax, setPartnerJobSalaryMax] = useState(42000);
+  const [partnerJobDesc, setPartnerJobDesc] = useState('');
+  const [partnerJobAccommodation, setPartnerJobAccommodation] = useState(true);
+  const [partnerJobMeals, setPartnerJobMeals] = useState(true);
+  const [editingPartnerJob, setEditingPartnerJob] = useState<JobVacancy | null>(null);
+  const [partnerChatInput, setPartnerChatInput] = useState('');
 
   // Auth form states (if not logged in)
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
@@ -283,7 +318,7 @@ export const PartnerSection: React.FC = () => {
     return 'تومان';
   };
 
-  const paymentStatusBadge = (status?: 'paid' | 'partial' | 'unpaid') => {
+  const paymentStatusBadge = (status?: JobSeeker['seekerPaymentStatus']) => {
     if (status === 'partial') {
       return (
         <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
@@ -291,10 +326,10 @@ export const PartnerSection: React.FC = () => {
         </span>
       );
     }
-    if (status === 'unpaid') {
+    if (status === 'unpaid' || status === 'rejected') {
       return (
         <span className="px-2 py-0.5 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30 text-[10px] font-bold">
-          در انتظار پرداخت
+          {status === 'rejected' ? 'رد پرداخت ❌' : 'در انتظار پرداخت'}
         </span>
       );
     }
@@ -766,6 +801,10 @@ export const PartnerSection: React.FC = () => {
       partnerPlans.find((pl) => pl.id === currentPartner.planId) ||
       partnerPlans[0];
     const isPendingApproval = currentPartner.subscriptionStatus === 'pending_approval';
+    const isRejected =
+      currentPartner.subscriptionStatus === 'rejected' ||
+      currentPartner.paymentStatus === 'rejected' ||
+      (currentPartner.subscriptionStatus === 'unpaid' && Boolean(currentPartner.adminApprovalNote));
 
     const handlePartnerOnlinePayment = () => {
       const unit = paymentSettings.paymentAmountUnit || 'toman';
@@ -791,6 +830,35 @@ export const PartnerSection: React.FC = () => {
       } else {
         window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}`;
       }
+    };
+
+    const handlePartnerReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setPartnerPayReceiptPhoto(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+
+    const handleSubmitPartnerPaymentToAdmin = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!partnerPayRefInput.trim() && !partnerPayReceiptPhoto) {
+        showToast('لطفاً شماره پیگیری تراکنش را وارد کنید یا تصویر فیش واریزی را انتخاب نمایید.', 'error');
+        return;
+      }
+      const cleanRef = partnerPayRefInput.trim() || `PART-REF-${Date.now().toString().slice(-6)}`;
+      submitPartnerSubscriptionPayment(
+        activePlan?.id || '1_month',
+        'sepal',
+        partnerPayReceiptPhoto || undefined,
+        cleanRef,
+        currentPartner.fullName
+      );
+      setPartnerPayRefInput('');
     };
 
     return (
@@ -826,42 +894,69 @@ export const PartnerSection: React.FC = () => {
         </div>
 
         {/* Locked Activation Gate */}
-        <div className="bg-slate-900 border-2 border-amber-500/40 rounded-3xl p-6 shadow-2xl space-y-5">
+        <div className={`bg-slate-900 border-2 rounded-3xl p-6 shadow-2xl space-y-5 ${
+          isRejected ? 'border-red-500/70' : 'border-amber-500/40'
+        }`}>
           <div className="flex items-start gap-3.5 border-b border-slate-800 pb-4">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0">
-              <Lock className="w-6 h-6" />
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border ${
+              isRejected
+                ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                : 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+            }`}>
+              {isRejected ? <XCircle className="w-6 h-6" /> : <Lock className="w-6 h-6" />}
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base sm:text-lg font-black text-white">
-                  فعال‌سازی پنل و اشتراک همکار
+                  {isRejected ? 'عدم تایید پرداخت اشتراک همکار' : 'فعال‌سازی پنل و اشتراک همکار'}
                 </h3>
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-[11px] font-black border ${
                     isPendingApproval
                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                      : 'bg-red-500/20 text-red-300 border-red-500/40'
+                      : isRejected
+                        ? 'bg-red-500/25 text-red-200 border-red-500/50'
+                        : 'bg-red-500/20 text-red-300 border-red-500/40'
                   }`}
                 >
-                  {isPendingApproval ? '⏳ در انتظار تایید مدیریت' : '🔒 غیرفعال (نیازمند پرداخت آنلاین)'}
+                  {isPendingApproval
+                    ? '⏳ در انتظار تایید مدیریت'
+                    : isRejected
+                      ? '❌ رد پرداخت توسط مدیریت'
+                      : '🔒 غیرفعال (نیازمند پرداخت آنلاین)'}
                 </span>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">
-                همکار گرامی، امکانات پنل همکاری (ثبت کارجو، مدیریت پرونده‌ها و دسترسی به ظرفیت‌های شغلی) تا زمان تکمیل پرداخت آنلاین و تایید نهایی توسط مدیریت غیرفعال می‌باشد.
+                همکار گرامی، امکانات پنل همکاری (ثبت کارجو، ثبت آگهی استخدام، مشاهده رزومه‌ها و گفتگوی آنلاین) تا زمان تکمیل پرداخت اشتراک و تایید نهایی توسط مدیریت غیرفعال می‌باشد.
               </p>
             </div>
           </div>
 
-          {isPendingApproval ? (
+          {isRejected && (
+            <div className="p-4 rounded-2xl bg-red-950/80 border-2 border-red-500/70 text-xs text-red-100 space-y-1.5 shadow-lg">
+              <div className="flex items-center gap-2 font-black text-red-200 text-sm">
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+                <span>اطلاعیه مدیریت: پرداخت اشتراک شما مورد تایید قرار نگرفت</span>
+              </div>
+              <p className="font-bold text-white leading-relaxed">
+                علت رد پرداخت: {currentPartner.adminApprovalNote || 'عدم تطابق مبلغ واریزی با پلن انتخابی یا نامعتبر بودن شماره پیگیری تراکنش.'}
+              </p>
+              <p className="text-[11px] text-red-200/90 leading-relaxed">
+                شما می‌توانید همین حالا پلن اشتراک مورد نظر را انتخاب کرده و از طریق درگاه آنلاین پرداخت را مجدداً انجام دهید و یا شماره پیگیری / تصویر فیش معتبر را ارسال نمایید.
+              </p>
+            </div>
+          )}
+
+          {isPendingApproval && (
             <div className="p-5 rounded-2xl bg-amber-950/30 border border-amber-500/40 space-y-3 text-center">
               <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-400 text-amber-300 flex items-center justify-center mx-auto">
                 <CheckCircle className="w-6 h-6" />
               </div>
               <h4 className="text-sm sm:text-base font-black text-amber-300">
-                پرداخت آنلاین شما ثبت شد و در انتظار تایید مدیریت است
+                پرداخت اشتراک شما ثبت شد و در انتظار تایید مدیریت است
               </h4>
               <p className="text-xs text-slate-300 leading-relaxed max-w-lg mx-auto">
-                اطلاعات پرداخت حق اشتراک شما برای مدیریت ارسال گردیده است. به محض بررسی و تایید توسط مدیر سامانه، پنل همکاری شما به صورت خودکار فعال خواهد شد.
+                اطلاعات پرداخت حق اشتراک شما برای مدیریت ارسال گردیده است. به محض بررسی و تایید توسط مدیر سامانه، پنل همکاری شما به صورت خودکار و آنی فعال خواهد شد.
               </p>
               {currentPartner.paymentReferenceId && (
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-950 border border-amber-500/30 text-xs">
@@ -870,82 +965,103 @@ export const PartnerSection: React.FC = () => {
                 </div>
               )}
             </div>
-          ) : (
-            <div className="space-y-4">
-              {currentPartner.adminApprovalNote && (
-                <div className="p-3.5 rounded-2xl bg-red-950/50 border border-red-500/40 text-xs text-red-200 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                  <span>یادداشت مدیریت: {currentPartner.adminApprovalNote}</span>
-                </div>
-              )}
+          )}
 
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-300">
-                  انتخاب دوره اشتراک پنل همکاری:
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {partnerPlans.map((pl) => {
-                    const isSelected = selectedActivationPlanId === pl.id;
-                    return (
-                      <button
-                        key={pl.id}
-                        type="button"
-                        onClick={() => setSelectedActivationPlanId(pl.id)}
-                        className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between gap-2 cursor-pointer ${
-                          isSelected
-                            ? 'bg-indigo-600/25 border-2 border-indigo-400 text-white shadow-lg'
-                            : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span className="text-xs sm:text-sm font-black text-white">{pl.title}</span>
-                          {pl.badge && (
-                            <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold">
-                              {pl.badge}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center justify-between w-full pt-1 border-t border-slate-800/80">
-                          <span className="text-xs font-mono font-black text-emerald-400">
-                            {pl.priceToman.toLocaleString('fa-IR')} تومان
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-300">
+                انتخاب دوره اشتراک پنل همکاری (به‌روزرسانی آنی طبق تعرفه مدیریت):
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {partnerPlans.map((pl) => {
+                  const isSelected = selectedActivationPlanId === pl.id;
+                  return (
+                    <button
+                      key={pl.id}
+                      type="button"
+                      onClick={() => setSelectedActivationPlanId(pl.id)}
+                      className={`p-4 rounded-2xl border text-right transition flex flex-col justify-between gap-2 cursor-pointer ${
+                        isSelected
+                          ? 'bg-indigo-600/25 border-2 border-indigo-400 text-white shadow-lg'
+                          : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-xs sm:text-sm font-black text-white">{pl.title}</span>
+                        {pl.badge && (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+                            {pl.badge}
                           </span>
-                          <span className="text-[11px] font-mono text-slate-400">
-                            ({pl.priceTL.toLocaleString('fa-IR')} لیر)
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/30 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">پلن انتخابی جهت فعال‌سازی:</span>
-                  <span className="font-bold text-white">{activePlan?.title}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">مبلغ قابل پرداخت در درگاه آنلاین:</span>
-                  <span className="font-mono font-black text-emerald-400 text-sm">
-                    {(Number(paymentSettings.directPaymentAmount) > 0
-                      ? Number(paymentSettings.directPaymentAmount)
-                      : activePlan?.priceToman || 0
-                    ).toLocaleString('fa-IR')}{' '}
-                    {(paymentSettings.paymentAmountUnit || 'toman') === 'toman' ? 'تومان' : 'ریال'}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handlePartnerOnlinePayment}
-                  className="w-full py-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl text-sm shadow-xl shadow-emerald-900/40 transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <DollarSign className="w-5 h-5" />
-                  <span>پرداخت آنلاین و فعال‌سازی پنل همکار</span>
-                </button>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between w-full pt-1 border-t border-slate-800/80">
+                        <span className="text-xs font-mono font-black text-emerald-400">
+                          {pl.priceToman.toLocaleString('fa-IR')} تومان
+                        </span>
+                        <span className="text-[11px] font-mono text-slate-400">
+                          ({pl.priceTL.toLocaleString('fa-IR')} لیر)
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          )}
+
+            <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/30 space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">پلن انتخابی جهت فعال‌سازی:</span>
+                <span className="font-bold text-white">{activePlan?.title}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">مبلغ قابل پرداخت در درگاه آنلاین:</span>
+                <span className="font-mono font-black text-emerald-400 text-sm">
+                  {(Number(paymentSettings.directPaymentAmount) > 0
+                    ? Number(paymentSettings.directPaymentAmount)
+                    : activePlan?.priceToman || 0
+                  ).toLocaleString('fa-IR')}{' '}
+                  {(paymentSettings.paymentAmountUnit || 'toman') === 'toman' ? 'تومان' : 'ریال'}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handlePartnerOnlinePayment}
+                className="w-full py-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl text-sm shadow-xl shadow-emerald-900/40 transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <DollarSign className="w-5 h-5" />
+                <span>{isRejected ? 'تلاش مجدد پرداخت آنلاین اشتراک همکار' : 'پرداخت آنلاین و فعال‌سازی پنل همکار'}</span>
+              </button>
+            </div>
+
+            {/* Submit Payment Reference / Receipt Photo for Partner */}
+            <form onSubmit={handleSubmitPartnerPaymentToAdmin} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+              <span className="text-xs font-extrabold text-amber-300 block">
+                ثبت کد پیگیری پرداخت یا تصویر فیش واریزی اشتراک همکار:
+              </span>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={partnerPayRefInput}
+                  onChange={(e) => setPartnerPayRefInput(e.target.value)}
+                  placeholder="شماره پیگیری تراکنش شاپرک یا کد ارجاع بانکی..."
+                  className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                />
+                <label className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
+                  <Upload className="w-4 h-4 text-amber-400" />
+                  <span>{partnerPayReceiptPhoto ? 'فیش ضمیمه شد ✓' : 'بارگذاری فیش'}</span>
+                  <input type="file" accept="image/*" onChange={handlePartnerReceiptUpload} className="hidden" />
+                </label>
+              </div>
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+                <span>ارسال مشخصات پرداخت اشتراک جهت تایید مدیریت</span>
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     );
@@ -985,59 +1101,522 @@ export const PartnerSection: React.FC = () => {
     );
   });
 
+  const handleCreatePartnerJob = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!partnerJobTitle.trim() || !partnerJobDesc.trim()) {
+      showToast('لطفاً عنوان شغل و شرح وظایف را وارد نمایید.', 'error');
+      return;
+    }
+    addJob({
+      title: partnerJobTitle.trim(),
+      company: activePartner.companyName,
+      city: partnerJobCity,
+      district: partnerJobDistrict,
+      category: partnerJobCategory,
+      subcategory: partnerJobTitle.trim(),
+      contractType: 'full_time',
+      payFrequency: 'monthly',
+      keywords: [partnerJobTitle.trim(), partnerJobCity, activePartner.companyName],
+      salaryMin: Number(partnerJobSalaryMin) || 30000,
+      salaryMax: Number(partnerJobSalaryMax) || 40000,
+      currency: 'TRY',
+      accommodation: partnerJobAccommodation,
+      meals: partnerJobMeals,
+      hasLeave: true,
+      leaveDetails: '۱ روز در هفته',
+      workPermitSupport: true,
+      turkishRequired: 'basic',
+      gender: 'all',
+      description: partnerJobDesc.trim(),
+      requirements: ['مسئولیت‌پذیری و نظم کاری'],
+      contactPhone: activePartner.phone || '+90 501 069 3816',
+      contactWhatsapp: activePartner.phone || '+90 501 069 3816',
+      isActive: true,
+    });
+    setPartnerJobTitle('');
+    setPartnerJobDesc('');
+  };
+
+  const handleSaveEditedPartnerJob = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPartnerJob) return;
+    updateJob(editingPartnerJob.id, editingPartnerJob);
+    setEditingPartnerJob(null);
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Simple Partner Top Bar */}
-      <div className="bg-slate-900 border border-indigo-500/30 rounded-3xl p-5 text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 shrink-0">
-            <Building2 className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base sm:text-lg font-black text-white">
-                پنل همکار: {activePartner.companyName}
-              </h2>
-              <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-400/40 text-[11px] font-mono font-bold text-indigo-300">
-                کد: {activePartner.partnerCode}
-              </span>
+      <div className="bg-slate-900 border border-indigo-500/30 rounded-3xl p-5 text-white shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 shrink-0">
+              <Building2 className="w-6 h-6" />
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              مدیریت کارجویان ثبت‌شده توسط همکار (مشخصات کارجو، کار انتخاب‌شده و مبلغ پرداختی)
-            </p>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-black text-white">
+                  پنل همکار: {activePartner.companyName}
+                </h2>
+                <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-400/40 text-[11px] font-mono font-bold text-indigo-300">
+                  کد: {activePartner.partnerCode}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-[11px] font-bold text-emerald-300">
+                  اشتراک فعال و تاییدشده ✓
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                مدیریت یکپارچه کارجویان، ثبت و ویرایش آگهی‌های استخدام، بررسی رزومه‌ها و گفتگوی آنلاین
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-indigo-400" />
+              <span>کارجویان ثبت‌شده من:</span>
+              <span className="text-amber-400 font-mono text-sm">{myRegisteredSeekers.length} نفر</span>
+            </div>
+
+            {currentPartner && (
+              <button
+                onClick={logoutPartner}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-300 border border-slate-700 transition cursor-pointer"
+                title="خروج از حساب همکار"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
-          <div className="px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold flex items-center gap-1.5">
-            <Users className="w-4 h-4 text-indigo-400" />
-            <span>کارجویان ثبت‌شده من:</span>
-            <span className="text-amber-400 font-mono text-sm">{myRegisteredSeekers.length} نفر</span>
-          </div>
+        {/* Unified Partner Dashboard Navigation Tabs */}
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-800">
+          <button
+            type="button"
+            onClick={() => setPartnerDashTab('seekers')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              partnerDashTab === 'seekers'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>کارجویان ثبت‌شده ({myRegisteredSeekers.length})</span>
+          </button>
 
           <button
             type="button"
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md"
+            onClick={() => setPartnerDashTab('jobs')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              partnerDashTab === 'jobs'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
+            }`}
           >
-            <PlusCircle className="w-4 h-4" />
-            <span>{showAddForm ? 'بستن فرم ثبت' : 'ثبت کارجو جدید'}</span>
+            <Briefcase className="w-4 h-4" />
+            <span>ثبت و مدیریت آگهی‌های شغلی ({jobs.length})</span>
           </button>
 
-          {currentPartner && (
-            <button
-              onClick={logoutPartner}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-300 border border-slate-700 transition"
-              title="خروج از حساب همکار"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setPartnerDashTab('applications')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              partnerDashTab === 'applications'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>درخواست‌های کاری کارجویان ({applications.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPartnerDashTab('chat')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              partnerDashTab === 'chat'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border border-slate-700'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>گفتگوی آنلاین با متقاضیان و مدیریت</span>
+          </button>
         </div>
       </div>
 
+      {/* TAB 2: PARTNER JOB POSTING & MANAGEMENT */}
+      {partnerDashTab === 'jobs' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
+            <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+              <PlusCircle className="w-5 h-5 text-emerald-400" />
+              <span>ثبت آگهی استخدام جدید در سامانه</span>
+            </h3>
+            <form onSubmit={handleCreatePartnerJob} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">عنوان شغل *</label>
+                  <input
+                    type="text"
+                    required
+                    value={partnerJobTitle}
+                    onChange={(e) => setPartnerJobTitle(e.target.value)}
+                    placeholder="مثلاً چرخکار ماهر، جوشکار، سالن‌کار..."
+                    className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">شهر محل کار</label>
+                  <select
+                    value={partnerJobCity}
+                    onChange={(e) => {
+                      const c = e.target.value;
+                      setPartnerJobCity(c);
+                      const dists = getDistrictsForCity(c);
+                      if (dists.length > 0) setPartnerJobDistrict(dists[0]);
+                    }}
+                    className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-bold outline-none"
+                  >
+                    {ALL_TURKEY_CITIES_FA.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">دسته‌بندی شغلی</label>
+                  <select
+                    value={partnerJobCategory}
+                    onChange={(e) => setPartnerJobCategory(e.target.value as JobCategory)}
+                    className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white font-bold outline-none"
+                  >
+                    <option value="textile">خیاطی، نساجی و پوشاک</option>
+                    <option value="warehouse">کارخانه، بسته‌بندی و انبار</option>
+                    <option value="restaurant">رستوران و کافه</option>
+                    <option value="hotel">هتل و گردشگری</option>
+                    <option value="construction">ساختمان و فنی</option>
+                    <option value="sales">فروشندگی و خدمات</option>
+                    <option value="general">کارگر ساده و عمومی</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">حداقل حقوق (لیر)</label>
+                  <input
+                    type="number"
+                    value={partnerJobSalaryMin}
+                    onChange={(e) => setPartnerJobSalaryMin(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-emerald-300 font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">حداکثر حقوق (لیر)</label>
+                  <input
+                    type="number"
+                    value={partnerJobSalaryMax}
+                    onChange={(e) => setPartnerJobSalaryMax(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-emerald-300 font-mono font-bold"
+                  />
+                </div>
+                <label className="flex items-center gap-2 px-3 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-white cursor-pointer mt-5">
+                  <input
+                    type="checkbox"
+                    checked={partnerJobAccommodation}
+                    onChange={(e) => setPartnerJobAccommodation(e.target.checked)}
+                  />
+                  <span>دارای جای خواب رایگان</span>
+                </label>
+                <label className="flex items-center gap-2 px-3 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-white cursor-pointer mt-5">
+                  <input
+                    type="checkbox"
+                    checked={partnerJobMeals}
+                    onChange={(e) => setPartnerJobMeals(e.target.checked)}
+                  />
+                  <span>دارای وعده غذایی</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">شرح کامل موقعیت شغلی و شرایط *</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={partnerJobDesc}
+                  onChange={(e) => setPartnerJobDesc(e.target.value)}
+                  placeholder="ساعت کاری، شرایط اسکان، مزایا و مهارت‌های مورد نیاز را بنویسید..."
+                  className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl text-xs sm:text-sm shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span>ثبت و انتشار فوری آگهی شغلی</span>
+              </button>
+            </form>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
+            <h3 className="text-base font-black text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+              <Briefcase className="w-5 h-5 text-indigo-400" />
+              <span>لیست آگهی‌های شغلی فعال ({jobs.length} مورد)</span>
+            </h3>
+            <div className="space-y-3">
+              {jobs.map((job) => (
+                <div key={job.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-black text-white">{job.title}</span>
+                      <span className="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 text-[11px] font-bold">
+                        {job.city} ({job.district})
+                      </span>
+                      <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 font-mono text-[11px] font-bold">
+                        {job.salaryMin.toLocaleString('fa-IR')} تا {job.salaryMax.toLocaleString('fa-IR')} لیر
+                      </span>
+                    </div>
+                    <p className="text-slate-400 line-clamp-1">{job.description}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setEditingPartnerJob({ ...job })}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      <span>ویرایش</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteJob(job.id)}
+                      className="px-3 py-1.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>حذف</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {editingPartnerJob && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+              <div className="w-full max-w-lg bg-slate-900 border border-indigo-500/40 rounded-3xl p-6 shadow-2xl space-y-4 text-xs">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h4 className="text-sm font-black text-white">ویرایش آگهی: {editingPartnerJob.title}</h4>
+                  <button type="button" onClick={() => setEditingPartnerJob(null)} className="p-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <form onSubmit={handleSaveEditedPartnerJob} className="space-y-3">
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">عنوان آگهی</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingPartnerJob.title}
+                      onChange={(e) => setEditingPartnerJob({ ...editingPartnerJob, title: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">حداقل حقوق (لیر)</label>
+                      <input
+                        type="number"
+                        value={editingPartnerJob.salaryMin}
+                        onChange={(e) => setEditingPartnerJob({ ...editingPartnerJob, salaryMin: Number(e.target.value) })}
+                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-emerald-300 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">حداکثر حقوق (لیر)</label>
+                      <input
+                        type="number"
+                        value={editingPartnerJob.salaryMax}
+                        onChange={(e) => setEditingPartnerJob({ ...editingPartnerJob, salaryMax: Number(e.target.value) })}
+                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-emerald-300 font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">توضیحات شغل</label>
+                    <textarea
+                      rows={3}
+                      value={editingPartnerJob.description}
+                      onChange={(e) => setEditingPartnerJob({ ...editingPartnerJob, description: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button type="submit" className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl">
+                      ذخیره تغییرات آگهی
+                    </button>
+                    <button type="button" onClick={() => setEditingPartnerJob(null)} className="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-xl">
+                      انصراف
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: JOB SEEKER APPLICATIONS RECEIVED */}
+      {partnerDashTab === 'applications' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
+          <div className="border-b border-slate-800 pb-3">
+            <h3 className="text-base font-black text-white flex items-center gap-2">
+              <FileText className="w-5 h-5 text-indigo-400" />
+              <span>درخواست‌های استخدام و رزومه‌های ارسالی کارجویان ({applications.length} مورد)</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              با تغییر وضعیت هر درخواست، اعلان آن به صورت آنی برای کارجو ارسال می‌شود.
+            </p>
+          </div>
+          {applications.length === 0 ? (
+            <div className="py-12 text-center space-y-2 bg-slate-950/50 rounded-2xl border border-slate-800">
+              <FileText className="w-10 h-10 text-slate-600 mx-auto" />
+              <p className="text-sm font-bold text-slate-300">هنوز درخواست شغلی جدیدی ثبت نشده است</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {applications.map((app) => (
+                <div key={app.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-black text-white">{app.seekerName}</span>
+                      <span className="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 font-bold">
+                        آگهی: {app.jobTitle} ({app.companyName})
+                      </span>
+                      <span className="text-emerald-400 font-mono font-bold" dir="ltr">
+                        {app.seekerPhone}
+                      </span>
+                    </div>
+                    {app.adminNote && (
+                      <p className="text-slate-300">یادداشت پرونده: {app.adminNote}</p>
+                    )}
+                    <div className="text-[11px] text-slate-400">
+                      مهارت‌ها: {app.seekerSkills?.join('، ') || 'عمومی'} | شهر: {app.city}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <select
+                      value={app.status}
+                      onChange={(e) => updateApplicationStatus(app.id, e.target.value as any)}
+                      className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white font-bold text-xs outline-none focus:border-indigo-500"
+                    >
+                      <option value="pending">در انتظار بررسی</option>
+                      <option value="reviewed">مشاهده شده</option>
+                      <option value="interview">دعوت به مصاحبه ✓</option>
+                      <option value="accepted">تایید نهایی و استخدام ✅</option>
+                      <option value="rejected">رد درخواست ❌</option>
+                    </select>
+                    <a
+                      href={`tel:${(app.seekerPhone || '').replace(/\s/g, '')}`}
+                      className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-xl font-bold flex items-center gap-1"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>تماس</span>
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 4: REAL-TIME CHAT WITH APPLICANTS & ADMIN */}
+      {partnerDashTab === 'chat' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h3 className="text-base font-black text-white flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-indigo-400" />
+                <span>گفتگوی آنلاین مستقیم با مدیریت و هماهنگی کارجویان</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                پیام‌های شما به صورت زنده در کارتابل مدیریت نمایش داده شده و پاسخ‌ها بلافاصله دریافت می‌گردند.
+              </p>
+            </div>
+          </div>
+
+          {!activeSeekerChat ? (
+            <div className="py-10 text-center space-y-3 bg-slate-950/60 rounded-2xl border border-slate-800">
+              <MessageSquare className="w-10 h-10 text-indigo-400 mx-auto" />
+              <p className="text-sm font-bold text-white">آغاز گفتگوی آنلاین همکار با مدیریت کارباما</p>
+              <button
+                type="button"
+                onClick={() =>
+                  requestLiveChat({
+                    firstName: activePartner.companyName,
+                    lastName: activePartner.fullName,
+                    phone: activePartner.phone || '09120000000',
+                    nationalId: activePartner.nationalId || activePartner.partnerCode,
+                  })
+                }
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl text-xs shadow-lg cursor-pointer"
+              >
+                شروع گفتگوی زنده همکار
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="h-72 overflow-y-auto p-4 bg-slate-950 border border-slate-800 rounded-2xl space-y-3">
+                {activeSeekerChat.messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex flex-col max-w-[80%] p-3 rounded-2xl text-xs ${
+                      msg.sender === 'seeker'
+                        ? 'mr-auto bg-indigo-600 text-white rounded-bl-xs'
+                        : 'ml-auto bg-slate-800 text-slate-200 border border-slate-700 rounded-br-xs'
+                    }`}
+                  >
+                    <span className="font-bold text-[10px] opacity-75 mb-1">
+                      {msg.sender === 'seeker' ? activePartner.companyName : 'مدیریت کارباما'}
+                    </span>
+                    <p className="leading-relaxed">{msg.text}</p>
+                  </div>
+                ))}
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!partnerChatInput.trim()) return;
+                  sendLiveChatMessage(activeSeekerChat.id, 'seeker', partnerChatInput);
+                  setPartnerChatInput('');
+                }}
+                className="flex gap-2"
+              >
+                <input
+                  type="text"
+                  value={partnerChatInput}
+                  onChange={(e) => setPartnerChatInput(e.target.value)}
+                  placeholder="پیام خود را بنویسید..."
+                  className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-indigo-500"
+                />
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>ارسال پیام</span>
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* SECTION 1: SIMPLE FORM TO REGISTER A SEEKER BY PARTNER */}
-      {showAddForm && (
+      {partnerDashTab === 'seekers' && showAddForm && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-5">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2">
@@ -1323,6 +1902,7 @@ export const PartnerSection: React.FC = () => {
       )}
 
       {/* SECTION 2: LIST & MANAGEMENT OF SEEKERS REGISTERED BY THIS PARTNER */}
+      {partnerDashTab === 'seekers' && (
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
           <div>
@@ -1489,6 +2069,7 @@ export const PartnerSection: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* EDIT SEEKER MODAL FOR PARTNER */}
       {editingSeeker && (

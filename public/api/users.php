@@ -32,6 +32,7 @@ function defaultStore() {
         'applications' => [],
         'addresses' => [],
         'notifications' => [],
+        'chats' => [],
         'paymentSettings' => null,
         'partnerPlans' => null,
         'brokerSettings' => null,
@@ -117,6 +118,7 @@ if ($method === 'GET') {
         'applications' => array_values($store['applications']),
         'addresses' => array_values($store['addresses']),
         'notifications' => array_values($store['notifications']),
+        'chats' => array_values($store['chats']),
         'paymentSettings' => $store['paymentSettings'],
         'partnerPlans' => $store['partnerPlans'],
         'brokerSettings' => $store['brokerSettings'],
@@ -167,6 +169,9 @@ if ($method === 'POST') {
             } elseif (isset($payload['notification']) && is_array($payload['notification'])) {
                 $type = 'notification';
                 $record = $payload['notification'];
+            } elseif (isset($payload['chat']) && is_array($payload['chat'])) {
+                $type = 'chat';
+                $record = $payload['chat'];
             }
         }
         if ($type === null) {
@@ -218,6 +223,8 @@ if ($method === 'POST') {
             upsertArrayRecord($store['applications'], $record);
         } elseif ($type === 'address') {
             upsertArrayRecord($store['addresses'], $record);
+        } elseif ($type === 'chat') {
+            upsertArrayRecord($store['chats'], $record);
         } elseif ($type === 'notification') {
             if (!in_array($recordId, $store['deletedNotificationIds'], true)) {
                 upsertArrayRecord($store['notifications'], $record);

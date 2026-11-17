@@ -33,6 +33,9 @@ import {
   Copy,
   Check,
   Upload,
+  AlertTriangle,
+  XCircle,
+  RefreshCw,
 } from 'lucide-react';
 
 export const SettingsProfile: React.FC = () => {
@@ -44,6 +47,7 @@ export const SettingsProfile: React.FC = () => {
     logoutSeeker,
     showToast,
     activeTab,
+    setActiveTab,
     paymentSettings,
     addAdminNotification,
   } = useApp();
@@ -54,7 +58,10 @@ export const SettingsProfile: React.FC = () => {
   const [copiedCard, setCopiedCard] = useState(false);
   const [isPaymentSubmitted, setIsPaymentSubmitted] = useState(false);
 
-  const computedFeeToman = (paymentSettings?.feeTL || 500) * (paymentSettings?.exchangeRateToman || 5460);
+  const computedFeeToman =
+    paymentSettings?.seekerFeeToman && paymentSettings.seekerFeeToman > 0
+      ? paymentSettings.seekerFeeToman
+      : (paymentSettings?.feeTL || 500) * (paymentSettings?.exchangeRateToman || 5460);
   const adminAmountUnit = paymentSettings?.paymentAmountUnit || 'toman';
   const adminConfiguredAmount =
     paymentSettings?.directPaymentAmount && paymentSettings.directPaymentAmount > 0
@@ -66,6 +73,76 @@ export const SettingsProfile: React.FC = () => {
     adminAmountUnit === 'rial' ? Math.round(adminConfiguredAmount / 10) : adminConfiguredAmount;
   const seekerFeeRial =
     adminAmountUnit === 'rial' ? adminConfiguredAmount : adminConfiguredAmount * 10;
+
+  const isSeekerApproved =
+    currentSeeker?.verificationStatus === 'approved' ||
+    currentSeeker?.paymentStatus === 'approved' ||
+    Boolean(currentSeeker?.isPaymentVerified);
+
+  const isSeekerRejected =
+    !isSeekerApproved &&
+    (currentSeeker?.verificationStatus === 'rejected' ||
+      currentSeeker?.paymentStatus === 'rejected' ||
+      currentSeeker?.seekerPaymentStatus === 'rejected');
+
+  const handleOnlinePaymentRedirect = () => {
+    try {
+      localStorage.setItem('karbama_pending_seeker_payment', 'true');
+    } catch {
+      // ignore
+    }
+    if (adminAmountUnit === 'toman') {
+      window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}&unit=toman`;
+    } else {
+      window.location.href = `https://karbama34.ir/pay.php?amount=${adminConfiguredAmount}`;
+    }
+  };
+
+  const handleReceiptPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        setReceiptPhoto(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmitPaymentToAdmin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentSeeker) return;
+    if (!trackingNote.trim() && !receiptPhoto) {
+      showToast('لطفاً شماره پیگیری تراکنش را وارد کنید یا تصویر فیش واریزی را بارگذاری نمایید.', 'error');
+      return;
+    }
+    const cleanRef = trackingNote.trim() || `REF-${Date.now().toString().slice(-6)}`;
+    updateProfile({
+      seekerPaymentStatus: 'paid',
+      paymentStatus: 'pending',
+      accountStatus: 'pending',
+      verificationStatus: 'pending',
+      isPaymentVerified: false,
+      seekerPaymentRefId: cleanRef,
+      seekerPaidAmount: `${seekerFeeToman.toLocaleString('fa-IR')} تومان`,
+      paymentReceiptPhotoUrl: receiptPhoto || currentSeeker.paymentReceiptPhotoUrl,
+      adminVerificationNote: `ثبت مجدد اطلاعات پرداخت توسط کارجو | کد پیگیری: ${cleanRef} | تاریخ: ${new Date().toLocaleDateString('fa-IR')}`,
+    });
+    addAdminNotification({
+      type: 'seeker_payment_referred',
+      title: '💳 ثبت فیش / کد پیگیری پرداخت توسط کارجو',
+      message: `کارجو «${currentSeeker.fullName}» (کد ملی: ${currentSeeker.nationalId}) مشخصات پرداخت هزینه خدمات (${seekerFeeToman.toLocaleString('fa-IR')} تومان - کد پیگیری: ${cleanRef}) را جهت بررسی و تایید ارسال نمود.`,
+      data: {
+        seekerId: currentSeeker.id,
+        paymentRefId: cleanRef,
+        receiptPhotoUrl: receiptPhoto || undefined,
+      },
+    });
+    setIsPaymentSubmitted(true);
+    setTrackingNote('');
+    showToast('✅ مشخصات پرداخت شما ثبت و برای تایید فوری به پنل مدیریت ارسال شد.', 'success');
+  };
 
   // Tab inside Profile
   const [profileTab, setProfileTab] = useState<'turkish-cv' | 'resume' | 'profile' | 'applications'>(
@@ -79,7 +156,7 @@ export const SettingsProfile: React.FC = () => {
   const [showOldPass, setShowOldPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
   const [passError, setPassError] = useState<string | null>(null);
-  const [passSuccess, setPassSuccess] = useState<string | null>(null);
+  const [passSuccess, setPassSuccess] = useState(null as string | null);
 
   // Edit profile state
   const [isEditing, setIsEditing] = useState(false);
@@ -222,7 +299,7 @@ export const SettingsProfile: React.FC = () => {
               <span>پروفایل و بخش‌های اختصاصی کارجو (قفل امنیتی)</span>
             </h2>
             <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-              تمامی امکانات اختصاصی کارجو، ذخیره پرونده هویتی، ساخت و چاپ رسمی رزومه (CV) و ارسال رزومه به کارفرمایان ترکیه تا زمان ثبت‌نام، واریز وجه ۵۰۰ لیر و تایید رسمی مدیریت سامانه قفل باقی می‌ماند.
+              تمامی امکانات اختصاصی کارجو، ذخیره پرونده هویتی، ساخت و چاپ رسمی رزومه (CV) و ارسال رزومه به کارفرمایان ترکیه تا زمان ثبت‌نام، پرداخت هزینه خدمات ({seekerFeeToman.toLocaleString('fa-IR')} تومان) و تایید رسمی مدیریت سامانه قفل باقی می‌ماند.
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-2.5 shrink-0">
@@ -265,14 +342,19 @@ export const SettingsProfile: React.FC = () => {
               />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-bold text-white">{currentSeeker.fullName}</h1>
-                {currentSeeker.verificationStatus === 'approved' ? (
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                {isSeekerApproved ? (
+                  <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold">
                     حساب فعال و تاییدشده ✓
                   </span>
+                ) : isSeekerRejected ? (
+                  <span className="px-2.5 py-0.5 rounded-md bg-red-500/25 text-red-200 border border-red-500/50 text-xs font-bold flex items-center gap-1">
+                    <XCircle className="w-3.5 h-3.5 text-red-400" />
+                    رد پرداخت توسط مدیریت ❌
+                  </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
+                  <span className="px-2.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold">
                     در انتظار تایید مدیریت ⏳
                   </span>
                 )}
@@ -299,14 +381,111 @@ export const SettingsProfile: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setActiveTab('jobs')}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <Briefcase className="w-3.5 h-3.5" />
+              مشاهده آگهی‌های استخدام
+            </button>
+            <button
               onClick={logoutSeeker}
-              className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 text-xs font-bold rounded-xl border border-red-500/30 transition flex items-center gap-1.5"
+              className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 text-xs font-bold rounded-xl border border-red-500/30 transition flex items-center gap-1.5 cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               خروج از حساب
             </button>
           </div>
         </div>
+
+        {/* Live Payment Rejection or Pending Payment Banner inside Seeker Dashboard */}
+        {!isSeekerApproved && (
+          <div className={`mt-5 p-5 rounded-2xl border-2 space-y-4 ${
+            isSeekerRejected
+              ? 'bg-red-950/80 border-red-500/70 text-red-100'
+              : 'bg-slate-950/80 border-amber-500/40 text-slate-200'
+          }`}>
+            {isSeekerRejected ? (
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/50 flex items-center justify-center shrink-0 text-red-300">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div className="space-y-1 flex-1">
+                  <h3 className="text-sm font-black text-white flex items-center gap-2">
+                    <span>❌ پرداخت شما توسط مدیریت تایید نشد (دسترسی ویژه محدود است)</span>
+                  </h3>
+                  <p className="text-xs text-red-200 leading-relaxed font-bold">
+                    علت اعلام‌شده توسط مدیریت: {currentSeeker.adminVerificationNote || 'مغایرت در اطلاعات واریزی یا عدم دریافت تراکنش شاپرک. لطفاً مجدداً اقدام نمایید.'}
+                  </p>
+                  <p className="text-[11px] text-red-200/90 leading-relaxed">
+                    شما می‌توانید همین حالا از طریق دکمه «پرداخت آنلاین شاپرک» مجدداً پرداخت را انجام دهید یا شماره پیگیری / تصویر فیش معتبر خود را در فرم زیر ثبت نمایید.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 text-amber-300">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div className="space-y-1 flex-1">
+                  <h3 className="text-sm font-bold text-white">
+                    {currentSeeker.seekerPaymentStatus === 'paid' || isPaymentSubmitted
+                      ? '⏳ پرداخت شما ثبت شده و در صف بررسی و تایید مدیریت است'
+                      : '🔒 تکمیل پرداخت هزینه خدمات و فعال‌سازی کامل حساب کارجو'}
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    مبلغ مصوب خدمات کارجو: <strong className="text-amber-300 font-mono">{seekerFeeToman.toLocaleString('fa-IR')} تومان</strong> ({seekerFeeRial.toLocaleString('fa-IR')} ریال). پس از تایید مدیریت، قفل مشاهده اطلاعات تماس کارفرمایان، ارسال مستقیم رزومه و گفتگوی آنلاین به صورت آنی باز می‌شود.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-white/10">
+              {/* Option 1: Direct Online Payment */}
+              <div className="p-4 rounded-xl bg-slate-900/90 border border-teal-500/40 flex flex-col justify-between gap-3">
+                <div className="space-y-1">
+                  <span className="text-xs font-extrabold text-teal-300 block">روش اول: پرداخت آنلاین آنی (شاپرک)</span>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    انتقال مستقیم به درگاه بانکی با مبلغ مصوب {seekerFeeToman.toLocaleString('fa-IR')} تومان:
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOnlinePaymentRedirect}
+                  className="w-full py-2.5 px-4 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>{isSeekerRejected ? 'تلاش مجدد پرداخت آنلاین' : 'پرداخت آنلاین از طریق درگاه بانکی'}</span>
+                </button>
+              </div>
+
+              {/* Option 2: Submit Reference Code / Receipt Photo */}
+              <form onSubmit={handleSubmitPaymentToAdmin} className="p-4 rounded-xl bg-slate-900/90 border border-slate-700 space-y-2.5">
+                <span className="text-xs font-extrabold text-amber-300 block">روش دوم: ثبت کد پیگیری یا تصویر فیش واریزی</span>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    value={trackingNote}
+                    onChange={(e) => setTrackingNote(e.target.value)}
+                    placeholder="شماره پیگیری تراکنش شاپرک یا فیش..."
+                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"
+                  />
+                  <label className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
+                    <Upload className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{receiptPhoto ? 'فیش انتخاب شد ✓' : 'تصویر فیش'}</span>
+                    <input type="file" accept="image/*" onChange={handleReceiptPhotoChange} className="hidden" />
+                  </label>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>ارسال مشخصات پرداخت جهت تایید مدیریت</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Profile Tabs */}
         <div className="flex flex-wrap items-center gap-2 mt-6 border-t border-slate-800/80 pt-4 pb-1">

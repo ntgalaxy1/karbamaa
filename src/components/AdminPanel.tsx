@@ -154,17 +154,9 @@ export const AdminPanel: React.FC = () => {
     (j) => j.paymentStatus === 'pending_approval' || j.paymentStatus === 'pending_payment'
   );
 
-  // Count pending payment seekers (those who paid via Sepal, uploaded receipts, or need account unlocking)
+  // Count pending payment seekers (all unapproved seekers so admin can approve or reject any seeker)
   const pendingPaymentSeekers = jobSeekers.filter(
-    (s) =>
-      s.verificationStatus !== 'approved' &&
-      (s.seekerPaymentStatus === 'paid' ||
-       Boolean(s.paymentReceiptPhotoUrl) ||
-       Boolean(s.seekerPaymentRefId) ||
-       Boolean(s.adminVerificationNote?.includes('سپال')) ||
-       Boolean(s.adminVerificationNote?.includes('واریز')) ||
-       Boolean(s.adminVerificationNote?.includes('فیش')) ||
-       Boolean(s.payerCardNumber))
+    (s) => s.verificationStatus !== 'approved' && !s.isPaymentVerified
   );
 
   // Count pending payment partners (those awaiting online payment approval or activation)
@@ -1354,12 +1346,16 @@ export const AdminPanel: React.FC = () => {
                               className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                                 partner.subscriptionStatus === 'pending_approval'
                                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                  : partner.subscriptionStatus === 'rejected' || partner.paymentStatus === 'rejected'
+                                    ? 'bg-red-500/25 text-red-200 border border-red-500/50'
+                                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                               }`}
                             >
                               {partner.subscriptionStatus === 'pending_approval'
-                                ? '💳 پرداخت آنلاین انجام شده — منتظر تایید مدیر'
-                                : '⏳ ثبت‌نام شده (در انتظار پرداخت آنلاین)'}
+                                ? '💳 پرداخت ثبت شده — منتظر تایید مدیر'
+                                : partner.subscriptionStatus === 'rejected' || partner.paymentStatus === 'rejected'
+                                  ? '❌ رد پرداخت شده توسط مدیریت'
+                                  : '⏳ ثبت‌نام شده (در انتظار پرداخت آنلاین)'}
                             </span>
                           </div>
                           <p className="text-xs text-slate-400">
@@ -1370,15 +1366,32 @@ export const AdminPanel: React.FC = () => {
                           </p>
                           {partner.paymentReferenceId && (
                             <p className="text-xs text-emerald-300 font-mono pt-1">
-                              کد رهگیری درگاه آنلاین: {partner.paymentReferenceId}
+                              کد رهگیری پرداخت: {partner.paymentReferenceId}
+                            </p>
+                          )}
+                          {partner.adminApprovalNote && (
+                            <p className="text-xs text-amber-300 pt-1">
+                              یادداشت مدیریت: {partner.adminApprovalNote}
                             </p>
                           )}
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
+                          {partner.paymentReceiptUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setViewReceiptModalUrl(partner.paymentReceiptUrl || null)}
+                              className="px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 rounded-xl text-xs font-bold transition cursor-pointer"
+                            >
+                              مشاهده فیش
+                            </button>
+                          )}
                           <button
                             type="button"
-                            onClick={() => rejectPartnerSubscription(partner.id, 'پرداخت تایید نشد؛ لطفاً مجدداً از طریق درگاه آنلاین اقدام نمایید.')}
+                            onClick={() => {
+                              setRejectPartnerModalId(partner.id);
+                              setRejectPartnerReason('پرداخت تایید نشد؛ لطفاً مجدداً از طریق درگاه آنلاین اقدام نمایید.');
+                            }}
                             className="px-3.5 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 rounded-xl text-xs font-bold transition cursor-pointer"
                           >
                             رد پرداخت
@@ -1461,13 +1474,14 @@ export const AdminPanel: React.FC = () => {
                         {/* Payment & Receipt Details Box */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-950/80 border border-slate-800 p-4 rounded-2xl">
                           <div className="space-y-1">
-                            <span className="text-[11px] text-slate-400 block">مبلغ پرداختی (به‌روزرسانی روزانه):</span>
+                            <span className="text-[11px] text-slate-400 block">مبلغ پرداختی (تعرفه مصوب کارجو):</span>
                             <div className="flex items-center gap-1.5">
                               <span className="text-base font-extrabold text-amber-400 font-mono">
-                                {Number((paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460)).toLocaleString('fa-IR')} تومان
-                              </span>
-                              <span className="text-xs text-slate-400">
-                                ({Number((paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460) * 10).toLocaleString('fa-IR')} ریال)
+                                {Number(
+                                  paymentSettings.seekerFeeToman && paymentSettings.seekerFeeToman > 0
+                                    ? paymentSettings.seekerFeeToman
+                                    : (paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460)
+                                ).toLocaleString('fa-IR')} تومان
                               </span>
                             </div>
                             <span className="text-[11px] text-emerald-400 block pt-0.5">
@@ -1617,7 +1631,11 @@ export const AdminPanel: React.FC = () => {
                           </span>
                           <span className="text-xs font-mono text-slate-400">کد: {job.id}</span>
                           <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-bold font-mono">
-                            تعرفه: {Number((paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460)).toLocaleString('fa-IR')} تومان
+                            تعرفه: {Number(
+                              paymentSettings.jobPostingFeeToman && paymentSettings.jobPostingFeeToman > 0
+                                ? paymentSettings.jobPostingFeeToman
+                                : (paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460)
+                            ).toLocaleString('fa-IR')} تومان
                           </span>
                         </div>
                         <h4 className="text-base font-extrabold text-white mt-1.5">{job.title}</h4>
@@ -2394,11 +2412,21 @@ export const AdminPanel: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRejectPartnerModalId(p.id);
+                            setRejectPartnerReason('عدم تایید پرداخت اشتراک توسط مدیریت؛ لطفاً مجدداً اقدام نمایید.');
+                          }}
+                          className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 font-bold rounded-xl text-xs transition cursor-pointer"
+                        >
+                          رد پرداخت
+                        </button>
                         {p.subscriptionStatus !== 'active' ? (
                           <button
                             type="button"
                             onClick={() => approvePartnerSubscription(p.id, 'فعال‌سازی دستی توسط مدیر')}
-                            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition flex items-center gap-1"
+                            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition flex items-center gap-1 cursor-pointer"
                           >
                             <Check className="w-3.5 h-3.5" />
                             فعال‌سازی اشتراک
@@ -2407,7 +2435,7 @@ export const AdminPanel: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => approvePartnerSubscription(p.id, 'تمدید ۳۰ روزه توسط مدیر')}
-                            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl text-xs transition"
+                            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold rounded-xl text-xs transition cursor-pointer"
                           >
                             تمدید +۳۰ روز
                           </button>
@@ -2418,41 +2446,6 @@ export const AdminPanel: React.FC = () => {
                 })}
             </div>
           </div>
-
-          {/* Modal for Rejecting Partner Subscription */}
-          {rejectPartnerModalId && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-              <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-4 shadow-2xl">
-                <h4 className="font-bold text-white text-sm">علت عدم تایید فیش پرداخت همکار:</h4>
-                <textarea
-                  rows={3}
-                  value={rejectPartnerReason}
-                  onChange={(e) => setRejectPartnerReason(e.target.value)}
-                  placeholder="مثلاً: مبلغ واریزی با پلن انتخابی مغایرت دارد، یا تصویر ناخوانا است..."
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white outline-none"
-                />
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      rejectPartnerSubscription(rejectPartnerModalId, rejectPartnerReason);
-                      setRejectPartnerModalId(null);
-                    }}
-                    className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs"
-                  >
-                    ثبت و رد درخواست
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRejectPartnerModalId(null)}
-                    className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs"
-                  >
-                    انصراف
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Modal for Registering New Partner by Admin */}
           {showAddPartnerModal && (
@@ -2871,12 +2864,24 @@ export const AdminPanel: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => approveSeekerAccount(seeker.id)}
-                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs shadow-md animate-pulse"
+                      className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs shadow-md cursor-pointer"
                     >
                       <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>تایید تسویه و فعال‌سازی دسترسی کارجو</span>
+                      <span>تایید تسویه و فعال‌سازی</span>
                     </button>
                   )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRejectModalSeekerId(seeker.id);
+                      setRejectReasonInput('');
+                    }}
+                    className="px-3 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 rounded-xl font-bold transition flex items-center justify-center gap-1 text-xs cursor-pointer"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>رد پرداخت</span>
+                  </button>
 
                   <button
                     type="button"
@@ -4875,6 +4880,50 @@ export const AdminPanel: React.FC = () => {
                 className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg transition"
               >
                 ثبت رد پرداخت و قفل ماندن
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Reject Partner Subscription with Reason (Global across Admin Tabs) */}
+      {rejectPartnerModalId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-slate-900 border border-red-500/40 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-2 text-red-400">
+              <AlertCircle className="w-6 h-6" />
+              <h4 className="font-bold text-white text-sm">رد پرداخت و عدم تایید اشتراک همکار</h4>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              علت عدم تایید پرداخت اشتراک همکار را وارد نمایید (این پیام به همراه اعلان فوری در پنل همکار نمایش داده می‌شود):
+            </p>
+            <textarea
+              rows={3}
+              value={rejectPartnerReason}
+              onChange={(e) => setRejectPartnerReason(e.target.value)}
+              placeholder="مثلاً: مبلغ واریزی با پلن انتخابی مغایرت دارد، یا شماره پیگیری نامعتبر است..."
+              className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white outline-none focus:border-red-500"
+            />
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setRejectPartnerModalId(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold"
+              >
+                انصراف
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  rejectPartnerSubscription(
+                    rejectPartnerModalId,
+                    rejectPartnerReason || 'عدم تایید پرداخت اشتراک توسط مدیریت'
+                  );
+                  setRejectPartnerModalId(null);
+                }}
+                className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs shadow-lg"
+              >
+                ثبت رد پرداخت همکار
               </button>
             </div>
           </div>

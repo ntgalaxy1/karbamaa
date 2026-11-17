@@ -45,6 +45,7 @@ interface ServerStore {
   applications: any[];
   addresses: any[];
   notifications: any[];
+  chats: any[];
   paymentSettings: any | null;
   partnerPlans: any[] | null;
   brokerSettings: any | null;
@@ -64,6 +65,7 @@ function defaultServerStore(): ServerStore {
     applications: [],
     addresses: [],
     notifications: [],
+    chats: [],
     paymentSettings: null,
     partnerPlans: null,
     brokerSettings: null,
@@ -89,6 +91,7 @@ function readUsersStore(): ServerStore {
         applications: Array.isArray(parsed.applications) ? parsed.applications : [],
         addresses: Array.isArray(parsed.addresses) ? parsed.addresses : [],
         notifications: Array.isArray(parsed.notifications) ? parsed.notifications : [],
+        chats: Array.isArray(parsed.chats) ? parsed.chats : [],
         paymentSettings: parsed.paymentSettings || null,
         partnerPlans: Array.isArray(parsed.partnerPlans) ? parsed.partnerPlans : null,
         brokerSettings: parsed.brokerSettings || null,
@@ -168,6 +171,9 @@ app.post(['/api/users', '/api/users.php'], (req, res) => {
       } else if (payload.notification && typeof payload.notification === 'object') {
         type = 'notification';
         record = payload.notification;
+      } else if (payload.chat && typeof payload.chat === 'object') {
+        type = 'chat';
+        record = payload.chat;
       }
     }
     if (!type) type = 'seeker';
@@ -205,6 +211,8 @@ app.post(['/api/users', '/api/users.php'], (req, res) => {
       upsertRecordInList(store.applications, record);
     } else if (type === 'address') {
       upsertRecordInList(store.addresses, record);
+    } else if (type === 'chat') {
+      upsertRecordInList(store.chats, record);
     } else if (type === 'notification') {
       if (!store.deletedNotificationIds.includes(recordId)) {
         upsertRecordInList(store.notifications, record);

@@ -40,9 +40,23 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
     onClose();
   };
 
-  const handleOpenJob = (jobId: string, notifId: string) => {
-    markNotificationAsRead(notifId);
-    setOpenedJobIdFromAlert(jobId);
+  const handleOpenNotification = (notif: (typeof jobNotifications)[number]) => {
+    markNotificationAsRead(notif.id);
+    if (notif.notificationType === 'payment_approved' || notif.notificationType === 'payment_rejected') {
+      if (notif.targetRole === 'partner') {
+        setActiveTab('partner');
+      } else {
+        setActiveTab('settings');
+      }
+      onClose();
+      return;
+    }
+    if (notif.notificationType === 'application_status') {
+      setActiveTab('my-applications');
+      onClose();
+      return;
+    }
+    setOpenedJobIdFromAlert(notif.jobId);
     setActiveTab('jobs');
     onClose();
   };
@@ -169,18 +183,29 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                   اعلان جدیدی وجود ندارد
                 </h4>
                 <p className={`text-xs max-w-xs leading-relaxed ${theme === 'light' ? 'text-slate-600' : 'text-slate-400'}`}>
-                  هرگاه موقعیت شغلی جدیدی در سامانه منتشر شود، اعلان فوری در این بخش نمایش داده خواهد شد و پس از خوانده شدن یا حذف دیگر تکرار نمی‌شود.
+                  هرگاه وضعیت پرداخت یا حساب شما تغییر کند یا موقعیت شغلی جدیدی در سامانه منتشر شود، اعلان فوری در این بخش نمایش داده خواهد شد.
                 </p>
               </div>
             ) : (
-              activeNotifications.map((notif) => (
+              activeNotifications.map((notif) => {
+                const isRejectedNotif = notif.notificationType === 'payment_rejected';
+                const isApprovedNotif = notif.notificationType === 'payment_approved';
+                return (
                 <div
                   key={notif.id}
-                  onClick={() => handleOpenJob(notif.jobId, notif.id)}
+                  onClick={() => handleOpenNotification(notif)}
                   className={`p-3.5 rounded-2xl border shadow-md transition cursor-pointer relative group flex gap-3 text-xs ${
-                    theme === 'light'
-                      ? 'bg-slate-50 border-slate-200 hover:border-blue-400 text-slate-900'
-                      : 'bg-slate-800/90 border-red-500/40 hover:border-red-500/80 text-white'
+                    isRejectedNotif
+                      ? theme === 'light'
+                        ? 'bg-red-50 border-red-300 hover:border-red-500 text-slate-900'
+                        : 'bg-red-950/70 border-red-500/60 hover:border-red-400 text-white'
+                      : isApprovedNotif
+                        ? theme === 'light'
+                          ? 'bg-emerald-50 border-emerald-300 hover:border-emerald-500 text-slate-900'
+                          : 'bg-emerald-950/60 border-emerald-500/60 hover:border-emerald-400 text-white'
+                        : theme === 'light'
+                          ? 'bg-slate-50 border-slate-200 hover:border-blue-400 text-slate-900'
+                          : 'bg-slate-800/90 border-red-500/40 hover:border-red-500/80 text-white'
                   }`}
                 >
                   {/* Unread Indicator Dot */}
@@ -201,7 +226,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
 
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`font-bold text-xs truncate ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
+                      <span className={`font-bold text-xs ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
                         {notif.jobTitle}
                       </span>
                     </div>
@@ -210,8 +235,22 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                       {notif.company} • {notif.city}
                     </p>
 
+                    {notif.message && (
+                      <p className={`text-[11px] leading-relaxed pt-0.5 ${
+                        isRejectedNotif
+                          ? theme === 'light' ? 'text-red-800 font-semibold' : 'text-red-200 font-semibold'
+                          : theme === 'light' ? 'text-slate-700' : 'text-slate-300'
+                      }`}>
+                        {notif.message}
+                      </p>
+                    )}
+
                     <div className="flex items-center justify-between text-[10px] pt-1.5 gap-2">
-                      <span className={`font-mono font-bold ${theme === 'light' ? 'text-emerald-700' : 'text-emerald-400'}`}>
+                      <span className={`font-mono font-bold ${
+                        isRejectedNotif
+                          ? theme === 'light' ? 'text-red-700' : 'text-red-300'
+                          : theme === 'light' ? 'text-emerald-700' : 'text-emerald-400'
+                      }`}>
                         {notif.salaryText}
                       </span>
                       <div className="flex items-center gap-1.5">
@@ -249,7 +288,8 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                     </div>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

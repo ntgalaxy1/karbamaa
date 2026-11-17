@@ -71,10 +71,16 @@ export const PostJobSection: React.FC = () => {
   const [payerPhone, setPayerPhone] = useState('');
   const [createdJobId, setCreatedJobId] = useState<string | null>(null);
 
-  // Calculate equivalent Toman amount
-  const feeTL = paymentSettings.feeTL || 500;
-  const exchangeRate = paymentSettings.exchangeRateToman || 2300;
-  const feeToman = feeTL * exchangeRate;
+  // Calculate equivalent Toman amount dynamically from Admin's vertical fee list
+  const feeTL =
+    paymentSettings.jobPostingFeeTL && paymentSettings.jobPostingFeeTL > 0
+      ? paymentSettings.jobPostingFeeTL
+      : paymentSettings.feeTL || 500;
+  const exchangeRate = paymentSettings.exchangeRateToman || 5460;
+  const feeToman =
+    paymentSettings.jobPostingFeeToman && paymentSettings.jobPostingFeeToman > 0
+      ? paymentSettings.jobPostingFeeToman
+      : feeTL * exchangeRate;
 
   // Available subcategories for current category
   const currentCatData = JOB_CATEGORIES_DATA.find((c) => c.key === category);
@@ -610,6 +616,33 @@ export const PostJobSection: React.FC = () => {
                   placeholder="0912..."
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white dir-ltr text-right"
                 />
+              </div>
+            </div>
+
+            {/* Optional Direct Payment Reference / Receipt Submission */}
+            <div className="p-4 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-3 pt-3">
+              <span className="text-xs font-bold text-amber-300 block">
+                ثبت کد رهگیری تراکنش یا تصویر فیش (در صورت پرداخت قبلی):
+              </span>
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <input
+                  type="text"
+                  value={referenceId}
+                  onChange={(e) => setReferenceId(e.target.value)}
+                  placeholder="شماره پیگیری تراکنش بانکی یا کد ارجاع شاپرک..."
+                  className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white"
+                />
+                <label className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
+                  <span>{receiptImage ? 'تصویر فیش ضمیمه شد ✓' : 'بارگذاری تصویر فیش'}</span>
+                  <input type="file" accept="image/*" onChange={handleReceiptUpload} className="hidden" />
+                </label>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition cursor-pointer shrink-0"
+                >
+                  ثبت فیش و ارسال آگهی
+                </button>
               </div>
             </div>
           </div>

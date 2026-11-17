@@ -82,6 +82,8 @@ export interface JobSeeker {
   resume?: SeekerResume;     // رزومه آنلاین ساختاریافته کارباما
   
   verificationStatus?: 'pending' | 'approved' | 'rejected';
+  paymentStatus?: 'pending' | 'approved' | 'rejected';
+  accountStatus?: 'pending' | 'approved' | 'rejected';
   isPaymentVerified?: boolean;
   adminVerificationNote?: string;
 
@@ -98,7 +100,7 @@ export interface JobSeeker {
   selectedJobTitle?: string;          // عنوان کار انتخاب‌شده توسط کارجو
   seekerPaidAmount?: string;          // مبلغ پرداختی توسط کارجو
   seekerPaymentCurrency?: 'IRT' | 'TRY' | 'USD'; // واحد مبلغ پرداختی (تومان / لیر / دلار)
-  seekerPaymentStatus?: 'paid' | 'partial' | 'unpaid'; // وضعیت پرداخت کارجو
+  seekerPaymentStatus?: 'paid' | 'partial' | 'unpaid' | 'pending_approval' | 'rejected'; // وضعیت پرداخت کارجو
   seekerPaymentMethod?: PaymentMethod; // روش پرداخت کارجو (سپال، زرین‌پال، حساب ترکیه، کارت ایران)
   seekerPaymentRefId?: string;        // کد پیگیری / شماره ارجاع تراکنش بانکی
   seekerPaymentReceiptUrl?: string;   // تصویر فیش واریزی کارجو
@@ -261,7 +263,7 @@ export interface PartnerSubscriptionPlan {
   features: string[];            // امکانات و دسترسی‌های این پلن
 }
 
-export type PartnerSubscriptionStatus = 'unpaid' | 'pending_approval' | 'active' | 'expired';
+export type PartnerSubscriptionStatus = 'unpaid' | 'pending_approval' | 'active' | 'expired' | 'rejected';
 
 export interface PartnerAccount {
   id: string;
@@ -275,6 +277,8 @@ export interface PartnerAccount {
   username: string;              // نام کاربری ورود
   password: string;              // رمز عبور
   city?: string;                 // شهر محل فعالیت (استانبول، تهران، آنکارا...)
+  paymentStatus?: 'pending' | 'approved' | 'rejected';
+  accountStatus?: 'pending' | 'approved' | 'rejected';
   subscriptionStatus: PartnerSubscriptionStatus;
   planId?: PartnerSubscriptionPlanId;
   planTitle?: string;
@@ -431,6 +435,9 @@ export interface JobNotification {
   message: string;
   read: boolean;
   createdAt: string;
+  targetUserId?: string;
+  targetRole?: 'seeker' | 'partner' | 'all';
+  notificationType?: 'job' | 'payment_approved' | 'payment_rejected' | 'application_status';
 }
 
 export type ApplicationStatus = 'pending' | 'reviewed' | 'interview' | 'accepted' | 'rejected';
