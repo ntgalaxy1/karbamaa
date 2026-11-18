@@ -23,14 +23,14 @@
     <script>
       (function() {
         try {
-          var CURRENT_VER = '10.0.0.60';
+          var CURRENT_VER = '10.0.0.62';
           var savedVer = localStorage.getItem('karbama_sw_ver');
           if (savedVer !== CURRENT_VER) {
             localStorage.setItem('karbama_sw_ver', CURRENT_VER);
             if ('caches' in window) {
               caches.keys().then(function(names) {
                 for (var i = 0; i < names.length; i++) {
-                  if (names[i] !== 'karbama-cache-v60') {
+                  if (names[i] !== 'karbama-cache-v62') {
                     caches.delete(names[i]);
                   }
                 }

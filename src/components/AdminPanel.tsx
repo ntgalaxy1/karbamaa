@@ -4392,117 +4392,117 @@ export const AdminPanel: React.FC = () => {
 
       {/* MODAL: VIEW SEEKER FULL DOSSIER, DOCUMENTS & SIGNED CONTRACT */}
       {selectedSeekerDossier && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden my-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-3xl bg-white dark:bg-slate-900 border-2 border-[#CBD5E1] dark:border-slate-700 rounded-3xl shadow-2xl overflow-hidden my-6 text-[#0F172A] dark:text-slate-100">
             {/* Modal Header */}
-            <div className="px-6 py-4 bg-gradient-to-r from-red-700/40 via-slate-850 to-slate-900 border-b border-slate-800 flex items-center justify-between">
+            <div className="px-6 py-4 bg-[#F8FAFC] dark:bg-slate-800 border-b border-[#CBD5E1] dark:border-slate-700 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="p-2 bg-red-600/30 text-red-300 border border-red-500/40 rounded-xl">
+                <span className="p-2.5 bg-[#2563EB] text-white rounded-xl shadow-sm">
                   <FileText className="w-5 h-5" />
                 </span>
                 <div>
-                  <h3 className="font-extrabold text-white text-base">
+                  <h3 className="font-black text-[#0F172A] dark:text-white text-base">
                     پرونده رسمی کارجو: {selectedSeekerDossier.fullName}
                   </h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs font-bold text-[#334155] dark:text-slate-300 mt-0.5">
                     مدارک بارگذاری شده، مشخصات کامل و تعهدنامه امضا شده تسویه حساب کارگزار
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedSeekerDossier(null)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition"
+                className="p-2 text-[#0F172A] dark:text-slate-300 hover:bg-[#F1F5F9] dark:hover:bg-slate-700 border border-[#CBD5E1] dark:border-slate-600 rounded-xl transition font-black"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-6 space-y-6 max-h-[78vh] overflow-y-auto text-xs">
+            <div className="p-6 space-y-6 max-h-[78vh] overflow-y-auto text-xs bg-white dark:bg-slate-900">
               {/* 1. Identity & Contact Details */}
-              <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="bg-[#F8FAFC] dark:bg-slate-950/70 border border-[#CBD5E1] dark:border-slate-800 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-[#E2E8F0] dark:border-slate-800 pb-2.5 flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{selectedSeekerDossier.gender === 'female' ? '👩' : '👨'}</span>
-                    <strong className="text-white text-sm">{selectedSeekerDossier.fullName}</strong>
-                    <span className="font-mono text-slate-400 text-xs" dir="ltr">@{selectedSeekerDossier.username}</span>
+                    <strong className="text-[#0F172A] dark:text-white text-sm font-black">{selectedSeekerDossier.fullName}</strong>
+                    <span className="font-mono text-[#334155] dark:text-slate-400 text-xs font-bold" dir="ltr">@{selectedSeekerDossier.username}</span>
                   </div>
-                  <span className="px-2.5 py-1 bg-red-600/20 text-red-300 border border-red-500/30 rounded-xl font-bold">
+                  <span className="px-3 py-1 bg-[#EFF6FF] dark:bg-blue-500/20 text-[#1E3A8A] dark:text-blue-200 border border-blue-300 dark:border-blue-500/30 rounded-xl font-black">
                     کشور مقصد: {selectedSeekerDossier.targetCountry || 'ترکیه'} ({selectedSeekerDossier.targetCity})
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px]">
-                  <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-slate-400 block">نام پدر:</span>
-                    <strong className="text-white">{selectedSeekerDossier.fatherName}</strong>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-[#CBD5E1] dark:border-slate-800">
+                    <span className="text-[#334155] dark:text-slate-400 font-bold block mb-1">نام پدر:</span>
+                    <strong className="text-[#0F172A] dark:text-white font-black">{selectedSeekerDossier.fatherName}</strong>
                   </div>
-                  <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-slate-400 block">کد ملی:</span>
-                    <strong className="text-amber-300 font-mono" dir="ltr">{selectedSeekerDossier.nationalId}</strong>
+                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-[#CBD5E1] dark:border-slate-800">
+                    <span className="text-[#334155] dark:text-slate-400 font-bold block mb-1">کد ملی:</span>
+                    <strong className="text-[#0F172A] dark:text-amber-300 font-mono font-black" dir="ltr">{selectedSeekerDossier.nationalId}</strong>
                   </div>
-                  <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-slate-400 block">جنسیت:</span>
-                    <strong className="text-white">{selectedSeekerDossier.gender === 'female' ? 'زن (خانم)' : 'مرد (آقا)'}</strong>
+                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-[#CBD5E1] dark:border-slate-800">
+                    <span className="text-[#334155] dark:text-slate-400 font-bold block mb-1">جنسیت:</span>
+                    <strong className="text-[#0F172A] dark:text-white font-black">{selectedSeekerDossier.gender === 'female' ? 'زن (خانم)' : 'مرد (آقا)'}</strong>
                   </div>
-                  <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-slate-400 block">شماره تماس:</span>
-                    <strong className="text-emerald-300 font-mono" dir="ltr">{selectedSeekerDossier.phone}</strong>
+                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-[#CBD5E1] dark:border-slate-800">
+                    <span className="text-[#334155] dark:text-slate-400 font-bold block mb-1">شماره تماس:</span>
+                    <strong className="text-[#065F46] dark:text-emerald-300 font-mono font-black" dir="ltr">{selectedSeekerDossier.phone}</strong>
                   </div>
                 </div>
 
-                <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-[11px]">
-                  <span className="text-slate-400 block mb-0.5">آدرس محل سکونت در ایران:</span>
-                  <p className="text-slate-200">
+                <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-[#CBD5E1] dark:border-slate-800 text-xs">
+                  <span className="text-[#334155] dark:text-slate-400 font-bold block mb-1">آدرس محل سکونت در ایران:</span>
+                  <p className="text-[#0F172A] dark:text-slate-200 font-black">
                     {selectedSeekerDossier.iranProvince ? `استان ${selectedSeekerDossier.iranProvince}، شهرستان ${selectedSeekerDossier.iranCity}، ${selectedSeekerDossier.iranAddress}` : 'ثبت نشده'}
                   </p>
                 </div>
               </div>
 
               {/* 2. Jobs, Profession, Language Skills */}
-              <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-3">
-                <h4 className="font-bold text-white flex items-center gap-1.5 text-xs">
-                  <Briefcase className="w-4 h-4 text-amber-400" />
+              <div className="bg-[#F8FAFC] dark:bg-slate-950/70 border border-[#CBD5E1] dark:border-slate-800 rounded-2xl p-4 space-y-3">
+                <h4 className="font-black text-[#0F172A] dark:text-white flex items-center gap-1.5 text-xs">
+                  <Briefcase className="w-4 h-4 text-[#2563EB] dark:text-amber-400" />
                   <span>تخصص‌های شغلی و توانمندی‌های زبانی</span>
                 </h4>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
-                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-slate-400 block">شغل‌ها و تخصص‌های انتخابی:</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-[#CBD5E1] dark:border-slate-800 space-y-1.5">
+                    <span className="text-[#334155] dark:text-slate-400 font-bold block">شغل‌ها و تخصص‌های انتخابی:</span>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
                       {selectedSeekerDossier.selectedJobs && selectedSeekerDossier.selectedJobs.length > 0 ? (
                         selectedSeekerDossier.selectedJobs.map((j, idx) => (
-                          <span key={idx} className="px-2 py-0.5 bg-red-600/20 text-red-300 rounded-lg text-[10px] font-bold">
+                          <span key={idx} className="px-2.5 py-1 bg-[#EFF6FF] dark:bg-blue-500/20 text-[#1E3A8A] dark:text-blue-200 border border-blue-200 dark:border-blue-500/30 rounded-lg text-[11px] font-black">
                             {j}
                           </span>
                         ))
                       ) : (
-                        <span className="text-slate-300">{selectedSeekerDossier.skills.join('، ')}</span>
+                        <span className="text-[#0F172A] dark:text-slate-200 font-black">{selectedSeekerDossier.skills.join('، ')}</span>
                       )}
                     </div>
                     {selectedSeekerDossier.customProfession && (
-                      <div className="mt-2 pt-2 border-t border-slate-800">
-                        <span className="text-slate-400 block text-[10px]">حرفه اختصاصی نوشته شده:</span>
-                        <strong className="text-amber-300">{selectedSeekerDossier.customProfession}</strong>
+                      <div className="mt-2 pt-2 border-t border-[#E2E8F0] dark:border-slate-800">
+                        <span className="text-[#334155] dark:text-slate-400 font-bold block text-[11px]">حرفه اختصاصی نوشته شده:</span>
+                        <strong className="text-[#0F172A] dark:text-amber-300 font-black">{selectedSeekerDossier.customProfession}</strong>
                       </div>
                     )}
                   </div>
 
-                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-slate-400 block">زبان‌ها و میزان تسلط:</span>
-                    <div className="text-slate-300 mt-1">
-                      سطح زبان کشور مقصد: <strong className="text-white">{selectedSeekerDossier.targetLanguageLevel || selectedSeekerDossier.turkishLevel}</strong>
+                  <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-[#CBD5E1] dark:border-slate-800 space-y-1.5">
+                    <span className="text-[#334155] dark:text-slate-400 font-bold block">زبان‌ها و میزان تسلط:</span>
+                    <div className="text-[#334155] dark:text-slate-300 font-bold mt-1">
+                      سطح زبان کشور مقصد: <strong className="text-[#0F172A] dark:text-white font-black">{selectedSeekerDossier.targetLanguageLevel || selectedSeekerDossier.turkishLevel}</strong>
                     </div>
-                    <div className="mt-2 pt-2 border-t border-slate-800">
-                      <span className="text-slate-400 block text-[10px]">زبان‌هایی که بلد است:</span>
-                      <div className="flex flex-wrap gap-1 mt-1">
+                    <div className="mt-2 pt-2 border-t border-[#E2E8F0] dark:border-slate-800">
+                      <span className="text-[#334155] dark:text-slate-400 font-bold block text-[11px]">زبان‌هایی که بلد است:</span>
+                      <div className="flex flex-wrap gap-1.5 mt-1">
                         {selectedSeekerDossier.knownLanguages && selectedSeekerDossier.knownLanguages.length > 0 ? (
                           selectedSeekerDossier.knownLanguages.map((l, idx) => (
-                            <span key={idx} className="px-2 py-0.5 bg-emerald-600/20 text-emerald-300 rounded-lg text-[10px]">
+                            <span key={idx} className="px-2.5 py-0.5 bg-[#D1FAE5] dark:bg-emerald-600/20 text-[#065F46] dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 rounded-lg text-[11px] font-black">
                               {l}
                             </span>
                           ))
                         ) : (
-                          <span className="text-slate-400">فارسی</span>
+                          <span className="text-[#0F172A] dark:text-slate-300 font-bold">فارسی</span>
                         )}
                       </div>
                     </div>
@@ -4511,19 +4511,19 @@ export const AdminPanel: React.FC = () => {
               </div>
 
               {/* 3. Uploaded Documents (Photos) */}
-              <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-3">
-                <h4 className="font-bold text-white flex items-center gap-1.5 text-xs">
-                  <Camera className="w-4 h-4 text-blue-400" />
+              <div className="bg-[#F8FAFC] dark:bg-slate-950/70 border border-[#CBD5E1] dark:border-slate-800 rounded-2xl p-4 space-y-3">
+                <h4 className="font-black text-[#0F172A] dark:text-white flex items-center gap-1.5 text-xs">
+                  <Camera className="w-4 h-4 text-[#2563EB] dark:text-blue-400" />
                   <span>مدارک پرسنلی و هویتی بارگذاری شده</span>
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {/* Passport Photo (Mandatory) */}
-                  <div className="bg-slate-900 p-3 rounded-xl border border-amber-500/40 space-y-2 text-center">
-                    <span className="font-bold text-amber-300 text-xs block">عکس پاسپورت (ضروری)</span>
-                    <span className="text-[10px] text-emerald-400 block font-bold">با ۴ گوشه کامل و مشخص</span>
+                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-[#CBD5E1] dark:border-amber-500/40 space-y-2 text-center">
+                    <span className="font-black text-[#0F172A] dark:text-amber-300 text-xs block">عکس پاسپورت (ضروری)</span>
+                    <span className="text-[10px] text-[#065F46] dark:text-emerald-400 block font-black">با ۴ گوشه کامل و مشخص</span>
                     {selectedSeekerDossier.passportPhotoUrl ? (
-                      <div className="rounded-xl overflow-hidden aspect-4/3 bg-slate-950 border border-slate-700">
+                      <div className="rounded-xl overflow-hidden aspect-4/3 bg-[#F1F5F9] dark:bg-slate-950 border border-[#CBD5E1] dark:border-slate-700">
                         <img
                           src={selectedSeekerDossier.passportPhotoUrl}
                           alt="پاسپورت"
@@ -4531,18 +4531,18 @@ export const AdminPanel: React.FC = () => {
                         />
                       </div>
                     ) : (
-                      <div className="aspect-4/3 flex items-center justify-center bg-slate-800/40 rounded-xl text-slate-500 text-[10px]">
+                      <div className="aspect-4/3 flex items-center justify-center bg-[#F1F5F9] dark:bg-slate-800/40 rounded-xl text-[#475569] dark:text-slate-400 font-bold text-[11px]">
                         فاقد تصویر
                       </div>
                     )}
                   </div>
 
                   {/* Full Body Photo */}
-                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2 text-center">
-                    <span className="font-bold text-white text-xs block">عکس تمام قد ایستاده</span>
-                    <span className="text-[10px] text-amber-300 block">بدون آرایش / حداکثر ته‌ریش</span>
+                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-[#CBD5E1] dark:border-slate-800 space-y-2 text-center">
+                    <span className="font-black text-[#0F172A] dark:text-white text-xs block">عکس تمام قد ایستاده</span>
+                    <span className="text-[10px] text-[#334155] dark:text-amber-300 font-bold block">بدون آرایش / حداکثر ته‌ریش</span>
                     {selectedSeekerDossier.fullBodyPhotoUrl ? (
-                      <div className="rounded-xl overflow-hidden aspect-4/3 bg-slate-950 border border-slate-700">
+                      <div className="rounded-xl overflow-hidden aspect-4/3 bg-[#F1F5F9] dark:bg-slate-950 border border-[#CBD5E1] dark:border-slate-700">
                         <img
                           src={selectedSeekerDossier.fullBodyPhotoUrl}
                           alt="عکس تمام قد"
@@ -4550,18 +4550,18 @@ export const AdminPanel: React.FC = () => {
                         />
                       </div>
                     ) : (
-                      <div className="aspect-4/3 flex items-center justify-center bg-slate-800/40 rounded-xl text-slate-500 text-[10px]">
+                      <div className="aspect-4/3 flex items-center justify-center bg-[#F1F5F9] dark:bg-slate-800/40 rounded-xl text-[#475569] dark:text-slate-400 font-bold text-[11px]">
                         فاقد تصویر
                       </div>
                     )}
                   </div>
 
                   {/* National ID Photo */}
-                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2 text-center">
-                    <span className="font-bold text-white text-xs block">کارت شناسایی / ملی</span>
-                    <span className="text-[10px] text-slate-400 block">اسکن رو و پشت کارت</span>
+                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-[#CBD5E1] dark:border-slate-800 space-y-2 text-center">
+                    <span className="font-black text-[#0F172A] dark:text-white text-xs block">کارت شناسایی / ملی</span>
+                    <span className="text-[10px] text-[#334155] dark:text-slate-400 font-bold block">اسکن رو و پشت کارت</span>
                     {selectedSeekerDossier.nationalCardPhotoUrl ? (
-                      <div className="rounded-xl overflow-hidden aspect-4/3 bg-slate-950 border border-slate-700">
+                      <div className="rounded-xl overflow-hidden aspect-4/3 bg-[#F1F5F9] dark:bg-slate-950 border border-[#CBD5E1] dark:border-slate-700">
                         <img
                           src={selectedSeekerDossier.nationalCardPhotoUrl}
                           alt="کارت ملی"
@@ -4569,20 +4569,20 @@ export const AdminPanel: React.FC = () => {
                         />
                       </div>
                     ) : (
-                      <div className="aspect-4/3 flex items-center justify-center bg-slate-800/40 rounded-xl text-slate-500 text-[10px]">
+                      <div className="aspect-4/3 flex items-center justify-center bg-[#F1F5F9] dark:bg-slate-800/40 rounded-xl text-[#475569] dark:text-slate-400 font-bold text-[11px]">
                         فاقد تصویر
                       </div>
                     )}
                   </div>
 
                   {/* Payment Receipt Photo */}
-                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-2 text-center">
-                    <span className="font-bold text-amber-300 text-xs block">عکس فیش واریزی کارجو</span>
-                    <span className="text-[10px] text-slate-400 block">رسید پرداختی کارجو</span>
+                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-[#CBD5E1] dark:border-slate-800 space-y-2 text-center">
+                    <span className="font-black text-[#0F172A] dark:text-amber-300 text-xs block">عکس فیش واریزی کارجو</span>
+                    <span className="text-[10px] text-[#334155] dark:text-slate-400 font-bold block">رسید پرداختی کارجو</span>
                     {selectedSeekerDossier.paymentReceiptPhotoUrl ? (
                       <div
                         onClick={() => setViewReceiptModalUrl(selectedSeekerDossier.paymentReceiptPhotoUrl || null)}
-                        className="rounded-xl overflow-hidden aspect-4/3 bg-slate-950 border border-amber-500/50 cursor-pointer group relative"
+                        className="rounded-xl overflow-hidden aspect-4/3 bg-[#F1F5F9] dark:bg-slate-950 border border-[#CBD5E1] dark:border-amber-500/50 cursor-pointer group relative"
                       >
                         <img
                           src={selectedSeekerDossier.paymentReceiptPhotoUrl}
@@ -4590,14 +4590,14 @@ export const AdminPanel: React.FC = () => {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
                         <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 flex items-center justify-center transition">
-                          <span className="px-2 py-1 bg-black/70 text-white rounded-lg text-[9px] font-bold flex items-center gap-1">
+                          <span className="px-2 py-1 bg-black/80 text-white rounded-lg text-[10px] font-black flex items-center gap-1">
                             <Eye className="w-3 h-3" />
                             بزرگنمایی
                           </span>
                         </div>
                       </div>
                     ) : (
-                      <div className="aspect-4/3 flex items-center justify-center bg-slate-800/40 rounded-xl text-slate-500 text-[10px]">
+                      <div className="aspect-4/3 flex items-center justify-center bg-[#F1F5F9] dark:bg-slate-800/40 rounded-xl text-[#475569] dark:text-slate-400 font-bold text-[11px]">
                         فاقد تصویر فیش
                       </div>
                     )}
@@ -4606,74 +4606,74 @@ export const AdminPanel: React.FC = () => {
               </div>
 
               {/* 4. Official Signed Settlement Contract */}
-              <div className="bg-slate-950 border-2 border-red-500/50 rounded-2xl p-4 sm:p-5 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <h4 className="font-black text-white text-sm">
+              <div className="bg-[#F8FAFC] dark:bg-slate-950 border-2 border-[#CBD5E1] dark:border-red-500/50 rounded-2xl p-4 sm:p-5 space-y-3">
+                <div className="flex items-center justify-between border-b border-[#E2E8F0] dark:border-slate-800 pb-2.5 flex-wrap gap-2">
+                  <h4 className="font-black text-[#0F172A] dark:text-white text-sm">
                     تعهدنامه تسویه حساب هزینه کارگزار (نسخه رسمی امضا شده)
                   </h4>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[10px]">
+                  <span className="px-3 py-1 rounded-full bg-[#D1FAE5] dark:bg-emerald-500/20 text-[#065F46] dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 font-black text-[10px]">
                     دارای اعتبار قانونی و امضای رسمی
                   </span>
                 </div>
 
-                <div className="bg-slate-900/90 p-4 rounded-xl text-slate-300 leading-relaxed text-justify text-xs space-y-2">
+                <div className="bg-white dark:bg-slate-900/90 p-4 rounded-xl border border-[#CBD5E1] dark:border-slate-800 text-[#334155] dark:text-slate-200 leading-relaxed text-justify text-xs space-y-2 font-medium">
                   <p>
-                    اینجانب <strong className="text-white font-bold">{selectedSeekerDossier.fullName}</strong> فرزند <strong className="text-white font-bold">{selectedSeekerDossier.fatherName}</strong> به شماره ملی <strong className="text-amber-300 font-mono font-bold" dir="ltr">{selectedSeekerDossier.nationalId}</strong> اقرار و تایید می‌نمایم که مبلغ <strong className="text-emerald-300 font-bold">{selectedSeekerDossier.contractAmount || brokerSettings.brokerServiceFee}</strong> را بابت هزینه خدمات کارگزار، مشاوره، پشتیبانی و معرفی به کارفرما پرداخت نموده‌ام. اینجانب آگاه هستم که وظیفه کارگزار صرفاً معرفی به فرصت شغلی بوده و کارگزار تعهدی در قبال استخدام قطعی یا حقوق نخواهد داشت. مبلغ فوق غیرقابل استرداد می‌باشد.
+                    اینجانب <strong className="text-[#0F172A] dark:text-white font-black">{selectedSeekerDossier.fullName}</strong> فرزند <strong className="text-[#0F172A] dark:text-white font-black">{selectedSeekerDossier.fatherName}</strong> به شماره ملی <strong className="text-[#1E3A8A] dark:text-amber-300 font-mono font-black" dir="ltr">{selectedSeekerDossier.nationalId}</strong> اقرار و تایید می‌نمایم که مبلغ <strong className="text-[#065F46] dark:text-emerald-300 font-black">{selectedSeekerDossier.contractAmount || brokerSettings.brokerServiceFee}</strong> را بابت هزینه خدمات کارگزار، مشاوره، پشتیبانی و معرفی به کارفرما پرداخت نموده‌ام. اینجانب آگاه هستم که وظیفه کارگزار صرفاً معرفی به فرصت شغلی بوده و کارگزار تعهدی در قبال استخدام قطعی یا حقوق نخواهد داشت. مبلغ فوق غیرقابل استرداد می‌باشد.
                   </p>
                 </div>
 
                 {/* Bank Card Info */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
-                  <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-slate-400 block mb-0.5">شماره کارت واریز کننده (مشتری):</span>
-                    <strong className="text-amber-300 font-mono text-xs" dir="ltr">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-[#CBD5E1] dark:border-slate-800">
+                    <span className="text-[#334155] dark:text-slate-400 font-bold block mb-1">شماره کارت واریز کننده (مشتری):</span>
+                    <strong className="text-[#0F172A] dark:text-amber-300 font-mono font-black text-xs" dir="ltr">
                       {selectedSeekerDossier.payerCardNumber || 'ثبت نشده'}
                     </strong>
                   </div>
 
-                  <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-slate-400 block mb-0.5">شماره کارت مقصد کارگزار:</span>
-                    <strong className="text-white font-mono text-xs" dir="ltr">
+                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-[#CBD5E1] dark:border-slate-800">
+                    <span className="text-[#334155] dark:text-slate-400 font-bold block mb-1">شماره کارت مقصد کارگزار:</span>
+                    <strong className="text-[#0F172A] dark:text-white font-mono font-black text-xs" dir="ltr">
                       {selectedSeekerDossier.brokerCardNumber || brokerSettings.brokerCardNumber}
                     </strong>
                   </div>
                 </div>
 
                 {/* Signature & Date */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800 items-center">
-                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
-                    <span className="text-slate-400 text-[10px] block mb-1">امضای الکترونیکی ثبت شده کارجو:</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#E2E8F0] dark:border-slate-800 items-center">
+                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-[#CBD5E1] dark:border-slate-800">
+                    <span className="text-[#334155] dark:text-slate-400 font-bold text-[11px] block mb-1.5">امضای الکترونیکی ثبت شده کارجو:</span>
                     {selectedSeekerDossier.signatureDataUrl ? (
-                      <div className="bg-white/10 p-2 rounded-lg border border-red-500/30 flex items-center justify-center">
+                      <div className="bg-white p-2.5 rounded-lg border border-[#CBD5E1] flex items-center justify-center">
                         <img
                           src={selectedSeekerDossier.signatureDataUrl}
                           alt="امضای متقاضی"
-                          className="h-16 max-w-full object-contain filter invert"
+                          className="h-16 max-w-full object-contain"
                         />
                       </div>
                     ) : (
-                      <span className="text-slate-500 text-xs italic">امضایی ثبت نگردیده است</span>
+                      <span className="text-[#475569] dark:text-slate-400 text-xs font-bold">امضایی ثبت نگردیده است</span>
                     )}
                   </div>
 
-                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-1 text-right sm:text-left" dir="ltr">
-                    <div className="text-xs font-bold text-amber-300">تاریخ عقد قرارداد:</div>
-                    <div className="text-[11px] text-slate-300 font-mono">
-                      شمسی: <strong className="text-white">{selectedSeekerDossier.contractDateShamsi || '۱۴۰۵/۰۸/۰۴'}</strong>
+                  <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-[#CBD5E1] dark:border-slate-800 space-y-1 text-right sm:text-left" dir="ltr">
+                    <div className="text-xs font-black text-[#1E3A8A] dark:text-amber-300">تاریخ عقد قرارداد:</div>
+                    <div className="text-[11px] text-[#334155] dark:text-slate-300 font-mono font-bold">
+                      شمسی: <strong className="text-[#0F172A] dark:text-white font-black">{selectedSeekerDossier.contractDateShamsi || '۱۴۰۵/۰۸/۰۴'}</strong>
                     </div>
-                    <div className="text-[11px] text-slate-300 font-mono">
-                      میلادی: <strong className="text-white">{selectedSeekerDossier.contractDateMiladi || '2026/10/26'}</strong>
+                    <div className="text-[11px] text-[#334155] dark:text-slate-300 font-mono font-bold">
+                      میلادی: <strong className="text-[#0F172A] dark:text-white font-black">{selectedSeekerDossier.contractDateMiladi || '2026/10/26'}</strong>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="px-6 py-3.5 bg-slate-950 border-t border-slate-800 flex justify-end">
+            <div className="px-6 py-4 bg-[#F8FAFC] dark:bg-slate-800 border-t border-[#CBD5E1] dark:border-slate-700 flex justify-end">
               <button
                 type="button"
                 onClick={() => setSelectedSeekerDossier(null)}
-                className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition"
+                className="px-6 py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-black rounded-xl text-xs transition shadow-sm"
               >
                 بستن پرونده
               </button>

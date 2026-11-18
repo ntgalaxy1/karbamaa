@@ -491,20 +491,28 @@ html.light h4 {
 
 html.light .text-white,
 html.light .text-slate-50,
-html.light .text-slate-100 {
+html.light .text-slate-100,
+html.light .text-gray-50,
+html.light .text-gray-100,
+html.light .text-gray-200 {
   color: #0F172A !important;
 }
 
 html.light .text-slate-200,
-html.light .text-slate-300 {
+html.light .text-slate-300,
+html.light .text-gray-300 {
   color: #1E293B !important;
 }
 
-html.light .text-slate-400 {
+html.light .text-slate-400,
+html.light .text-gray-400 {
   color: #334155 !important;
 }
 
-html.light .text-slate-500 {
+html.light .text-slate-500,
+html.light .text-slate-600,
+html.light .text-gray-500,
+html.light .text-gray-600 {
   color: #475569 !important;
 }
 
@@ -695,10 +703,11 @@ html.light .bg-indigo-600,
 html.light .bg-indigo-700,
 html.light .bg-purple-600,
 html.light .bg-pink-600,
-html.light .bg-black\/50,
-html.light .bg-black\/60,
-html.light .bg-black\/70,
-html.light .bg-black\/80,
+html.light .bg-\[\#2563EB\],
+html.light .bg-\[\#1D4ED8\],
+html.light .bg-\[\#1E3A8A\],
+html.light .bg-\[\#10B981\],
+html.light .bg-\[\#059669\],
 html.light .job-photo-badge,
 html.light .job-photo-overlay,
 html.light .bg-primary-app,
@@ -738,10 +747,11 @@ html.light .bg-indigo-600 *,
 html.light .bg-indigo-700 *,
 html.light .bg-purple-600 *,
 html.light .bg-pink-600 *,
-html.light .bg-black\/50 *,
-html.light .bg-black\/60 *,
-html.light .bg-black\/70 *,
-html.light .bg-black\/80 *,
+html.light .bg-\[\#2563EB\] *,
+html.light .bg-\[\#1D4ED8\] *,
+html.light .bg-\[\#1E3A8A\] *,
+html.light .bg-\[\#10B981\] *,
+html.light .bg-\[\#059669\] *,
 html.light .job-photo-badge *,
 html.light .job-photo-overlay *,
 html.light .bg-primary-app *,

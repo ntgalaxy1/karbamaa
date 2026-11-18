@@ -2314,33 +2314,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
 
               {/* STEP 5: پرونده رسمی کارجو صادر شد (مرحله نهایی با مدارک تایید شده و امضا) */}
               {step === 5 && (
-                <div className="space-y-6 animate-fadeIn py-2">
+                <div className="space-y-6 animate-fadeIn py-2 text-[#0F172A] dark:text-slate-100">
                   {/* Top Success Celebration Banner */}
-                  <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-emerald-950/80 border-2 border-emerald-500/80 rounded-3xl p-6 text-center shadow-2xl relative overflow-hidden">
-                    <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none" />
-                    <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-amber-500/20 rounded-full blur-2xl pointer-events-none" />
-                    
-                    <div className="w-16 h-16 bg-emerald-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-500/40 animate-bounce">
+                  <div className="bg-[#ECFDF5] dark:bg-emerald-950/80 border-2 border-emerald-400 dark:border-emerald-500/80 rounded-3xl p-6 text-center shadow-lg relative overflow-hidden">
+                    <div className="w-16 h-16 bg-[#10B981] text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md">
                       <CheckCircle2 className="w-10 h-10" />
                     </div>
 
-                    <h2 className="text-xl sm:text-2xl font-black text-white">
+                    <h2 className="text-xl sm:text-2xl font-black text-[#065F46] dark:text-white">
                       🎉 پرونده رسمی کارجو با موفقیت صادر گردید!
                     </h2>
-                    <p className="text-xs sm:text-sm text-emerald-300 font-semibold mt-1.5 max-w-xl mx-auto leading-relaxed">
+                    <p className="text-xs sm:text-sm text-[#064E3B] dark:text-emerald-200 font-bold mt-1.5 max-w-xl mx-auto leading-relaxed">
                       حساب کاربری شما فعال شد و تمامی مدارک (پاسپورت با ۴ گوشه مشخص، عکس پرسنلی و امضای دیجیتال رسمی) در پرونده مرکزی کارباما ثبت و ذخیره گردید.
                     </p>
 
-                    <div className="inline-flex items-center gap-2 mt-3 px-3.5 py-1.5 bg-emerald-900/60 border border-emerald-500/40 rounded-full text-xs text-emerald-200 font-bold">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                      <span>کد رهگیری پرونده: <strong className="font-mono text-white text-sm" dir="ltr">{registeredSeeker?.id || `KB-${Date.now().toString().slice(-6)}`}</strong></span>
+                    <div className="inline-flex items-center gap-2 mt-3 px-4 py-1.5 bg-white dark:bg-emerald-900/60 border border-emerald-300 dark:border-emerald-500/40 rounded-full text-xs text-[#065F46] dark:text-emerald-200 font-black shadow-xs">
+                      <span className="w-2 h-2 rounded-full bg-[#10B981] animate-ping" />
+                      <span>کد رهگیری پرونده: <strong className="font-mono text-[#0F172A] dark:text-white text-sm" dir="ltr">{registeredSeeker?.id || `KB-${Date.now().toString().slice(-6)}`}</strong></span>
                     </div>
                   </div>
 
                   {/* کارت پرونده جامع الکترونیک کارجو */}
-                  <div className="bg-slate-950 border-2 border-slate-700/80 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-5">
+                  <div className="bg-white dark:bg-slate-900 border-2 border-[#CBD5E1] dark:border-slate-700 rounded-3xl p-5 sm:p-6 shadow-xl space-y-5">
                     {/* Header of Dossier */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#E2E8F0] dark:border-slate-800 gap-3">
                       <div className="flex items-center gap-3">
                         <img
                           src={KARBAMA_LOGO_DATA_URI}
@@ -2349,39 +2346,39 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                             e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
                           }}
                           alt="کارباما"
-                          className="w-12 h-12 rounded-full border-2 border-amber-400 shadow-md object-cover"
+                          className="w-12 h-12 rounded-full border-2 border-[#2563EB] dark:border-amber-400 shadow-sm object-cover"
                         />
                         <div>
-                          <h3 className="text-base font-black text-white flex items-center gap-1.5">
+                          <h3 className="text-base font-black text-[#0F172A] dark:text-white flex items-center gap-2 flex-wrap">
                             <span>کارت پرونده رسمی کارجو</span>
-                            <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-bold">
+                            <span className="text-[10px] bg-[#D1FAE5] dark:bg-emerald-500/20 text-[#065F46] dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 px-2.5 py-0.5 rounded-full font-black">
                               معتبر و تایید شده
                             </span>
                           </h3>
-                          <p className="text-[11px] text-slate-400">سامانه کاریابی و اعزام نیروی کار کارباما</p>
+                          <p className="text-xs font-bold text-[#334155] dark:text-slate-300 mt-0.5">سامانه کاریابی و اعزام نیروی کار کارباما</p>
                         </div>
                       </div>
 
-                      <div className="text-left bg-slate-900 px-3.5 py-2 rounded-xl border border-slate-800 text-xs font-mono" dir="ltr">
-                        <div className="text-amber-300 font-bold">تاریخ صدور پرونده:</div>
-                        <div className="text-slate-300 text-[11px] mt-0.5">{contractDateShamsi} / {contractDateMiladi}</div>
+                      <div className="text-left bg-[#F8FAFC] dark:bg-slate-800 px-3.5 py-2 rounded-xl border border-[#CBD5E1] dark:border-slate-700 text-xs font-mono" dir="ltr">
+                        <div className="text-[#1E3A8A] dark:text-amber-300 font-black">تاریخ صدور پرونده:</div>
+                        <div className="text-[#0F172A] dark:text-slate-200 font-bold text-[11px] mt-0.5">{contractDateShamsi} / {contractDateMiladi}</div>
                       </div>
                     </div>
 
                     {/* Document Photos Grid (Passport & Full-Body) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Full-Body Photo */}
-                      <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-2">
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                      <div className="bg-[#F8FAFC] dark:bg-slate-800/80 p-3.5 rounded-2xl border border-[#CBD5E1] dark:border-slate-700 space-y-2">
+                        <div className="flex items-center justify-between text-xs font-black text-[#0F172A] dark:text-slate-200">
                           <span className="flex items-center gap-1.5">
-                            <Camera className="w-4 h-4 text-emerald-400" />
+                            <Camera className="w-4 h-4 text-[#065F46] dark:text-emerald-400" />
                             <span>عکس پرسنلی تمام قد</span>
                           </span>
-                          <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                          <span className="text-[10px] text-[#065F46] dark:text-emerald-300 bg-[#D1FAE5] dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-500/30 px-2 py-0.5 rounded-md font-black">
                             تایید شده ✓
                           </span>
                         </div>
-                        <div className="h-44 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center">
+                        <div className="h-44 rounded-xl overflow-hidden bg-white dark:bg-slate-950 border border-[#CBD5E1] dark:border-slate-700 flex items-center justify-center">
                           {fullBodyPhotoUrl ? (
                             <img
                               src={fullBodyPhotoUrl}
@@ -2389,29 +2386,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="text-xs text-slate-500">تصویر ثبت شده</div>
+                            <div className="text-xs font-bold text-[#475569] dark:text-slate-400">تصویر ثبت شده</div>
                           )}
                         </div>
                       </div>
 
                       {/* Passport Photo (4 corners verified) */}
-                      <div className="bg-slate-900 p-3 rounded-2xl border border-emerald-500/40 space-y-2">
-                        <div className="flex items-center justify-between text-xs font-bold text-amber-300">
+                      <div className="bg-[#F8FAFC] dark:bg-slate-800/80 p-3.5 rounded-2xl border border-[#CBD5E1] dark:border-emerald-500/40 space-y-2">
+                        <div className="flex items-center justify-between text-xs font-black text-[#0F172A] dark:text-amber-300">
                           <span className="flex items-center gap-1.5">
-                            <FileText className="w-4 h-4 text-amber-400" />
+                            <FileText className="w-4 h-4 text-[#2563EB] dark:text-amber-400" />
                             <span>عکس پاسپورت (۴ گوشه مشخص)</span>
                           </span>
-                          <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <span className="text-[10px] text-[#065F46] dark:text-emerald-300 bg-[#D1FAE5] dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-500/40 px-2 py-0.5 rounded-md flex items-center gap-1 font-black">
                             <Check className="w-3 h-3" />
                             چهارگوشه احراز شد ✓
                           </span>
                         </div>
-                        <div className="relative h-44 rounded-xl overflow-hidden bg-slate-950 border border-emerald-500/30 flex items-center justify-center">
+                        <div className="relative h-44 rounded-xl overflow-hidden bg-white dark:bg-slate-950 border border-[#CBD5E1] dark:border-emerald-500/30 flex items-center justify-center">
                           {/* Corner Markers */}
-                          <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-emerald-400 rounded-tr pointer-events-none z-10" />
-                          <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-emerald-400 rounded-tl pointer-events-none z-10" />
-                          <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-emerald-400 rounded-br pointer-events-none z-10" />
-                          <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-emerald-400 rounded-bl pointer-events-none z-10" />
+                          <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-[#10B981] rounded-tr pointer-events-none z-10" />
+                          <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-[#10B981] rounded-tl pointer-events-none z-10" />
+                          <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-[#10B981] rounded-br pointer-events-none z-10" />
+                          <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-[#10B981] rounded-bl pointer-events-none z-10" />
 
                           {passportPhotoUrl ? (
                             <img
@@ -2420,95 +2417,95 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="text-xs text-slate-500">تصویر پاسپورت</div>
+                            <div className="text-xs font-bold text-[#475569] dark:text-slate-400">تصویر پاسپورت</div>
                           )}
                         </div>
                       </div>
                     </div>
 
                     {/* Identity and Destination Details Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-[#F8FAFC] dark:bg-slate-800/80 p-4 rounded-2xl border border-[#CBD5E1] dark:border-slate-700">
                       <div>
-                        <span className="text-slate-400 block text-[10px]">نام و نام خانوادگی:</span>
-                        <strong className="text-white text-sm font-black">{firstName} {lastName}</strong>
+                        <span className="text-[#334155] dark:text-slate-300 font-bold block text-[11px]">نام و نام خانوادگی:</span>
+                        <strong className="text-[#0F172A] dark:text-white text-sm font-black">{firstName} {lastName}</strong>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px]">نام پدر:</span>
-                        <strong className="text-white">{fatherName}</strong>
+                        <span className="text-[#334155] dark:text-slate-300 font-bold block text-[11px]">نام پدر:</span>
+                        <strong className="text-[#0F172A] dark:text-white font-black">{fatherName}</strong>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px]">کد ملی / شماره پاسپورت:</span>
-                        <strong className="text-amber-300 font-mono" dir="ltr">{nationalId}</strong>
+                        <span className="text-[#334155] dark:text-slate-300 font-bold block text-[11px]">کد ملی / شماره پاسپورت:</span>
+                        <strong className="text-[#0F172A] dark:text-amber-300 font-mono font-black" dir="ltr">{nationalId}</strong>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px]">شماره تماس:</span>
-                        <strong className="text-emerald-300 font-mono" dir="ltr">{phoneCountryCode} {phoneNumber}</strong>
+                        <span className="text-[#334155] dark:text-slate-300 font-bold block text-[11px]">شماره تماس:</span>
+                        <strong className="text-[#065F46] dark:text-emerald-300 font-mono font-black" dir="ltr">{phoneCountryCode} {phoneNumber}</strong>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px]">کشور مقصد:</span>
-                        <strong className="text-white">{targetCountry} ({targetCity})</strong>
+                        <span className="text-[#334155] dark:text-slate-300 font-bold block text-[11px]">کشور مقصد:</span>
+                        <strong className="text-[#1E3A8A] dark:text-white font-black">{targetCountry} ({targetCity})</strong>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px]">شغل‌های درخواستی:</span>
-                        <strong className="text-white truncate block">{selectedJobs.join('، ') || customProfession || 'عمومی'}</strong>
+                        <span className="text-[#334155] dark:text-slate-300 font-bold block text-[11px]">شغل‌های درخواستی:</span>
+                        <strong className="text-[#0F172A] dark:text-white font-black truncate block">{selectedJobs.join('، ') || customProfession || 'عمومی'}</strong>
                       </div>
-                      <div className="col-span-2 sm:col-span-3 pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
-                        <span className="text-slate-400">
-                          آدرس سکونت: <strong className="text-slate-200">استان {iranProvince}، شهرستان {iranCity}، {iranAddress}</strong>
+                      <div className="col-span-2 sm:col-span-3 pt-2.5 border-t border-[#E2E8F0] dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
+                        <span className="text-[#334155] dark:text-slate-300 font-bold">
+                          آدرس سکونت: <strong className="text-[#0F172A] dark:text-white font-black">استان {iranProvince}، شهرستان {iranCity}، {iranAddress}</strong>
                         </span>
-                        <span className="text-emerald-400 font-bold">
+                        <span className="text-[#065F46] dark:text-emerald-300 font-black">
                           تسویه حساب کارگزار: {brokerSettings.brokerServiceFee} (کارت: {payerCardNumber || 'ثبت شده'}) ✓
                         </span>
                       </div>
                     </div>
 
                     {/* Account Login Credentials Reminder Box */}
-                    <div className="bg-emerald-950/40 border border-emerald-500/50 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="bg-[#EFF6FF] dark:bg-emerald-950/40 border border-blue-300 dark:border-emerald-500/50 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="space-y-1">
-                        <div className="text-xs font-black text-emerald-300 flex items-center gap-1.5">
-                          <KeyRound className="w-4 h-4 text-emerald-400" />
+                        <div className="text-xs font-black text-[#1E3A8A] dark:text-emerald-300 flex items-center gap-1.5">
+                          <KeyRound className="w-4 h-4 text-[#2563EB] dark:text-emerald-400" />
                           <span>اطلاعات ورود به حساب کاربری شما (شما هم‌اکنون وارد حساب خود شده‌اید)</span>
                         </div>
-                        <p className="text-[11px] text-slate-300">
-                          در مراجعات بعدی می‌توانید با <strong>نام کاربری</strong>، <strong>ایمیل</strong>، <strong>شماره موبایل</strong> یا <strong>کد ملی</strong> خود وارد شوید:
+                        <p className="text-xs font-medium text-[#334155] dark:text-slate-300">
+                          در مراجعات بعدی می‌توانید با <strong className="text-[#0F172A] dark:text-white">نام کاربری</strong>، <strong className="text-[#0F172A] dark:text-white">ایمیل</strong>، <strong className="text-[#0F172A] dark:text-white">شماره موبایل</strong> یا <strong className="text-[#0F172A] dark:text-white">کد ملی</strong> خود وارد شوید:
                         </p>
                       </div>
-                      <div className="flex items-center gap-3 bg-slate-950/90 border border-emerald-500/30 px-3.5 py-2 rounded-xl font-mono text-xs shrink-0" dir="ltr">
+                      <div className="flex items-center gap-3 bg-white dark:bg-slate-950 border border-[#CBD5E1] dark:border-emerald-500/30 px-4 py-2.5 rounded-xl font-mono text-xs shrink-0" dir="ltr">
                         <div>
-                          <span className="text-slate-400 text-[10px] block">Username:</span>
-                          <strong className="text-emerald-300">{registeredSeeker?.username || username}</strong>
+                          <span className="text-[#334155] dark:text-slate-400 text-[10px] font-bold block">Username:</span>
+                          <strong className="text-[#0F172A] dark:text-emerald-300 font-black">{registeredSeeker?.username || username}</strong>
                         </div>
-                        <div className="h-6 w-px bg-slate-800" />
+                        <div className="h-6 w-px bg-[#CBD5E1] dark:bg-slate-800" />
                         <div>
-                          <span className="text-slate-400 text-[10px] block">Password:</span>
-                          <strong className="text-amber-300">{registeredSeeker?.password || password}</strong>
+                          <span className="text-[#334155] dark:text-slate-400 text-[10px] font-bold block">Password:</span>
+                          <strong className="text-[#065F46] dark:text-amber-300 font-black">{registeredSeeker?.password || password}</strong>
                         </div>
                       </div>
                     </div>
 
                     {/* Official Electronic Signature Card */}
-                    <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <FileText className="w-4 h-4 text-emerald-400" />
+                    <div className="bg-[#F8FAFC] dark:bg-slate-800/80 p-4 rounded-2xl border border-[#CBD5E1] dark:border-slate-700 space-y-2.5">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="text-xs font-black text-[#0F172A] dark:text-white flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-[#065F46] dark:text-emerald-400" />
                           <span>امضای الکترونیکی ثبت شده متقاضی</span>
                         </span>
-                        <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold">
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#D1FAE5] dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/40 text-[#065F46] dark:text-emerald-300 font-black">
                           امضای دیجیتال رسمی دارای اثر قانونی لازم‌الاجرا
                         </span>
                       </div>
 
-                      <div className="bg-slate-950 p-2 rounded-xl border border-slate-800/80 flex flex-col items-center justify-center">
+                      <div className="bg-white p-3 rounded-xl border border-[#CBD5E1] flex flex-col items-center justify-center">
                         {signatureDataUrl ? (
                           <img
                             src={signatureDataUrl}
                             alt="امضای رسمی متقاضی"
-                            className="max-h-24 w-auto object-contain filter drop-shadow-md"
+                            className="max-h-24 w-auto object-contain"
                           />
                         ) : (
-                          <div className="text-xs text-slate-500 py-4">امضای الکترونیکی ثبت شده در پرونده</div>
+                          <div className="text-xs font-bold text-[#334155] py-4">امضای الکترونیکی ثبت شده در پرونده</div>
                         )}
-                        <div className="text-[10px] text-slate-500 font-mono mt-1">
+                        <div className="text-[11px] text-[#334155] font-mono font-bold mt-1">
                           تایید شده توسط {firstName} {lastName} • {contractDateShamsi}
                         </div>
                       </div>
@@ -2520,9 +2517,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                     <button
                       type="button"
                       onClick={() => setIsCommitmentModalOpen(true)}
-                      className="w-full sm:w-auto px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto px-5 py-3.5 bg-white hover:bg-[#F1F5F9] dark:bg-slate-800 dark:hover:bg-slate-700 text-[#0F172A] dark:text-slate-100 border border-[#CBD5E1] dark:border-slate-700 rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-xs"
                     >
-                      <FileText className="w-4 h-4 text-amber-400" />
+                      <FileText className="w-4 h-4 text-[#2563EB] dark:text-amber-400" />
                       <span>مشاهده و چاپ تعهدنامه حقوقی با امضا</span>
                     </button>
 
@@ -2532,7 +2529,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                         setActiveTab('settings');
                         onClose();
                       }}
-                      className="w-full sm:flex-1 py-3.5 px-5 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl shadow-xl shadow-emerald-600/30 transition flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
+                      className="w-full sm:flex-1 py-3.5 px-5 bg-[#10B981] hover:bg-[#059669] text-white font-black rounded-2xl shadow-md transition flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
                     >
                       <User className="w-4 h-4" />
                       <span>ورود به پنل کاربری و پرونده من</span>
@@ -2544,7 +2541,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
                         setActiveTab('jobs');
                         onClose();
                       }}
-                      className="w-full sm:w-auto py-3.5 px-5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black rounded-2xl shadow-lg shadow-red-600/30 transition flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
+                      className="w-full sm:w-auto py-3.5 px-5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-black rounded-2xl shadow-md transition flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
                     >
                       <Briefcase className="w-4 h-4" />
                       <span>مشاهده آگهی‌های شغلی</span>

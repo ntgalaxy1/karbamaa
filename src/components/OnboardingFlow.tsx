@@ -2110,29 +2110,29 @@ export const OnboardingFlow: React.FC = () => {
 
               {/* STEP 5: تاییدیه نهایی و پرونده رسمی کارجو */}
               {regStep === 5 && (
-                <div className="space-y-6 animate-in fade-in duration-200 py-2">
+                <div className="space-y-6 animate-in fade-in duration-200 py-2 text-[#0F172A] dark:text-slate-100">
                   {/* Top Success Banner */}
-                  <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-emerald-950/80 border-2 border-emerald-500/80 rounded-3xl p-5 sm:p-6 text-center shadow-2xl relative overflow-hidden">
-                    <div className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-500/40">
+                  <div className="bg-[#ECFDF5] dark:bg-emerald-950/80 border-2 border-emerald-400 dark:border-emerald-500/80 rounded-3xl p-5 sm:p-6 text-center shadow-lg relative overflow-hidden">
+                    <div className="w-14 h-14 bg-[#10B981] text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md">
                       <CheckCircle2 className="w-9 h-9" />
                     </div>
 
-                    <h2 className="text-lg sm:text-xl font-black text-white">
+                    <h2 className="text-lg sm:text-xl font-black text-[#065F46] dark:text-white">
                       🎉 پرونده رسمی کارجو با موفقیت صادر گردید!
                     </h2>
-                    <p className="text-xs text-emerald-300 font-semibold mt-1.5 max-w-lg mx-auto leading-relaxed">
+                    <p className="text-xs text-[#064E3B] dark:text-emerald-200 font-bold mt-1.5 max-w-lg mx-auto leading-relaxed">
                       حساب کاربری شما فعال شد و تمامی مدارک (پاسپورت با ۴ گوشه مشخص، عکس پرسنلی و امضای دیجیتال رسمی) در پرونده مرکزی کارباما ثبت و ذخیره گردید.
                     </p>
 
-                    <div className="inline-flex items-center gap-2 mt-3 px-3.5 py-1.5 bg-emerald-900/60 border border-emerald-500/40 rounded-full text-xs text-emerald-200 font-bold">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                      <span>کد پرونده الکترونیک: <strong className="font-mono text-white text-sm" dir="ltr">{registeredSeeker?.id || `KB-${Date.now().toString().slice(-6)}`}</strong></span>
+                    <div className="inline-flex items-center gap-2 mt-3 px-4 py-1.5 bg-white dark:bg-emerald-900/60 border border-emerald-300 dark:border-emerald-500/40 rounded-full text-xs text-[#065F46] dark:text-emerald-200 font-black">
+                      <span className="w-2 h-2 rounded-full bg-[#10B981] animate-ping" />
+                      <span>کد پرونده الکترونیک: <strong className="font-mono text-[#0F172A] dark:text-white text-sm" dir="ltr">{registeredSeeker?.id || `KB-${Date.now().toString().slice(-6)}`}</strong></span>
                     </div>
                   </div>
 
                   {/* کارت پرونده جامع الکترونیک کارجو */}
-                  <div className="bg-slate-950 border-2 border-slate-700/80 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-2">
+                  <div className="bg-white dark:bg-slate-900 border-2 border-[#CBD5E1] dark:border-slate-700 rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E2E8F0] dark:border-slate-800 gap-2">
                       <div className="flex items-center gap-2.5">
                         <img
                           src={KARBAMA_LOGO_DATA_URI}
@@ -2141,16 +2141,16 @@ export const OnboardingFlow: React.FC = () => {
                             e.currentTarget.src = KARBAMA_LOGO_DATA_URI;
                           }}
                           alt="کارباما"
-                          className="w-10 h-10 rounded-full border border-amber-400 shadow-md object-cover"
+                          className="w-10 h-10 rounded-full border-2 border-[#2563EB] dark:border-amber-400 shadow-xs object-cover"
                         />
                         <div>
-                          <h3 className="text-sm font-black text-white flex items-center gap-1.5">
+                          <h3 className="text-sm font-black text-[#0F172A] dark:text-white flex items-center gap-1.5 flex-wrap">
                             <span>کارت پرونده رسمی کارجو</span>
-                            <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-bold">
+                            <span className="text-[10px] bg-[#D1FAE5] dark:bg-emerald-500/20 text-[#065F46] dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 px-2.5 py-0.5 rounded-full font-black">
                               معتبر و تایید شده
                             </span>
                           </h3>
-                          <p className="text-[10px] text-slate-400">سامانه کاریابی و اعزام نیروی کار کارباما</p>
+                          <p className="text-[11px] font-bold text-[#334155] dark:text-slate-300">سامانه کاریابی و اعزام نیروی کار کارباما</p>
                         </div>
                       </div>
                     </div>
@@ -2158,17 +2158,17 @@ export const OnboardingFlow: React.FC = () => {
                     {/* Document Photos Grid (Passport & Full-Body) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* Full-Body Photo */}
-                      <div className="bg-slate-900 p-2.5 rounded-2xl border border-slate-800 space-y-1.5">
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                      <div className="bg-[#F8FAFC] dark:bg-slate-800/80 p-3 rounded-2xl border border-[#CBD5E1] dark:border-slate-700 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs font-black text-[#0F172A] dark:text-slate-200">
                           <span className="flex items-center gap-1.5">
-                            <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                            <Camera className="w-3.5 h-3.5 text-[#065F46] dark:text-emerald-400" />
                             <span>عکس پرسنلی تمام قد</span>
                           </span>
-                          <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                          <span className="text-[10px] text-[#065F46] dark:text-emerald-300 bg-[#D1FAE5] dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-500/30 px-2 py-0.5 rounded-md font-black">
                             تایید شده ✓
                           </span>
                         </div>
-                        <div className="h-40 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center">
+                        <div className="h-40 rounded-xl overflow-hidden bg-white dark:bg-slate-950 border border-[#CBD5E1] dark:border-slate-700 flex items-center justify-center">
                           {fullBodyPhotoUrl ? (
                             <img
                               src={fullBodyPhotoUrl}
@@ -2176,28 +2176,28 @@ export const OnboardingFlow: React.FC = () => {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="text-xs text-slate-500">تصویر ثبت شده</div>
+                            <div className="text-xs font-bold text-[#475569] dark:text-slate-400">تصویر ثبت شده</div>
                           )}
                         </div>
                       </div>
 
                       {/* Passport Photo */}
-                      <div className="bg-slate-900 p-2.5 rounded-2xl border border-emerald-500/40 space-y-1.5">
-                        <div className="flex items-center justify-between text-xs font-bold text-amber-300">
+                      <div className="bg-[#F8FAFC] dark:bg-slate-800/80 p-3 rounded-2xl border border-[#CBD5E1] dark:border-emerald-500/40 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs font-black text-[#0F172A] dark:text-amber-300">
                           <span className="flex items-center gap-1.5">
-                            <FileText className="w-3.5 h-3.5 text-amber-400" />
+                            <FileText className="w-3.5 h-3.5 text-[#2563EB] dark:text-amber-400" />
                             <span>عکس پاسپورت (۴ گوشه مشخص)</span>
                           </span>
-                          <span className="text-[10px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <span className="text-[10px] text-[#065F46] dark:text-emerald-300 bg-[#D1FAE5] dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-500/40 px-2 py-0.5 rounded-md flex items-center gap-1 font-black">
                             <Check className="w-3 h-3" />
                             چهارگوشه احراز شد ✓
                           </span>
                         </div>
-                        <div className="relative h-40 rounded-xl overflow-hidden bg-slate-950 border border-emerald-500/30 flex items-center justify-center">
-                          <div className="absolute top-2 right-2 w-3.5 h-3.5 border-t-2 border-r-2 border-emerald-400 rounded-tr pointer-events-none z-10" />
-                          <div className="absolute top-2 left-2 w-3.5 h-3.5 border-t-2 border-l-2 border-emerald-400 rounded-tl pointer-events-none z-10" />
-                          <div className="absolute bottom-2 right-2 w-3.5 h-3.5 border-b-2 border-r-2 border-emerald-400 rounded-br pointer-events-none z-10" />
-                          <div className="absolute bottom-2 left-2 w-3.5 h-3.5 border-b-2 border-l-2 border-emerald-400 rounded-bl pointer-events-none z-10" />
+                        <div className="relative h-40 rounded-xl overflow-hidden bg-white dark:bg-slate-950 border border-[#CBD5E1] dark:border-emerald-500/30 flex items-center justify-center">
+                          <div className="absolute top-2 right-2 w-3.5 h-3.5 border-t-2 border-r-2 border-[#10B981] rounded-tr pointer-events-none z-10" />
+                          <div className="absolute top-2 left-2 w-3.5 h-3.5 border-t-2 border-l-2 border-[#10B981] rounded-tl pointer-events-none z-10" />
+                          <div className="absolute bottom-2 right-2 w-3.5 h-3.5 border-b-2 border-r-2 border-[#10B981] rounded-br pointer-events-none z-10" />
+                          <div className="absolute bottom-2 left-2 w-3.5 h-3.5 border-b-2 border-l-2 border-[#10B981] rounded-bl pointer-events-none z-10" />
 
                           {passportPhotoUrl ? (
                             <img
@@ -2206,57 +2206,57 @@ export const OnboardingFlow: React.FC = () => {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="text-xs text-slate-500">تصویر پاسپورت</div>
+                            <div className="text-xs font-bold text-[#475569] dark:text-slate-400">تصویر پاسپورت</div>
                           )}
                         </div>
                       </div>
                     </div>
 
                     {/* Identity Details */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs bg-slate-900/80 p-3 rounded-2xl border border-slate-800">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs bg-[#F8FAFC] dark:bg-slate-800/80 p-3.5 rounded-2xl border border-[#CBD5E1] dark:border-slate-700">
                       <div>
-                        <span className="text-slate-400 block text-[10px]">نام و نام خانوادگی:</span>
-                        <strong className="text-white text-xs sm:text-sm font-black">{firstName} {lastName}</strong>
+                        <span className="text-[#334155] dark:text-slate-300 font-bold block text-[11px]">نام و نام خانوادگی:</span>
+                        <strong className="text-[#0F172A] dark:text-white text-xs sm:text-sm font-black">{firstName} {lastName}</strong>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px]">نام پدر:</span>
-                        <strong className="text-white">{fatherName}</strong>
+                        <span className="text-[#334155] dark:text-slate-300 font-bold block text-[11px]">نام پدر:</span>
+                        <strong className="text-[#0F172A] dark:text-white font-black">{fatherName}</strong>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px]">کد ملی / پاسپورت:</span>
-                        <strong className="text-amber-300 font-mono" dir="ltr">{nationalId}</strong>
+                        <span className="text-[#334155] dark:text-slate-300 font-bold block text-[11px]">کد ملی / پاسپورت:</span>
+                        <strong className="text-[#0F172A] dark:text-amber-300 font-mono font-black" dir="ltr">{nationalId}</strong>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px]">شماره تماس:</span>
-                        <strong className="text-emerald-300 font-mono" dir="ltr">{phoneCountryCode} {phoneNumber}</strong>
+                        <span className="text-[#334155] dark:text-slate-300 font-bold block text-[11px]">شماره تماس:</span>
+                        <strong className="text-[#065F46] dark:text-emerald-300 font-mono font-black" dir="ltr">{phoneCountryCode} {phoneNumber}</strong>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px]">کشور مقصد:</span>
-                        <strong className="text-white">{targetCountry} ({targetCity})</strong>
+                        <span className="text-[#334155] dark:text-slate-300 font-bold block text-[11px]">کشور مقصد:</span>
+                        <strong className="text-[#1E3A8A] dark:text-white font-black">{targetCountry} ({targetCity})</strong>
                       </div>
                       <div>
-                        <span className="text-slate-400 block text-[10px]">شغل‌های درخواستی:</span>
-                        <strong className="text-white truncate block">{selectedCommonJobs.join('، ') || customWrittenSkills || 'عمومی'}</strong>
+                        <span className="text-[#334155] dark:text-slate-300 font-bold block text-[11px]">شغل‌های درخواستی:</span>
+                        <strong className="text-[#0F172A] dark:text-white font-black truncate block">{selectedCommonJobs.join('، ') || customWrittenSkills || 'عمومی'}</strong>
                       </div>
                     </div>
 
                     {/* Signature Preview */}
                     {signatureDataUrl && (
-                      <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                            <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                      <div className="bg-[#F8FAFC] dark:bg-slate-800/80 p-3.5 rounded-2xl border border-[#CBD5E1] dark:border-slate-700 space-y-2">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <span className="text-xs font-black text-[#0F172A] dark:text-white flex items-center gap-1.5">
+                            <FileText className="w-3.5 h-3.5 text-[#065F46] dark:text-emerald-400" />
                             <span>امضای الکترونیکی ثبت شده متقاضی</span>
                           </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
+                          <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#D1FAE5] dark:bg-emerald-500/20 text-[#065F46] dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 font-black">
                             دارای اعتبار حقوقی
                           </span>
                         </div>
-                        <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex justify-center">
+                        <div className="bg-white p-2.5 rounded-xl border border-[#CBD5E1] flex justify-center">
                           <img
                             src={signatureDataUrl}
                             alt="امضای رسمی متقاضی"
-                            className="max-h-20 w-auto object-contain filter drop-shadow-md"
+                            className="max-h-20 w-auto object-contain"
                           />
                         </div>
                       </div>
@@ -2268,16 +2268,16 @@ export const OnboardingFlow: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setIsCommitmentModalOpen(true)}
-                      className="w-full sm:w-auto px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto px-5 py-3.5 bg-white hover:bg-[#F1F5F9] dark:bg-slate-800 dark:hover:bg-slate-700 text-[#0F172A] dark:text-slate-100 border border-[#CBD5E1] dark:border-slate-700 rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-xs"
                     >
-                      <FileText className="w-4 h-4 text-amber-400" />
+                      <FileText className="w-4 h-4 text-[#2563EB] dark:text-amber-400" />
                       <span>مشاهده و چاپ تعهدنامه حقوقی با امضا</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setHasCompletedOnboarding(true)}
-                      className="w-full sm:flex-1 py-3.5 px-6 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl shadow-xl shadow-emerald-600/30 transition flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer"
+                      className="w-full sm:flex-1 py-3.5 px-6 bg-[#10B981] hover:bg-[#059669] text-white font-black rounded-2xl shadow-md transition flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer"
                     >
                       <CheckCircle className="w-5 h-5" />
                       <span>ورود به سامانه کارباما و مشاهده آگهی‌های شغلی</span>
