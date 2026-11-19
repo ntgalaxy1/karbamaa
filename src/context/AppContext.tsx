@@ -296,6 +296,29 @@ interface AppContextType {
   // Firebase Database Purge & Sync (پاکسازی دیتابیس و همگام‌سازی ابری)
   purgeFirebaseDatabase: (fullReset?: boolean) => Promise<{ success: boolean; deletedCount: number; message: string }>;
   syncPartnerToFirestore: (partner: PartnerAccount) => Promise<void>;
+
+  // Live Real-Time FX Rates & Automatic TRY -> Rial / Toman Conversion
+  liveRates: {
+    tryRial: number;
+    tryToman: number;
+    usdRial: number;
+    usdToman: number;
+    eurRial: number;
+    eurToman: number;
+    usdTry: number;
+    eurTry: number;
+    lastUpdated: string;
+    isRefreshing: boolean;
+  };
+  refreshLiveRates: (silent?: boolean) => Promise<void>;
+  formatTryToIrr: (amountTry: number) => {
+    tryText: string;
+    toman: number;
+    rial: number;
+    tomanText: string;
+    rialText: string;
+    combinedText: string;
+  };
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -459,50 +482,196 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('تنظیمات پرداخت، نرخ روز ارز و حساب‌های بانکی با موفقیت ذخیره شد.', 'success');
   };
 
-  // Automatic Daily Exchange Rate & Rial Fee Updater
-  useEffect(() => {
-    const checkAndUpdateDailyRate = async () => {
-      try {
-        const todayStr = new Date().toISOString().split('T')[0];
-        // If already updated today and rate is healthy, skip
-        if (paymentSettings.lastRateUpdateDate === todayStr && paymentSettings.exchangeRateToman > 1000) {
-          return;
-        }
+  // Live Real-Time Exchange Rate Feed (TRY/IRR, USD/TRY, EUR/TRY, USD/IRR, EUR/IRR)
+  const [liveRates, setLiveRates] = useState<{
+    tryRial: number;
+    tryToman: number;
+    usdRial: number;
+    usdToman: number;
+    eurRial: number;
+    eurToman: number;
+    usdTry: number;
+    eurTry: number;
+    lastUpdated: string;
+    isRefreshing: boolean;
+  }>(() => {
+    const initialToman = paymentSettings.exchangeRateToman || 3410;
+    const initialRial = initialToman * 10;
+    return {
+      tryRial: initialRial,
+      tryToman: initialToman,
+      usdRial: initialRial * 34.45,
+      usdToman: initialToman * 34.45,
+      eurRial: initialRial * 37.2,
+      eurToman: initialToman * 37.2,
+      usdTry: 34.45,
+      eurTry: 37.2,
+      lastUpdated: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      isRefreshing: false,
+    };
+  });
 
-        const res = await fetch('/api/fx-rates');
-        if (res.ok) {
-          const json = await res.json();
-          if (json && json.success && json.data?.TRY) {
-            const tryData = json.data.TRY;
-            const tomanVal = Number(tryData.toman) || (Number(tryData.rial) ? Math.round(Number(tryData.rial) / 10) : 0);
-            if (tomanVal > 1000) {
-              setPaymentSettings((prev) => {
-                const next: PaymentGatewaySettings = {
-                  ...prev,
-                  exchangeRateToman: tomanVal,
-                  lastRateUpdateDate: todayStr,
-                  autoUpdateDaily: true,
-                };
-                try {
-                  safeStorage.setItem(STORAGE_KEYS.PAYMENT_SETTINGS, JSON.stringify(next));
-                } catch (e) {
-                  console.error(e);
-                }
-                return next;
-              });
-            }
+  const refreshLiveRates = async (silent = true) => {
+    if (!silent) {
+      setLiveRates((prev) => ({ ...prev, isRefreshing: true }));
+    }
+
+    const applyNewRates = (
+      tryRialVal: number,
+      usdRialVal: number,
+      eurRialVal: number,
+      usdTryVal: number,
+      eurTryVal: number
+    ) => {
+      const cleanTryRial = Math.round(tryRialVal);
+      const cleanTryToman = Math.round(cleanTryRial / 10);
+      const cleanUsdRial = Math.round(usdRialVal);
+      const cleanUsdToman = Math.round(cleanUsdRial / 10);
+      const cleanEurRial = Math.round(eurRialVal);
+      const cleanEurToman = Math.round(cleanEurRial / 10);
+      const nowTime = new Date().toLocaleTimeString('fa-IR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      setLiveRates({
+        tryRial: cleanTryRial,
+        tryToman: cleanTryToman,
+        usdRial: cleanUsdRial,
+        usdToman: cleanUsdToman,
+        eurRial: cleanEurRial,
+        eurToman: cleanEurToman,
+        usdTry: Number(usdTryVal.toFixed(2)),
+        eurTry: Number(eurTryVal.toFixed(2)),
+        lastUpdated: nowTime,
+        isRefreshing: false,
+      });
+
+      if (cleanTryToman > 1000) {
+        setPaymentSettings((prev) => {
+          if (prev.exchangeRateToman === cleanTryToman && prev.lastRateUpdateDate === todayStr) {
+            return prev;
           }
-        }
-      } catch (err) {
-        // silent fallback
+          const next: PaymentGatewaySettings = {
+            ...prev,
+            exchangeRateToman: cleanTryToman,
+            lastRateUpdateDate: todayStr,
+            autoUpdateDaily: true,
+          };
+          try {
+            safeStorage.setItem(STORAGE_KEYS.PAYMENT_SETTINGS, JSON.stringify(next));
+          } catch {
+            // ignore
+          }
+          return next;
+        });
       }
     };
 
-    checkAndUpdateDailyRate();
-    // Schedule check every 6 hours
-    const interval = setInterval(checkAndUpdateDailyRate, 6 * 60 * 60 * 1000);
+    try {
+      // 1. Try Server API (/api/fx-rates or /api/fx-rates.php)
+      const endpoints = ['/api/fx-rates', '/api/fx-rates.php'];
+      for (const ep of endpoints) {
+        try {
+          const res = await fetch(ep, { cache: 'no-store' });
+          if (res.ok) {
+            const text = await res.text();
+            if (!text.trim().startsWith('<')) {
+              const json = JSON.parse(text);
+              if (json && json.success && json.data?.TRY) {
+                const tryR = Number(json.data.TRY.rial) || (Number(json.data.TRY.toman) || 3410) * 10;
+                const usdR = Number(json.data.USD?.rial) || tryR * 34.45;
+                const eurR = Number(json.data.EUR?.rial) || tryR * 37.2;
+                const uTry = tryR > 0 ? usdR / tryR : 34.45;
+                const eTry = tryR > 0 ? eurR / tryR : 37.2;
+                applyNewRates(tryR, usdR, eurR, uTry, eTry);
+                if (!silent) showToast('نرخ لحظه‌ای لیر، دلار، یورو و ریال با موفقیت بروزرسانی شد', 'success');
+                return;
+              }
+            }
+          }
+        } catch {
+          // continue to next endpoint
+        }
+      }
+
+      // 2. Direct Client-Side Live Fetch (Wallex USDT/TMN + Open ER-API USD/TRY/EUR)
+      const [wallexRes, fxRes] = await Promise.all([
+        fetch('https://api.wallex.ir/v1/markets').catch(() => null),
+        fetch('https://open.er-api.com/v6/latest/USD').catch(() => null),
+      ]);
+
+      let usdTomanLive = 0;
+      let tryPerUsd = 34.45;
+      let eurPerUsd = 0.92;
+
+      if (wallexRes && wallexRes.ok) {
+        const wJson: any = await wallexRes.json();
+        const symbols = wJson?.result?.symbols || {};
+        const usdtTmn = symbols.USDTTMN || symbols.USDTIRT;
+        const lastPrice = parseFloat(usdtTmn?.stats?.lastPrice || '0');
+        if (lastPrice > 40000) {
+          usdTomanLive = lastPrice;
+        }
+      }
+
+      if (fxRes && fxRes.ok) {
+        const fJson: any = await fxRes.json();
+        if (fJson?.rates) {
+          if (fJson.rates.TRY) tryPerUsd = Number(fJson.rates.TRY);
+          if (fJson.rates.EUR) eurPerUsd = Number(fJson.rates.EUR);
+        }
+      }
+
+      if (usdTomanLive > 40000) {
+        const usdRialVal = Math.round(usdTomanLive * 10);
+        const tryRialVal = Math.round(usdRialVal / tryPerUsd);
+        const eurRialVal = Math.round(usdRialVal / eurPerUsd);
+        const eurTryVal = tryPerUsd / eurPerUsd;
+        applyNewRates(tryRialVal, usdRialVal, eurRialVal, tryPerUsd, eurTryVal);
+        if (!silent) showToast('نرخ لحظه‌ای بازار ارز مستقیم بروزرسانی شد', 'success');
+        return;
+      }
+    } catch {
+      // fallback
+    }
+
+    setLiveRates((prev) => ({
+      ...prev,
+      lastUpdated: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      isRefreshing: false,
+    }));
+  };
+
+  useEffect(() => {
+    refreshLiveRates(true);
+    const interval = setInterval(() => {
+      refreshLiveRates(true);
+    }, 60 * 1000);
     return () => clearInterval(interval);
-  }, [paymentSettings.lastRateUpdateDate, paymentSettings.exchangeRateToman]);
+  }, []);
+
+  const formatTryToIrr = (amountTry: number) => {
+    const cleanTry = Number(amountTry) || 0;
+    const rateToman = liveRates.tryToman || paymentSettings.exchangeRateToman || 3410;
+    const rateRial = liveRates.tryRial || rateToman * 10;
+    const toman = Math.round(cleanTry * rateToman);
+    const rial = Math.round(cleanTry * rateRial);
+    const tryText = `${cleanTry.toLocaleString('fa-IR')} ₺`;
+    const tomanText = `${toman.toLocaleString('fa-IR')} تومان`;
+    const rialText = `${rial.toLocaleString('fa-IR')} ریال`;
+    const combinedText = `${tomanText} (${rialText})`;
+    return {
+      tryText,
+      toman,
+      rial,
+      tomanText,
+      rialText,
+      combinedText,
+    };
+  };
   // App Language State (Persian, Turkish, English, Arabic)
   const [appLanguage, setAppLanguage] = useState<'fa' | 'tr' | 'en' | 'ar'>(() => {
     try {
@@ -965,11 +1134,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const deletedHotels = getTombstoneSet('karbama_deleted_hotels_v1');
       const stored = safeStorage.getItem(STORAGE_KEYS.HOTELS);
       const parsed: Hotel[] = stored ? JSON.parse(stored) : INITIAL_HOTELS;
-      return Array.isArray(parsed)
+      const filtered = Array.isArray(parsed)
         ? parsed.filter((h) => !isSampleOrSeedHotel(h) && !deletedHotels.has(h.id))
         : [];
+      if (filtered.length === 0) {
+        return INITIAL_HOTELS.filter((h) => !deletedHotels.has(h.id));
+      }
+      return filtered;
     } catch {
-      return [];
+      return INITIAL_HOTELS;
     }
   });
 
@@ -4608,6 +4781,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetSeekerChat,
         purgeFirebaseDatabase,
         syncPartnerToFirestore,
+        liveRates,
+        refreshLiveRates,
+        formatTryToIrr,
       }}
     >
       {children}

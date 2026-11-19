@@ -1,40 +1,35 @@
 import React, { useState } from 'react';
-import { InteractiveMap } from './InteractiveMap';
 import { useApp } from '../context/AppContext';
-import { Hotel as HotelType } from '../types';
+import { InteractiveMap } from './InteractiveMap';
+import { HotelsSection } from './HotelsSection';
+import { TransitSection } from './TransitSection';
+import { Hotel } from '../types';
 import {
-  MapPin,
-  Navigation,
-  Building2,
-  Hotel,
+  Map,
+  Hotel as HotelIcon,
   Train,
-  HeartPulse,
-  Landmark,
-  Coins,
-  ShieldAlert,
-  Search,
   Compass,
-  Plus,
-  ShieldCheck,
-  Calendar,
+  Navigation,
   Phone,
-  MessageCircle,
-  ExternalLink,
+  Calendar,
   X,
-  CheckCircle2,
-  Users,
-  Moon,
+  CheckCircle,
+  MapPin,
+  ShieldAlert,
   Sparkles,
+  Globe,
+  ExternalLink,
+  Coins,
 } from 'lucide-react';
 
 export const MapSection: React.FC = () => {
-  const { setActiveTab, isAdminLoggedIn, bookHotel, showToast, currentSeeker } = useApp();
-  const [selectedCity, setSelectedCity] = useState('استانبول');
+  const { bookHotel, currentSeeker, addresses, hotels, transitHubs, formatTryToIrr, liveRates } = useApp();
 
-  // Selected Hotel from Map for Booking / Details Modal
-  const [selectedHotelForBooking, setSelectedHotelForBooking] = useState<HotelType | null>(null);
+  const [subTab, setSubTab] = useState<'map' | 'hotels' | 'transit'>('map');
+  const [focusedLocationId, setFocusedLocationId] = useState<string | null>(null);
 
-  // Booking Form State
+  // Quick booking modal triggered directly from interactive map pin
+  const [bookingHotel, setBookingHotel] = useState<Hotel | null>(null);
   const [guestName, setGuestName] = useState(currentSeeker?.fullName || '');
   const [guestPhone, setGuestPhone] = useState(currentSeeker?.phone || '');
   const [checkInDate, setCheckInDate] = useState(() => {
@@ -42,386 +37,415 @@ export const MapSection: React.FC = () => {
     d.setDate(d.getDate() + 1);
     return d.toISOString().split('T')[0];
   });
-  const [nights, setNights] = useState(3);
+  const [nights, setNights] = useState(2);
   const [guestsCount, setGuestsCount] = useState(1);
   const [bookingNote, setBookingNote] = useState('');
-  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingConfirmed, setBookingConfirmed] = useState(false);
 
-  const handleOpenBookingModal = (hotel: HotelType) => {
-    setSelectedHotelForBooking(hotel);
-    setBookingSuccess(false);
-    if (currentSeeker?.fullName && !guestName) {
-      setGuestName(currentSeeker.fullName);
-    }
-    if (currentSeeker?.phone && !guestPhone) {
-      setGuestPhone(currentSeeker.phone);
-    }
+  const handleOpenMapHotelBooking = (hotel: Hotel) => {
+    setBookingHotel(hotel);
+    setGuestName(currentSeeker?.fullName || '');
+    setGuestPhone(currentSeeker?.phone || '');
+    setBookingConfirmed(false);
   };
 
-  const handleConfirmBooking = (e: React.FormEvent) => {
+  const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedHotelForBooking) return;
+    if (!bookingHotel) return;
 
-    if (!guestName.trim() || !guestPhone.trim()) {
-      showToast('لطفاً نام و شماره تماس مسافر را وارد نمایید', 'error');
-      return;
-    }
-
-    const totalPrice = selectedHotelForBooking.pricePerNight * nights;
-
+    const totalPrice = bookingHotel.pricePerNight * nights;
     const res = bookHotel({
-      hotelId: selectedHotelForBooking.id,
-      hotelName: selectedHotelForBooking.name,
-      city: selectedHotelForBooking.city,
-      guestName: guestName.trim(),
-      guestPhone: guestPhone.trim(),
+      hotelId: bookingHotel.id,
+      hotelName: bookingHotel.name,
+      city: bookingHotel.city,
+      guestName,
+      guestPhone,
       checkInDate,
       nights,
       guestsCount,
       totalPrice,
-      note: bookingNote.trim() || 'رزرو مستقیم از روی نقشه ماهواره‌ای کارباما',
+      note: bookingNote,
     });
 
     if (res.success) {
-      setBookingSuccess(true);
-      showToast(`رزرو هتل ${selectedHotelForBooking.name} با موفقیت ثبت شد`, 'success');
-    } else {
-      showToast(res.error || 'خطا در ثبت رزرو', 'error');
+      setBookingConfirmed(true);
     }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Top Banner (Dynamically adapts to selected theme color) */}
-      <div
-        style={{ background: 'var(--primary-banner)' }}
-        className="relative rounded-3xl overflow-hidden border border-red-500/30 p-6 sm:p-8 shadow-2xl transition-all duration-300"
-      >
-        <div
-          style={{ backgroundColor: 'var(--primary-color)' }}
-          className="absolute top-0 left-0 w-96 h-96 opacity-15 rounded-full blur-3xl pointer-events-none"
-        />
+  const totalLocations = addresses.length + hotels.length + transitHubs.length;
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="max-w-2xl">
-            <div
-              style={{
-                backgroundColor: 'var(--primary-light)',
-                color: 'var(--primary-color)',
-                borderColor: 'var(--primary-border)',
-              }}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold mb-3"
-            >
+  return (
+    <div className="space-y-6 text-right">
+      {/* Top Hero Card */}
+      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xl relative overflow-hidden">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="max-w-2xl space-y-2.5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-red-600/20 text-blue-900 dark:text-red-300 border border-blue-300 dark:border-red-500/30 text-xs font-extrabold">
               <Compass className="w-3.5 h-3.5" />
-              سامانه ماهواره‌ای و ناوبری شهری کارباما
+              <span>نقشه تعاملی، دایرکتوری هتل‌ها و شبکه متروبوس ترکیه</span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white mb-2">
-              نقشه تعاملی و جامع اماکن ترکیه
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-tight">
+              نقشه زنده هتل‌ها، مراکز مهاجرت، کنسولگری و متروبوس
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              مشاهده دقیق موقعیت سفارت و کنسولگری‌های ایران، ادارات مهاجرت (Göç)، هتل‌ها و خوابگاه‌های اقتصادی، ایستگاه‌های متروبوس ۲۴ ساعته و بیمارستان‌های دولتی.
+            <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+              موقعیت دقیق {totalLocations.toLocaleString('fa-IR')} مرکز مهم، هتل‌های اقتصادی، ایستگاه‌های متروبوس ۲۴ ساعته و بیمارستان‌ها به همراه قیمت لحظه‌ای به لیر و ریال/تومان و لینک مستقیم وب‌سایت رزرو هر هتل.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          {/* Sub-Tab Switcher Pills */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 bg-slate-100 dark:bg-slate-950/80 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 self-start lg:self-center shrink-0">
             <button
-              onClick={() => setActiveTab('addresses')}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              type="button"
+              onClick={() => setSubTab('map')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+                subTab === 'map'
+                  ? 'bg-blue-600 dark:bg-red-600 text-white shadow-md'
+                  : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
+              }`}
             >
-              <Hotel className="w-4 h-4 text-amber-400" />
-              لیست متنی هتل‌ها و آدرس‌ها
+              <Map className="w-4 h-4" />
+              <span>نقشه تعاملی ({totalLocations.toLocaleString('fa-IR')})</span>
             </button>
+
             <button
-              onClick={() => setActiveTab('jobs')}
-              style={{ backgroundColor: 'var(--primary-color)' }}
-              className="px-4 py-2.5 text-white rounded-xl text-xs font-bold shadow-lg transition hover:opacity-90 flex items-center gap-1.5"
+              type="button"
+              onClick={() => setSubTab('hotels')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+                subTab === 'hotels'
+                  ? 'bg-blue-600 dark:bg-red-600 text-white shadow-md'
+                  : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
+              }`}
             >
-              فرصت‌های استخدام
+              <HotelIcon className="w-4 h-4" />
+              <span>هتل‌ها و رزرو ({hotels.length.toLocaleString('fa-IR')})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSubTab('transit')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer ${
+                subTab === 'transit'
+                  ? 'bg-blue-600 dark:bg-red-600 text-white shadow-md'
+                  : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              <Train className="w-4 h-4" />
+              <span>متروبوس و مترو</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Admin Action Ribbon */}
-      {isAdminLoggedIn && (
-        <div className="bg-gradient-to-r from-amber-950/70 via-slate-900 to-amber-950/70 border border-amber-500/40 rounded-2xl p-4 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="p-2.5 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30 shrink-0">
-              <ShieldCheck className="w-5 h-5" />
-            </span>
-            <div>
-              <h3 className="font-bold text-amber-300 text-sm">دسترسی مدیریت نقشه و اماکن فعال است</h3>
-              <p className="text-xs text-slate-300">
-                شما می‌توانید هتل‌ها و اقامتگاه‌های جدید را با پین‌گذاری دقیق روی نقشه ماهواره‌ای ثبت یا ویرایش کنید.
-              </p>
-            </div>
-          </div>
+      {/* Main Content Based on Sub-Tab */}
+      {subTab === 'map' && (
+        <div className="space-y-6">
+          {/* Interactive Map Component */}
+          <InteractiveMap
+            initialCity="استانبول"
+            focusedLocationId={focusedLocationId}
+            onBookHotel={handleOpenMapHotelBooking}
+            heightClass="h-[560px]"
+          />
 
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <button
-              onClick={() => setActiveTab('addresses')}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ افزودن هتل جدید با نقشه</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('admin')}
-              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs transition"
-            >
-              پنل مدیریت کامل
-            </button>
+          {/* Quick Jump Directory below the map */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Hotels Quick Card */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-md">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 text-xs font-extrabold flex items-center gap-1.5">
+                    <HotelIcon className="w-3.5 h-3.5" />
+                    اسکان اقتصادی و هتل‌ها
+                  </span>
+                  <span className="text-xs text-slate-600 dark:text-slate-400 font-mono font-bold">
+                    {hotels.length.toLocaleString('fa-IR')} هتل فعال
+                  </span>
+                </div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                  دایرکتوری هتل‌ها با لینک رزرو آنلاین
+                </h3>
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                  مشاهده لیست کامل هتل‌ها و پانسیون‌های آکسارای، تقسیم، شیشلی، مرتر، اسنیورت و کادیکوی با معادل لحظه‌ای ریال/تومان و وب‌سایت رسمی هر هتل.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSubTab('hotels')}
+                className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <HotelIcon className="w-4 h-4" />
+                <span>مشاهده لیست هتل‌ها و رزرو آنلاین</span>
+              </button>
+            </div>
+
+            {/* Transit Quick Card */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-md">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-1 rounded-lg bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-500/30 text-xs font-extrabold flex items-center gap-1.5">
+                    <Train className="w-3.5 h-3.5" />
+                    حمل‌ونقل ۲۴ ساعته
+                  </span>
+                  <span className="text-xs text-slate-600 dark:text-slate-400 font-mono font-bold">
+                    {transitHubs.length.toLocaleString('fa-IR')} ایستگاه
+                  </span>
+                </div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                  خطوط متروبوس، مترو و مارمارای
+                </h3>
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                  راهنمای تردد شبانه‌روزی در استانبول، نحوه خرید استانبول‌کارت و ایستگاه‌های تقاطعی مهم بین بخش اروپایی و آسیایی.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSubTab('transit')}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                <Train className="w-4 h-4" />
+                <span>راهنمای متروبوس و خطوط مترو</span>
+              </button>
+            </div>
+
+            {/* Emergency & Consulates Quick Card */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-md">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-1 rounded-lg bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-300 border border-red-300 dark:border-red-500/30 text-xs font-extrabold flex items-center gap-1.5">
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    تلفن‌های فوریتی ترکیه
+                  </span>
+                  <span className="text-xs text-emerald-700 dark:text-emerald-400 font-bold">
+                    شبانه‌روزی ۲۴/۷
+                  </span>
+                </div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                  شماره‌های اضطراری و اداره مهاجرت
+                </h3>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <a
+                    href="tel:112"
+                    className="p-2.5 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-300 dark:border-red-500/40 text-center hover:bg-red-100 dark:hover:bg-red-900/60 transition"
+                  >
+                    <span className="text-base font-black text-red-700 dark:text-red-400 font-mono block">
+                      112
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-800 dark:text-slate-300">
+                      اورژانس و پلیس
+                    </span>
+                  </a>
+                  <a
+                    href="tel:157"
+                    className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-500/40 text-center hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition"
+                  >
+                    <span className="text-base font-black text-emerald-700 dark:text-emerald-400 font-mono block">
+                      157
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-800 dark:text-slate-300">
+                      اداره مهاجرت (فارسی)
+                    </span>
+                  </a>
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>پاسخگویی خط ۱۵۷ اداره مهاجرت به زبان فارسی ۲۴ ساعته فعال است.</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Main Interactive Map */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4">
-        <InteractiveMap
-          initialCity={selectedCity}
-          heightClass="h-[620px]"
-          showCategoryFilters={true}
-          onBookHotel={(hotel) => {
-            if (hotel) {
-              handleOpenBookingModal(hotel);
-            }
-          }}
-          onSelectLocation={(point) => {
-            if (point.category === 'hotel' && point.rawItem) {
-              handleOpenBookingModal(point.rawItem);
-            }
-          }}
-        />
-      </div>
+      {subTab === 'hotels' && <HotelsSection />}
 
-      {/* DIRECT HOTEL BOOKING & DETAILS MODAL FROM MAP */}
-      {selectedHotelForBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-xl bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden my-6 text-right">
-            {/* Modal Header */}
-            <div className="relative h-48 sm:h-56 overflow-hidden">
-              <img
-                src={selectedHotelForBooking.imageUrl}
-                alt={selectedHotelForBooking.name}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent flex items-end p-5">
-                <div className="w-full">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/90 text-slate-950 font-black text-xs">
-                      {selectedHotelForBooking.stars} ستاره
-                    </span>
-                    <span className="text-xs text-amber-300 font-bold">
-                      {selectedHotelForBooking.pricePerNight.toLocaleString()} لیر / هر شب
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-extrabold text-white leading-tight">
-                    {selectedHotelForBooking.name}
-                  </h3>
-                  <p className="text-xs text-slate-300 font-mono" dir="ltr">
-                    {selectedHotelForBooking.nameTr}
-                  </p>
-                </div>
+      {subTab === 'transit' && <TransitSection />}
+
+      {/* Quick Hotel Booking Modal from Interactive Map */}
+      {bookingHotel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-3xl shadow-2xl overflow-hidden my-6">
+            <div className="px-6 py-4 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <div>
+                <h3 className="font-black text-slate-900 dark:text-white text-base">
+                  رزرو مستقیم از روی نقشه: {bookingHotel.name}
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400 font-mono" dir="ltr">
+                  {bookingHotel.city} - {bookingHotel.district}
+                </p>
               </div>
-
               <button
-                onClick={() => setSelectedHotelForBooking(null)}
-                className="absolute top-3 left-3 p-2 bg-slate-900/80 hover:bg-slate-800 text-white rounded-full transition backdrop-blur-xs shadow-lg"
+                type="button"
+                onClick={() => setBookingHotel(null)}
+                className="p-1.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white rounded-lg"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Content */}
-            <div className="p-5 sm:p-6 space-y-4 max-h-[60vh] overflow-y-auto text-xs">
-              {/* Hotel Quick Info */}
-              <div className="p-3 bg-slate-800/80 border border-slate-700/80 rounded-2xl space-y-2">
-                <div className="flex items-start gap-2 text-slate-300">
-                  <MapPin className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                  <span>{selectedHotelForBooking.address}</span>
+            {bookingConfirmed ? (
+              <div className="p-8 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 flex items-center justify-center mx-auto">
+                  <CheckCircle className="w-10 h-10" />
                 </div>
-                {selectedHotelForBooking.nearTransit && (
-                  <div className="flex items-center gap-2 text-blue-300">
-                    <Train className="w-4 h-4 text-blue-400 shrink-0" />
-                    <span>{selectedHotelForBooking.nearTransit}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Amenities */}
-              <div>
-                <span className="text-slate-400 font-bold block mb-1.5">امکانات و خدمات هتل:</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedHotelForBooking.amenities.map((item, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2.5 py-1 rounded-xl bg-slate-800 text-slate-300 border border-slate-700/60 text-[11px]"
-                    >
-                      ✓ {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Direct Communication Buttons */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-                {selectedHotelForBooking.phone && (
+                <h4 className="text-lg font-black text-slate-900 dark:text-white">
+                  درخواست رزرو شما ثبت شد!
+                </h4>
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed max-w-sm mx-auto">
+                  رزرو شما برای هتل <strong>{bookingHotel.name}</strong> ثبت شد. مبلغ کل اقامت (
+                  <strong>{(bookingHotel.pricePerNight * nights).toLocaleString('fa-IR')} لیر</strong> / معادل لحظه‌ای:{' '}
+                  <strong>{formatTryToIrr(bookingHotel.pricePerNight * nights).combinedText}</strong>) هنگام
+                  ورود به هتل پرداخت می‌شود.
+                </p>
+                {bookingHotel.websiteUrl && (
                   <a
-                    href={`tel:${selectedHotelForBooking.phone.replace(/\s/g, '')}`}
-                    className="py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md"
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                    <span>تماس تلفنی</span>
-                  </a>
-                )}
-                {selectedHotelForBooking.whatsapp && (
-                  <a
-                    href={`https://wa.me/${selectedHotelForBooking.whatsapp.replace(/[^0-9]/g, '')}`}
+                    href={bookingHotel.websiteUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="py-2 px-3 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md"
+                    className="inline-flex items-center justify-center gap-2 w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition"
                   >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span>واتساپ هتل</span>
+                    <Globe className="w-4 h-4" />
+                    <span>مشاهده سایت رسمی هتل و رزرو آنلاین</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 )}
-                <a
-                  href={
-                    selectedHotelForBooking.mapsUrl ||
-                    `https://www.google.com/maps/search/?api=1&query=${selectedHotelForBooking.coordinates?.lat},${selectedHotelForBooking.coordinates?.lng}`
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md col-span-2 sm:col-span-1"
+                <button
+                  type="button"
+                  onClick={() => setBookingHotel(null)}
+                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition cursor-pointer"
                 >
-                  <Navigation className="w-3.5 h-3.5" />
-                  <span>مسیریابی نقشه</span>
-                </a>
+                  بستن
+                </button>
               </div>
-
-              {/* Booking Form or Success State */}
-              {bookingSuccess ? (
-                <div className="p-4 bg-emerald-500/15 border border-emerald-500/40 rounded-2xl text-center space-y-2">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
-                  <h4 className="font-bold text-white text-sm">رزرو اقامتگاه با موفقیت ثبت شد</h4>
-                  <p className="text-xs text-slate-300">
-                    هماهنگی لازم با پذیرش هتل انجام شد. اطلاعات رزرو در بخش «درخواست‌های من» ذخیره گردید.
-                  </p>
-                  <button
-                    onClick={() => setSelectedHotelForBooking(null)}
-                    className="mt-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs"
-                  >
-                    بستن
-                  </button>
+            ) : (
+              <form onSubmit={handleBookingSubmit} className="p-6 space-y-4 text-xs">
+                <div className="flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={bookingHotel.imageUrl}
+                      alt={bookingHotel.name}
+                      className="w-16 h-16 rounded-xl object-cover"
+                    />
+                    <div>
+                      <h4 className="font-black text-slate-900 dark:text-white text-xs">
+                        {bookingHotel.name}
+                      </h4>
+                      <p className="text-[11px] text-amber-700 dark:text-amber-300 font-mono font-bold mt-0.5">
+                        هر شب: {bookingHotel.pricePerNight.toLocaleString('fa-IR')} لیر (
+                        {formatTryToIrr(bookingHotel.pricePerNight).tomanText})
+                      </p>
+                      <p className="text-[10px] text-slate-600 dark:text-slate-400">
+                        {bookingHotel.nearTransit}
+                      </p>
+                    </div>
+                  </div>
+                  {bookingHotel.websiteUrl && (
+                    <a
+                      href={bookingHotel.websiteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[11px] font-bold flex items-center gap-1 shrink-0"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>سایت هتل</span>
+                    </a>
+                  )}
                 </div>
-              ) : (
-                <form onSubmit={handleConfirmBooking} className="space-y-3 pt-2 border-t border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-amber-300 text-xs flex items-center gap-1.5">
-                      <Calendar className="w-4 h-4 text-amber-400" />
-                      فرم رزرو سریع و مستقیم هتل
-                    </span>
-                    <span className="text-emerald-400 font-bold font-mono">
-                      مجموع: {(nights * selectedHotelForBooking.pricePerNight).toLocaleString()} لیر
-                    </span>
-                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-slate-300 font-bold mb-1">نام و نام خانوادگی مسافر *</label>
-                      <input
-                        type="text"
-                        required
-                        value={guestName}
-                        onChange={(e) => setGuestName(e.target.value)}
-                        placeholder="مثلاً: علی رضایی"
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-300 font-bold mb-1">شماره تماس مسافر *</label>
-                      <input
-                        type="text"
-                        dir="ltr"
-                        required
-                        value={guestPhone}
-                        onChange={(e) => setGuestPhone(e.target.value)}
-                        placeholder="+90 534 000 0000"
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white font-mono text-left"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2.5">
-                    <div>
-                      <label className="block text-slate-300 font-bold mb-1">تاریخ ورود</label>
-                      <input
-                        type="date"
-                        value={checkInDate}
-                        onChange={(e) => setCheckInDate(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-300 font-bold mb-1">تعداد شب</label>
-                      <select
-                        value={nights}
-                        onChange={(e) => setNights(Number(e.target.value))}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white font-mono"
-                      >
-                        {[1, 2, 3, 4, 5, 7, 10, 14, 30].map((n) => (
-                          <option key={n} value={n}>
-                            {n} شب
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-slate-300 font-bold mb-1">تعداد نفرات</label>
-                      <select
-                        value={guestsCount}
-                        onChange={(e) => setGuestsCount(Number(e.target.value))}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white font-mono"
-                      >
-                        {[1, 2, 3, 4, 5].map((g) => (
-                          <option key={g} value={g}>
-                            {g} نفر
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-slate-300 font-bold mb-1">یادداشت برای هتل (اختیاری)</label>
+                    <label className="block text-slate-800 dark:text-slate-300 font-bold mb-1">
+                      نام و نام خانوادگی *
+                    </label>
                     <input
                       type="text"
-                      value={bookingNote}
-                      onChange={(e) => setBookingNote(e.target.value)}
-                      placeholder="ساعت ورود تقریبی، درخواست اتاق آرام و..."
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
+                      required
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white"
                     />
                   </div>
-
-                  <div className="flex items-center justify-end gap-2 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedHotelForBooking(null)}
-                      className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold"
-                    >
-                      انصراف
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl shadow-lg transition"
-                    >
-                      ثبت نهایی رزرو هتل
-                    </button>
+                  <div>
+                    <label className="block text-slate-800 dark:text-slate-300 font-bold mb-1">
+                      شماره تماس / واتساپ *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      dir="ltr"
+                      value={guestPhone}
+                      onChange={(e) => setGuestPhone(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono text-left"
+                    />
                   </div>
-                </form>
-              )}
-            </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-slate-800 dark:text-slate-300 font-bold mb-1">
+                      تاریخ ورود *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={checkInDate}
+                      onChange={(e) => setCheckInDate(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-800 dark:text-slate-300 font-bold mb-1">
+                      تعداد شب
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={30}
+                      value={nights}
+                      onChange={(e) => setNights(Number(e.target.value))}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-800 dark:text-slate-300 font-bold mb-1">
+                      تعداد نفرات
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={guestsCount}
+                      onChange={(e) => setGuestsCount(Number(e.target.value))}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-slate-100 dark:bg-slate-800/80 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-700 dark:text-slate-300 font-bold">
+                      مبلغ کل ({nights} شب):
+                    </span>
+                    <span className="text-base font-black text-amber-700 dark:text-amber-300 font-mono">
+                      {(bookingHotel.pricePerNight * nights).toLocaleString('fa-IR')} لیر
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-mono">
+                    <span className="text-slate-600 dark:text-slate-400">معادل لحظه‌ای به نرخ روز:</span>
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                      {formatTryToIrr(bookingHotel.pricePerNight * nights).combinedText}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-blue-600 dark:bg-red-600 hover:bg-blue-500 dark:hover:bg-red-500 text-white font-black rounded-xl shadow-lg transition cursor-pointer"
+                >
+                  تایید و ثبت رایگان رزرو
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}

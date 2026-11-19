@@ -3,12 +3,7 @@ import L from 'leaflet';
 import { useApp } from '../context/AppContext';
 import {
   MapPin,
-  Building2,
-  Landmark,
   Train,
-  HeartPulse,
-  Coins,
-  Hotel as HotelIcon,
   Navigation,
   Phone,
   Clock,
@@ -19,12 +14,13 @@ import {
   Minimize2,
   ChevronDown,
   ChevronUp,
-  Info,
   Calendar,
   ExternalLink,
-  ShieldAlert,
+  Globe,
+  Coins,
+  Compass,
 } from 'lucide-react';
-import { EssentialAddress, Hotel, TransitHub } from '../types';
+import { Hotel } from '../types';
 
 export interface MapPoint {
   id: string;
@@ -41,10 +37,12 @@ export interface MapPoint {
   workingHours?: string;
   description: string;
   mapsUrl?: string;
+  websiteUrl?: string;
   badge?: string;
   color: string;
   extra?: {
     pricePerNight?: number;
+    monthlyPrice?: number;
     stars?: number;
     lines?: string[];
     connections?: string;
@@ -73,26 +71,29 @@ const CITY_PRESETS = [
   { name: 'استانبول', lat: 41.015, lng: 28.97, zoom: 11 },
   { name: 'آنکارا', lat: 39.925, lng: 32.85, zoom: 12 },
   { name: 'ازمیر', lat: 38.423, lng: 27.142, zoom: 12 },
-  { name: 'آنتالیا', lat: 36.89, lng: 30.70, zoom: 12 },
+  { name: 'آنتالیا', lat: 36.89, lng: 30.7, zoom: 12 },
   { name: 'بورسا', lat: 40.188, lng: 29.061, zoom: 12 },
   { name: 'ترابزون', lat: 41.002, lng: 39.716, zoom: 12 },
-  { name: 'ارزروم', lat: 39.905, lng: 41.276, zoom: 12 },
-  { name: 'آدانا', lat: 37.000, lng: 35.321, zoom: 12 },
-  { name: 'غازی‌آنتپ', lat: 37.066, lng: 37.383, zoom: 12 },
   { name: 'قونیه', lat: 37.871, lng: 32.485, zoom: 12 },
   { name: 'مرسین', lat: 36.812, lng: 34.641, zoom: 12 },
-  { name: 'اسکی‌شهر', lat: 39.776, lng: 30.520, zoom: 12 },
-  { name: 'سامسون', lat: 41.286, lng: 36.330, zoom: 12 },
-  { name: 'دنیزلی', lat: 37.776, lng: 29.086, zoom: 12 },
-  { name: 'کایسری', lat: 38.722, lng: 35.487, zoom: 12 },
+];
+
+const ISTANBUL_DISTRICT_PRESETS = [
+  { id: 'all', name: 'همه مناطق استانبول', keyword: '', lat: 41.015, lng: 28.97, zoom: 11 },
+  { id: 'aksaray', name: 'آکسارای و فاتیح (Fatih)', keyword: 'فاتیح', lat: 41.0079, lng: 28.9518, zoom: 14 },
+  { id: 'taksim', name: 'میدان تقسیم (Taksim)', keyword: 'تقسیم', lat: 41.0355, lng: 28.9852, zoom: 14 },
+  { id: 'sisli', name: 'شیشلی و مجیدیه‌کوی (Şişli)', keyword: 'شیشلی', lat: 41.0638, lng: 28.9904, zoom: 14 },
+  { id: 'merter', name: 'مرتر و زیتون‌بورنو (Merter)', keyword: 'مرتر', lat: 41.0094, lng: 28.8878, zoom: 14 },
+  { id: 'esenyurt', name: 'اسنیورت و بیلیک‌دوزو (Esenyurt)', keyword: 'اسنیورت', lat: 41.0165, lng: 28.6512, zoom: 13 },
+  { id: 'kadikoy', name: 'کادیکوی - آسیایی (Kadıköy)', keyword: 'کادیکوی', lat: 40.9928, lng: 29.0235, zoom: 14 },
 ];
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon?: string }> = {
   all: { label: 'همه مکان‌ها', color: '#64748b' },
-  embassy: { label: 'سفارت و کنسولگری', color: '#ef4444', icon: '🏛️' },
+  hotel: { label: 'هتل‌ها و اقامتگاه', color: '#f59e0b', icon: '🏨' },
   immigration: { label: 'اداره مهاجرت (Göç)', color: '#10b981', icon: '📋' },
+  embassy: { label: 'سفارت و کنسولگری', color: '#ef4444', icon: '🏛️' },
   transit: { label: 'متروبوس و ایستگاه‌ها', color: '#3b82f6', icon: '🚇' },
-  hotel: { label: 'هتل‌ها و خوابگاه', color: '#f59e0b', icon: '🏨' },
   hospital: { label: 'بیمارستان و درمانی', color: '#f43f5e', icon: '🏥' },
   emergency: { label: 'اورژانس ۲۴ ساعته', color: '#e11d48', icon: '🚨' },
   police: { label: 'پلیس و امنیت', color: '#0284c7', icon: '👮' },
@@ -101,7 +102,7 @@ const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon?: str
 
 const TILE_LAYERS = {
   cartoDark: {
-    name: 'تاریک مدرن (پیش‌فرض)',
+    name: 'نقشه مدرن و خوانا',
     url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
     attribution: '&copy; OpenStreetMap &copy; CARTO',
   },
@@ -119,6 +120,7 @@ interface InteractiveMapProps {
   onBookHotel?: (hotel: Hotel) => void;
   heightClass?: string;
   showCategoryFilters?: boolean;
+  defaultCategory?: string;
 }
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
@@ -126,10 +128,11 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   focusedLocationId = null,
   onSelectLocation,
   onBookHotel,
-  heightClass = 'h-[520px]',
+  heightClass = 'h-[540px]',
   showCategoryFilters = true,
+  defaultCategory = 'all',
 }) => {
-  const { addresses, hotels, transitHubs, showToast } = useApp();
+  const { addresses, hotels, transitHubs, showToast, formatTryToIrr } = useApp();
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -138,7 +141,8 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
 
   const [selectedCity, setSelectedCity] = useState<string>(initialCity);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedDistrictPreset, setSelectedDistrictPreset] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>(defaultCategory);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activePoint, setActivePoint] = useState<MapPoint | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -211,11 +215,13 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
         workingHours: 'پذیرش ۲۴ ساعته',
         description: hotel.description,
         mapsUrl: hotel.mapsUrl,
-        badge: `${hotel.pricePerNight.toLocaleString()} لیر / شب`,
+        websiteUrl: hotel.websiteUrl,
+        badge: `${hotel.pricePerNight.toLocaleString('fa-IR')} ₺ / شب`,
         color: '#f59e0b',
         distanceKm,
         extra: {
           pricePerNight: hotel.pricePerNight,
+          monthlyPrice: hotel.monthlyPrice,
           stars: hotel.stars,
           hotelType: hotel.type,
         },
@@ -259,12 +265,27 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
   // Filtered Points
   const filteredPoints = useMemo(() => {
+    const activeDistrictObj = ISTANBUL_DISTRICT_PRESETS.find((d) => d.id === selectedDistrictPreset);
+
     const list = allPoints.filter((pt) => {
       if (selectedCategory !== 'all' && pt.category !== selectedCategory) {
         return false;
       }
       if (selectedCity !== 'همه شهرها' && pt.city !== selectedCity && pt.city !== 'سراسری ترکیه') {
         return false;
+      }
+      if (
+        selectedCity === 'استانبول' &&
+        activeDistrictObj &&
+        activeDistrictObj.id !== 'all' &&
+        activeDistrictObj.keyword
+      ) {
+        const kw = activeDistrictObj.keyword.toLowerCase();
+        const inDistrict =
+          pt.district.toLowerCase().includes(kw) ||
+          pt.title.toLowerCase().includes(kw) ||
+          pt.address.toLowerCase().includes(kw);
+        if (!inDistrict) return false;
       }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -280,7 +301,6 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       return true;
     });
 
-    // When seeker's location is known, sort items by distance (closest first!)
     if (userLocation) {
       list.sort((a, b) => {
         if (a.distanceKm !== undefined && b.distanceKm !== undefined) {
@@ -291,7 +311,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     }
 
     return list;
-  }, [allPoints, selectedCategory, selectedCity, searchQuery, userLocation]);
+  }, [allPoints, selectedCategory, selectedCity, selectedDistrictPreset, searchQuery, userLocation]);
 
   // Category counts
   const categoryCounts = useMemo(() => {
@@ -302,7 +322,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     return counts;
   }, [allPoints]);
 
-  // Create custom HTML marker pin with Tailwind and SVG
+  // Create custom HTML marker pin
   const createCustomMarkerIcon = (point: MapPoint, isSelected: boolean) => {
     const isRed = point.color === '#ef4444' || point.color === '#e11d48';
     const isEmerald = point.color === '#10b981';
@@ -317,27 +337,27 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
     if (isRed) {
       bgClass = 'bg-red-600';
-      ringClass = 'border-red-400';
+      ringClass = 'border-red-300';
       iconEmoji = '🏛️';
     } else if (isEmerald) {
       bgClass = 'bg-emerald-600';
-      ringClass = 'border-emerald-400';
+      ringClass = 'border-emerald-300';
       iconEmoji = '📋';
     } else if (isBlue) {
       bgClass = 'bg-blue-600';
-      ringClass = 'border-blue-400';
+      ringClass = 'border-blue-300';
       iconEmoji = '🚇';
     } else if (isAmber) {
       bgClass = 'bg-amber-600';
-      ringClass = 'border-amber-400';
+      ringClass = 'border-amber-300';
       iconEmoji = '🏨';
     } else if (isPurple) {
       bgClass = 'bg-purple-600';
-      ringClass = 'border-purple-400';
+      ringClass = 'border-purple-300';
       iconEmoji = '💱';
     } else if (isRose) {
       bgClass = 'bg-rose-600';
-      ringClass = 'border-rose-400';
+      ringClass = 'border-rose-300';
       iconEmoji = '🏥';
     }
 
@@ -371,9 +391,8 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   // Initialize Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
-    if (mapRef.current) return; // Prevent double initialization
+    if (mapRef.current) return;
 
-    // Initial center on Istanbul
     const defaultCenter: [number, number] = [41.015, 28.97];
     const map = L.map(mapContainerRef.current, {
       center: defaultCenter,
@@ -381,10 +400,8 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       zoomControl: false,
     });
 
-    // Add zoom control to top-left (RTL safe)
     L.control.zoom({ position: 'topleft' }).addTo(map);
 
-    // Initial tile layer
     const currentLayer = L.tileLayer(TILE_LAYERS[selectedTileStyle].url, {
       attribution: TILE_LAYERS[selectedTileStyle].attribution,
       maxZoom: 19,
@@ -392,13 +409,11 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
     tileLayerRef.current = currentLayer;
 
-    // Layer group for markers
     const markersLayer = L.layerGroup().addTo(map);
     markersLayerRef.current = markersLayer;
 
     mapRef.current = map;
 
-    // Invalidate size once DOM is settled
     setTimeout(() => {
       map.invalidateSize();
     }, 250);
@@ -415,7 +430,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     tileLayerRef.current.setUrl(TILE_LAYERS[selectedTileStyle].url);
   }, [selectedTileStyle]);
 
-  // Render Markers when filteredPoints change or activePoint changes
+  // Render Markers when filteredPoints or activePoint changes
   useEffect(() => {
     if (!mapRef.current || !markersLayerRef.current) return;
 
@@ -447,9 +462,12 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
     if (!focusedLocationId || !mapRef.current) return;
     const match = allPoints.find((p) => p.id === focusedLocationId);
     if (match) {
+      setSelectedCategory('all');
+      setSelectedCity('همه شهرها');
+      setSelectedDistrictPreset('all');
       setActivePoint(match);
       mapRef.current.flyTo([match.lat, match.lng], 16, {
-        duration: 1.2,
+        duration: 1.1,
       });
     }
   }, [focusedLocationId, allPoints]);
@@ -457,10 +475,23 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   // Jump to City
   const handleCityJump = (cityName: string) => {
     setSelectedCity(cityName);
+    setSelectedDistrictPreset('all');
     const target = CITY_PRESETS.find((c) => c.name === cityName);
     if (target && mapRef.current) {
       mapRef.current.flyTo([target.lat, target.lng], target.zoom, {
-        duration: 1,
+        duration: 0.9,
+      });
+    }
+  };
+
+  // Jump to Istanbul District
+  const handleDistrictPresetJump = (districtId: string) => {
+    setSelectedCity('استانبول');
+    setSelectedDistrictPreset(districtId);
+    const preset = ISTANBUL_DISTRICT_PRESETS.find((d) => d.id === districtId);
+    if (preset && mapRef.current) {
+      mapRef.current.flyTo([preset.lat, preset.lng], preset.zoom, {
+        duration: 0.9,
       });
     }
   };
@@ -506,31 +537,28 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             if (!focusedLocationId) {
               mapRef.current.flyTo([latitude, longitude], 13, { duration: 1.2 });
             }
-            showToast('موقعیت کنونی شما با سرعت شناسایی شد و نزدیک‌ترین هتل‌ها و اماکن محاسبه شدند', 'success');
+            if (!isAuto) {
+              showToast('موقعیت کنونی شما شناسایی شد و نزدیک‌ترین هتل‌ها و مراکز محاسبه شدند', 'success');
+            }
           }
         },
         () => {
           setIsLocating(false);
           if (!isAuto) {
-            showToast('امکان دریافت موقعیت وجود ندارد یا دسترسی مسدود است.', 'info');
+            showToast('امکان دریافت موقعیت مکانی وجود ندارد یا دسترسی مسدود است.', 'info');
           }
         },
         { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 }
       );
     } catch {
       setIsLocating(false);
-      if (!isAuto) {
-        showToast('دسترسی به مکان‌یابی در این محیط محدود شده است.', 'info');
-      }
     }
   };
 
-  // Automatically trigger quick GPS lookup on component load
   useEffect(() => {
     handleLocateMe(true);
   }, []);
 
-  // Toggle Fullscreen / Expand
   const toggleFullscreen = () => {
     setIsFullscreen((prev) => !prev);
     setTimeout(() => {
@@ -540,25 +568,25 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
   return (
     <div
-      className={`relative bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${
+      className={`relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xl flex flex-col transition-all duration-300 ${
         isFullscreen ? 'fixed inset-4 z-50 h-[calc(100vh-2rem)]' : ''
       }`}
     >
       {/* Top Controls Header */}
-      <div className="p-3 sm:p-4 bg-slate-900/95 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-red-600/20 text-red-400 border border-red-500/30 flex items-center justify-center">
+      <div className="p-3 sm:p-4 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-blue-600/15 dark:bg-red-600/20 text-blue-700 dark:text-red-400 border border-blue-500/30 dark:border-red-500/30 flex items-center justify-center shrink-0">
             <Navigation className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-              نقشه تعاملی مراکز، کنسولگری و ایستگاه‌ها
-              <span className="px-2 py-0.5 rounded-full bg-red-600/30 text-red-300 text-[10px] font-mono font-bold">
-                {filteredPoints.length} مکان
+            <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+              نقشه تعاملی زنده هتل‌ها، مراکز مهاجرت، کنسولگری و متروبوس
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-600 dark:bg-red-600 text-white text-[11px] font-mono font-bold">
+                {filteredPoints.length.toLocaleString('fa-IR')} مکان فعال
               </span>
             </h3>
-            <p className="text-[11px] text-slate-400 hidden sm:block">
-              کلیک روی هر نشانگر برای نمایش مشخصات، تلفن، ساعت کاری و مسیریابی
+            <p className="text-[11px] text-slate-600 dark:text-slate-400 hidden sm:block">
+              روی هر نشانگر کلیک کنید تا قیمت لحظه‌ای، آدرس، تلفن، سایت رزرو آنلاین و مسیریابی باز شود
             </p>
           </div>
         </div>
@@ -569,9 +597,9 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             onClick={() => handleLocateMe(false)}
             disabled={isLocating}
             title="موقعیت فعلی من"
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-medium transition flex items-center gap-1.5 disabled:opacity-50"
+            className="px-2.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
           >
-            <Crosshair className={`w-3.5 h-3.5 text-blue-400 ${isLocating ? 'animate-spin' : ''}`} />
+            <Crosshair className={`w-3.5 h-3.5 text-blue-600 dark:text-blue-400 ${isLocating ? 'animate-spin' : ''}`} />
             <span className="hidden md:inline">موقعیت من</span>
           </button>
 
@@ -580,9 +608,9 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
               setSelectedTileStyle((prev) => (prev === 'cartoDark' ? 'osm' : 'cartoDark'))
             }
             title="تغییر ظاهر نقشه"
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
+            className="px-2.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
           >
-            <Layers className="w-3.5 h-3.5 text-amber-400" />
+            <Layers className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
             <span className="hidden md:inline">
               {selectedTileStyle === 'cartoDark' ? 'نقشه استاندارد' : 'نقشه مدرن'}
             </span>
@@ -591,82 +619,117 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           <button
             onClick={toggleFullscreen}
             title={isFullscreen ? 'خروج از تمام صفحه' : 'نمایش تمام صفحه'}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition"
+            className="p-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 transition cursor-pointer"
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
         </div>
       </div>
 
-      {/* Filter and City Presets Bar */}
-      <div className="px-3 sm:px-4 py-2.5 bg-slate-900/80 border-b border-slate-800 space-y-2.5 shrink-0">
+      {/* Filter, City Presets, and Istanbul District Bar */}
+      <div className="px-3 sm:px-4 py-3 bg-white dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 space-y-2.5 shrink-0">
         {/* City jumps + Search bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
           {/* City Presets */}
-          <div className="flex flex-wrap items-center gap-1.5 pb-1 sm:pb-0">
-            <span className="text-[11px] text-slate-400 shrink-0 font-medium ml-1">پرش به شهر:</span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] text-slate-700 dark:text-slate-400 shrink-0 font-bold ml-1">پرش به شهر:</span>
             {CITY_PRESETS.map((city) => (
               <button
                 key={city.name}
+                type="button"
                 onClick={() => handleCityJump(city.name)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 transition ${
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 transition cursor-pointer ${
                   selectedCity === city.name
-                    ? 'bg-red-600 text-white shadow-md shadow-red-700/20'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    ? 'bg-blue-600 dark:bg-red-600 text-white shadow-sm'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
                 }`}
               >
                 {city.name}
               </button>
             ))}
             <button
-              onClick={() => setSelectedCity('همه شهرها')}
-              className={`px-2 py-1 rounded-lg text-xs font-medium shrink-0 transition ${
+              type="button"
+              onClick={() => {
+                setSelectedCity('همه شهرها');
+                setSelectedDistrictPreset('all');
+              }}
+              className={`px-2.5 py-1 rounded-xl text-xs font-bold shrink-0 transition cursor-pointer ${
                 selectedCity === 'همه شهرها'
-                  ? 'bg-slate-200 text-slate-900 font-bold'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
               }`}
             >
-              همه ترکیه
+              همه شهرها
             </button>
           </div>
 
           {/* Search Input */}
-          <div className="relative sm:w-64">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5" />
+          <div className="relative lg:w-72">
+            <Search className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 absolute right-3 top-2.5" />
             <input
               type="text"
-              placeholder="جستجو در نقشه (نام، محله، ایستگاه)..."
+              placeholder="جستجو در نقشه (هتل، آکسارای، تقسیم، شیشلی، مرتر)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-800/90 border border-slate-700 focus:border-red-500 text-white placeholder-slate-400 pr-8 pl-3 py-1.5 rounded-xl text-xs focus:outline-hidden"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-blue-600 dark:focus:border-red-500 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 pr-8 pl-3 py-1.5 rounded-xl text-xs focus:outline-none"
             />
           </div>
         </div>
 
-        {/* Category Pills - Responsive flex-wrap so Emergency, Police, Exchange, Hospital are always accessible and fit neatly */}
+        {/* Istanbul District Filter Bar (Esenyurt, Şişli, Merter, Taksim, Aksaray/Fatih, Kadıköy) */}
+        {(selectedCity === 'استانبول' || selectedCity === 'همه شهرها') && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-400 flex items-center gap-1 ml-1">
+              <Compass className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              مناطق مهم استانبول:
+            </span>
+            {ISTANBUL_DISTRICT_PRESETS.map((dist) => {
+              const isSelected = selectedCity === 'استانبول' && selectedDistrictPreset === dist.id;
+              return (
+                <button
+                  key={dist.id}
+                  type="button"
+                  onClick={() => handleDistrictPresetJump(dist.id)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                    isSelected
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800/80 text-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  {dist.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Category Filter Tabs */}
         {showCategoryFilters && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-800/80">
             {Object.entries(CATEGORY_CONFIG).map(([catKey, config]) => {
               const isSelected = selectedCategory === catKey;
               const count = categoryCounts[catKey] || 0;
               return (
                 <button
                   key={catKey}
+                  type="button"
                   onClick={() => setSelectedCategory(catKey)}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                     isSelected
-                      ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md shadow-red-600/25'
-                      : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700 border border-slate-700/80'
+                      ? 'bg-blue-600 dark:bg-red-600 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
                   }`}
                 >
                   {config.icon && <span className="text-sm">{config.icon}</span>}
                   <span>{config.label}</span>
                   <span
                     className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                      isSelected ? 'bg-black/30 text-white' : 'bg-slate-700 text-slate-300'
+                      isSelected
+                        ? 'bg-black/25 text-white'
+                        : 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200'
                     }`}
                   >
-                    {count}
+                    {count.toLocaleString('fa-IR')}
                   </span>
                 </button>
               );
@@ -676,81 +739,115 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       </div>
 
       {/* Map Container & Overlay Drawer */}
-      <div className={`relative flex-1 ${heightClass} min-h-[380px]`}>
+      <div className={`relative flex-1 ${heightClass} min-h-[420px]`}>
         <div ref={mapContainerRef} className="w-full h-full z-0" />
 
         {/* Active Point Detail Card (Bottom Float) */}
         {activePoint && (
-          <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-96 z-20 bg-slate-900/95 backdrop-blur-md border border-slate-700 p-4 rounded-2xl shadow-2xl animate-in fade-in slide-in-from-bottom duration-200">
+          <div className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-[400px] z-20 bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 p-4 rounded-2xl shadow-2xl animate-in fade-in slide-in-from-bottom duration-200">
             <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span
-                  className="w-2.5 h-2.5 rounded-full"
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: activePoint.color }}
                 />
-                <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-200 text-[10px] font-extrabold border border-slate-200 dark:border-slate-700">
                   {CATEGORY_CONFIG[activePoint.category]?.label || activePoint.category}
                 </span>
-                <span className="text-[11px] text-slate-400 font-mono">
+                <span className="text-[11px] text-slate-700 dark:text-slate-300 font-bold">
                   {activePoint.city} - {activePoint.district}
                 </span>
               </div>
               <button
+                type="button"
                 onClick={() => setActivePoint(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg text-xs"
+                className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white p-1 rounded-lg text-xs font-bold cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <h4 className="text-sm font-bold text-white mb-0.5">{activePoint.title}</h4>
-            <p className="text-[11px] text-slate-400 font-mono mb-2" dir="ltr">
+            <h4 className="text-sm font-black text-slate-900 dark:text-white mb-0.5">{activePoint.title}</h4>
+            <p className="text-[11px] text-slate-600 dark:text-slate-400 font-mono mb-2" dir="ltr">
               {activePoint.titleTr}
             </p>
 
+            {/* Hotel Live TRY + Rial/Toman Price Breakdown */}
+            {activePoint.category === 'hotel' && activePoint.extra?.pricePerNight && (
+              <div className="mb-2.5 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-500/40 space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-800 dark:text-amber-200 flex items-center gap-1">
+                    <Coins className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    تعرفه هر شب اقامت:
+                  </span>
+                  <span className="font-mono font-black text-amber-800 dark:text-amber-300 text-sm">
+                    {activePoint.extra.pricePerNight.toLocaleString('fa-IR')} لیر (₺)
+                  </span>
+                </div>
+                <div className="text-[11px] font-mono font-bold text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+                  <span>معادل لحظه‌ای به نرخ روز:</span>
+                  <span>{formatTryToIrr(activePoint.extra.pricePerNight).combinedText}</span>
+                </div>
+              </div>
+            )}
+
             {activePoint.distanceKm !== undefined && (
-              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-xl mb-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-300 dark:border-emerald-500/30 px-2.5 py-1 rounded-xl mb-2">
                 <Navigation className="w-3.5 h-3.5 shrink-0" />
                 <span>فاصله از شما: {activePoint.distanceKm.toLocaleString('fa-IR')} کیلومتر</span>
               </div>
             )}
 
-            <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed mb-2.5 bg-slate-800/60 p-2 rounded-xl">
+            <p className="text-xs text-slate-700 dark:text-slate-200 line-clamp-2 leading-relaxed mb-2.5 bg-slate-100 dark:bg-slate-800/70 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/70">
               {activePoint.description}
             </p>
 
-            <div className="space-y-1 text-[11px] text-slate-300 mb-3 font-mono">
+            <div className="space-y-1 text-[11px] text-slate-700 dark:text-slate-300 mb-3 font-mono">
               <div className="flex items-start gap-1.5" dir="ltr">
-                <MapPin className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
-                <span className="text-slate-300">{activePoint.address}</span>
+                <MapPin className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                <span className="text-slate-800 dark:text-slate-200">{activePoint.address}</span>
               </div>
               {activePoint.workingHours && (
                 <div className="flex items-center gap-1.5" dir="rtl">
-                  <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
                   <span>{activePoint.workingHours}</span>
                 </div>
               )}
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-2 pt-1 border-t border-slate-800">
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
               {activePoint.phone && (
                 <a
                   href={`tel:${activePoint.phone.replace(/\s/g, '')}`}
-                  className="flex-1 py-1.5 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
+                  className="py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm"
                 >
                   <Phone className="w-3.5 h-3.5" />
-                  تماس مستقیم
+                  <span>تماس</span>
+                </a>
+              )}
+
+              {activePoint.category === 'hotel' && (activePoint.websiteUrl || activePoint.mapsUrl) && (
+                <a
+                  href={activePoint.websiteUrl || activePoint.mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  <span>مشاهده سایت و رزرو آنلاین</span>
+                  <ExternalLink className="w-3 h-3" />
                 </a>
               )}
 
               {activePoint.category === 'hotel' && onBookHotel && (
                 <button
+                  type="button"
                   onClick={() => onBookHotel(activePoint.rawItem)}
-                  className="flex-1 py-1.5 px-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
+                  className="py-2 px-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer shadow-sm"
                 >
                   <Calendar className="w-3.5 h-3.5" />
-                  رزرو هتل
+                  <span>فرم رزرو</span>
                 </button>
               )}
 
@@ -762,31 +859,32 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 }
                 target="_blank"
                 rel="noopener noreferrer"
-                className="py-1.5 px-3 bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 border border-blue-500/30 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1"
+                className="py-2 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
               >
-                <Navigation className="w-3.5 h-3.5" />
-                مسیریابی
+                <Navigation className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>مسیریابی</span>
               </a>
             </div>
           </div>
         )}
 
-        {/* Floating Quick Drawer Toggle (Bottom Left) */}
+        {/* Floating Quick Drawer Toggle (Top Right) */}
         <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
           <button
+            type="button"
             onClick={() => setShowDrawer((prev) => !prev)}
-            className="px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-white text-xs font-bold border border-slate-700 shadow-xl flex items-center gap-1.5 backdrop-blur-xs"
+            className="px-3 py-1.5 rounded-xl bg-white/95 dark:bg-slate-900/95 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-900 dark:text-white text-xs font-extrabold border border-slate-300 dark:border-slate-700 shadow-lg flex items-center gap-1.5 backdrop-blur-xs cursor-pointer"
           >
-            <span>لیست مکان‌ها ({filteredPoints.length})</span>
+            <span>لیست مکان‌های روی نقشه ({filteredPoints.length.toLocaleString('fa-IR')})</span>
             {showDrawer ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         </div>
 
         {/* Collapsible Mini List Drawer */}
         {showDrawer && (
-          <div className="absolute top-12 right-3 z-10 w-72 max-h-72 overflow-y-auto bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl p-2 shadow-2xl space-y-1.5">
+          <div className="absolute top-12 right-3 z-10 w-72 sm:w-80 max-h-72 overflow-y-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-300 dark:border-slate-800 rounded-2xl p-2 shadow-2xl space-y-1.5">
             {filteredPoints.length === 0 ? (
-              <div className="p-4 text-center text-xs text-slate-400">
+              <div className="p-4 text-center text-xs font-bold text-slate-600 dark:text-slate-400">
                 مکانی با فیلتر انتخابی یافت نشد
               </div>
             ) : (
@@ -795,14 +893,16 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 return (
                   <button
                     key={pt.id}
+                    type="button"
                     onClick={() => {
                       setActivePoint(pt);
+                      if (onSelectLocation) onSelectLocation(pt);
                       mapRef.current?.flyTo([pt.lat, pt.lng], 15, { duration: 0.8 });
                     }}
-                    className={`w-full p-2 rounded-xl text-right transition flex items-start gap-2 ${
+                    className={`w-full p-2.5 rounded-xl text-right transition flex items-start gap-2 cursor-pointer ${
                       isSelected
-                        ? 'bg-slate-800 border border-slate-700 text-white'
-                        : 'hover:bg-slate-800/60 text-slate-300'
+                        ? 'bg-blue-50 dark:bg-slate-800 border border-blue-400 dark:border-slate-600 text-slate-900 dark:text-white'
+                        : 'hover:bg-slate-100 dark:hover:bg-slate-800/60 text-slate-800 dark:text-slate-300'
                     }`}
                   >
                     <span
@@ -810,17 +910,17 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
                       style={{ backgroundColor: pt.color }}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-bold text-white truncate">{pt.title}</div>
-                      <div className="text-[10px] text-slate-400 flex items-center justify-between gap-1">
-                        <span className="truncate">{pt.district}</span>
+                      <div className="text-xs font-extrabold text-slate-900 dark:text-white truncate">{pt.title}</div>
+                      <div className="text-[10px] text-slate-600 dark:text-slate-400 flex items-center justify-between gap-1 mt-0.5">
+                        <span className="truncate">{pt.city} - {pt.district}</span>
                         <div className="flex items-center gap-1 shrink-0">
                           {pt.distanceKm !== undefined && (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-500/20 text-emerald-300 font-bold">
+                            <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-bold">
                               {pt.distanceKm.toLocaleString('fa-IR')} ک.م
                             </span>
                           )}
                           {pt.badge && (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-slate-800 text-slate-300">
+                            <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-300 font-mono font-bold">
                               {pt.badge}
                             </span>
                           )}
@@ -836,36 +936,36 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       </div>
 
       {/* Map Footer Legend */}
-      <div className="p-2 sm:px-4 bg-slate-950 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 shrink-0">
+      <div className="p-2.5 sm:px-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-700 dark:text-slate-400 shrink-0">
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="flex items-center gap-1 font-semibold text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-red-500"></span>
-            سفارت/کنسولگری
+          <span className="flex items-center gap-1 font-bold text-slate-800 dark:text-slate-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+            هتل و اقامتگاه
           </span>
-          <span className="flex items-center gap-1 font-semibold text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            اداره مهاجرت
+          <span className="flex items-center gap-1 font-bold text-slate-800 dark:text-slate-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            اداره مهاجرت (Göç)
           </span>
-          <span className="flex items-center gap-1 font-semibold text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+          <span className="flex items-center gap-1 font-bold text-slate-800 dark:text-slate-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+            سفارت و کنسولگری
+          </span>
+          <span className="flex items-center gap-1 font-bold text-slate-800 dark:text-slate-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
             متروبوس و مترو
           </span>
-          <span className="flex items-center gap-1 font-semibold text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-            هتل و خوابگاه
-          </span>
-          <span className="flex items-center gap-1 font-semibold text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+          <span className="flex items-center gap-1 font-bold text-slate-800 dark:text-slate-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
             بیمارستان
           </span>
-          <span className="flex items-center gap-1 font-semibold text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-            صرافی
+          <span className="flex items-center gap-1 font-bold text-slate-800 dark:text-slate-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+            صرافی مجاز
           </span>
         </div>
 
-        <div className="text-slate-500 text-[10px]">
-          داده‌های مکانی بر پایه OpenStreetMap و CARTO
+        <div className="text-slate-600 dark:text-slate-500 text-[10px] font-mono">
+          OpenStreetMap &amp; Leaflet Live Engine
         </div>
       </div>
     </div>

@@ -32,7 +32,7 @@ import { getDistrictsForCity } from '../data/turkeyData';
 import { validatePhoneNumber } from '../utils/validators';
 
 export const PostJobSection: React.FC = () => {
-  const { paymentSettings, submitJobWithPayment, setActiveTab, showToast } = useApp();
+  const { paymentSettings, submitJobWithPayment, setActiveTab, showToast, formatTryToIrr } = useApp();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -405,6 +405,11 @@ export const PostJobSection: React.FC = () => {
                 onChange={(e) => setSalaryMin(Number(e.target.value))}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:border-red-500 focus:outline-none"
               />
+              {salaryMin > 0 && (
+                <div className="mt-1.5 text-[11px] font-bold text-emerald-400">
+                  معادل لحظه‌ای: {formatTryToIrr(salaryMin).combinedText}
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1.5">حداکثر حقوق (لیر ترکیه) *</label>
@@ -414,6 +419,11 @@ export const PostJobSection: React.FC = () => {
                 onChange={(e) => setSalaryMax(Number(e.target.value))}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:border-red-500 focus:outline-none"
               />
+              {salaryMax > 0 && (
+                <div className="mt-1.5 text-[11px] font-bold text-emerald-400">
+                  معادل لحظه‌ای: {formatTryToIrr(salaryMax).combinedText}
+                </div>
+              )}
             </div>
           </div>
 

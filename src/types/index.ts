@@ -495,9 +495,11 @@ export interface Hotel {
   stars: number;             // ستاره‌ها (۱ تا ۵ یا هتل آپارتمان/هاستل)
   type: 'hotel' | 'hostel' | 'apart' | 'pension';
   pricePerNight: number;     // قیمت هر شب به لیر
+  monthlyPrice?: number;     // قیمت اجاره ماهانه به لیر (در صورت وجود)
   address: string;
   phone: string;
   whatsapp?: string;
+  websiteUrl?: string;       // لینک مستقیم سایت رسمی و رزرو آنلاین هتل
   imageUrl: string;
   amenities: string[];       // امکانات (وای‌فای، صبحانه، لاندری، نزدیکی به مترو)
   nearTransit: string;       // فاصله تا نزدیک‌ترین ایستگاه مترو/متروبوس

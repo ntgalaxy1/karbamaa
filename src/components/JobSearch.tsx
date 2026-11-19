@@ -169,6 +169,8 @@ export const JobSearch: React.FC = () => {
     approveSeekerAccount,
     updateProfile,
     submitJobWithPayment,
+    formatTryToIrr,
+    liveRates,
   } = useApp();
 
   const computedFeeToman =
@@ -1731,7 +1733,7 @@ export const JobSearch: React.FC = () => {
             </span>
 
             {/* Display current active range */}
-            <div className="flex items-center gap-2 bg-slate-800/90 px-3 py-1.5 rounded-xl border border-slate-700 text-xs">
+            <div className="flex flex-wrap items-center gap-2 bg-slate-800/90 px-3 py-1.5 rounded-xl border border-slate-700 text-xs">
               <span className="text-slate-400">بازه انتخابی:</span>
               <span className="font-mono font-bold text-emerald-400" dir="ltr">
                 {minSalary.toLocaleString('fa-IR')} ₺
@@ -1739,6 +1741,9 @@ export const JobSearch: React.FC = () => {
               <span className="text-slate-500">تا</span>
               <span className="font-mono font-bold text-emerald-400" dir="ltr">
                 {maxSalary >= 75000 ? '۷۵,۰۰۰+ ₺' : `${maxSalary.toLocaleString('fa-IR')} ₺`}
+              </span>
+              <span className="text-[11px] font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-lg">
+                ≈ {formatTryToIrr(minSalary).tomanText} تا {formatTryToIrr(maxSalary).tomanText}
               </span>
             </div>
           </div>
@@ -1773,7 +1778,9 @@ export const JobSearch: React.FC = () => {
             <div className="space-y-1.5">
               <div className="flex justify-between text-slate-300">
                 <span>حداقل حقوق دریافتی:</span>
-                <span className="font-mono font-bold text-emerald-400">{minSalary.toLocaleString('fa-IR')} لیر</span>
+                <span className="font-mono font-bold text-emerald-400">
+                  {minSalary.toLocaleString('fa-IR')} لیر ({formatTryToIrr(minSalary).tomanText})
+                </span>
               </div>
               <input
                 type="range"
@@ -1790,9 +1797,9 @@ export const JobSearch: React.FC = () => {
                 }}
                 className="w-full accent-emerald-500 cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                <span>۲۵,۰۰۰ ₺</span>
-                <span>۶۰,۰۰۰ ₺</span>
+              <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                <span>۲۵,۰۰۰ ₺ ({formatTryToIrr(25000).tomanText})</span>
+                <span>۶۰,۰۰۰ ₺ ({formatTryToIrr(60000).tomanText})</span>
               </div>
             </div>
 
@@ -1801,7 +1808,7 @@ export const JobSearch: React.FC = () => {
               <div className="flex justify-between text-slate-300">
                 <span>سقف حقوق مورد نظر:</span>
                 <span className="font-mono font-bold text-emerald-400">
-                  {maxSalary >= 75000 ? '۷۵,۰۰۰+ لیر' : `${maxSalary.toLocaleString('fa-IR')} لیر`}
+                  {maxSalary >= 75000 ? '۷۵,۰۰۰+ لیر' : `${maxSalary.toLocaleString('fa-IR')} لیر`} ({formatTryToIrr(maxSalary).tomanText})
                 </span>
               </div>
               <input
@@ -1819,9 +1826,9 @@ export const JobSearch: React.FC = () => {
                 }}
                 className="w-full accent-emerald-500 cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                <span>۳۰,۰۰۰ ₺</span>
-                <span>۷۵,۰۰۰+ ₺</span>
+              <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                <span>۳۰,۰۰۰ ₺ ({formatTryToIrr(30000).tomanText})</span>
+                <span>۷۵,۰۰۰+ ₺ ({formatTryToIrr(75000).tomanText})</span>
               </div>
             </div>
           </div>
@@ -2418,6 +2425,26 @@ export const JobSearch: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* Live TRY + Rial/Toman Salary Box */}
+                    <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-500/30 rounded-xl p-2.5 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                          حقوق ({job.payFrequency === 'daily' ? 'روز مزد' : job.payFrequency === 'weekly' ? 'هفتگی' : 'ماهیانه'}):
+                        </span>
+                        <span className="text-xs font-extrabold font-mono text-emerald-700 dark:text-emerald-400" dir="ltr">
+                          {formatLira(job.salaryMin)} – {formatLira(job.salaryMax)}
+                        </span>
+                      </div>
+                      <div className="text-[10px] font-bold text-slate-700 dark:text-slate-300 border-t border-emerald-200/70 dark:border-emerald-800/50 pt-1 flex flex-col gap-0.5">
+                        <span>
+                          معادل تومان: <strong className="font-mono text-slate-900 dark:text-white">{formatTryToIrr(job.salaryMin).tomanText}</strong> تا <strong className="font-mono text-slate-900 dark:text-white">{formatTryToIrr(job.salaryMax).tomanText}</strong>
+                        </span>
+                        <span className="text-[9.5px] text-slate-600 dark:text-slate-400">
+                          معادل ریال: {formatTryToIrr(job.salaryMin).rialText} تا {formatTryToIrr(job.salaryMax).rialText} (نرخ لحظه‌ای ۱ ₺ = {liveRates.tryToman.toLocaleString('fa-IR')} تومان)
+                        </span>
+                      </div>
+                    </div>
+
                     <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
                       {job.description}
                     </p>
@@ -2699,11 +2726,16 @@ export const JobSearch: React.FC = () => {
               {/* Highlight Stats Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-slate-800/70 border border-slate-700/60 p-3 rounded-2xl">
-                  <span className="text-[10px] text-slate-400 block mb-0.5">حقوق ماهانه</span>
+                  <span className="text-[10px] text-slate-400 block mb-0.5">حقوق ماهانه (لیر و معادل تومان/ریال)</span>
                   <span className="text-sm font-bold text-emerald-400 font-mono">
-                    {formatLira(selectedJob.salaryMin)}
+                    {formatLira(selectedJob.salaryMin)} تا {formatLira(selectedJob.salaryMax)}
                   </span>
-                  <span className="text-[10px] text-slate-400 block">تا {formatLira(selectedJob.salaryMax)}</span>
+                  <span className="text-[10px] font-bold text-amber-300 block mt-1">
+                    ≈ {formatTryToIrr(selectedJob.salaryMin).tomanText} تا {formatTryToIrr(selectedJob.salaryMax).tomanText}
+                  </span>
+                  <span className="text-[9.5px] text-slate-400 block">
+                    ({formatTryToIrr(selectedJob.salaryMin).rialText} تا {formatTryToIrr(selectedJob.salaryMax).rialText})
+                  </span>
                 </div>
 
                 <div className="bg-slate-800/70 border border-slate-700/60 p-3 rounded-2xl">
