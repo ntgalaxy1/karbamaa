@@ -2127,45 +2127,47 @@ export const JobSearch: React.FC = () => {
                 </button>
               </div>
 
-              {/* Submit Payment Reference / Receipt Photo Form */}
-              <form onSubmit={handleSubmitSeekerPaymentReference} className="p-5 bg-slate-950/90 border border-slate-800 rounded-2xl space-y-3">
+              {/* Submit Payment Reference / Receipt Photo Form (Temporarily Disabled) */}
+              <div className="p-5 bg-slate-950/70 border border-amber-500/40 rounded-2xl space-y-3 select-none">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <h4 className="text-xs font-extrabold text-amber-300 flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-amber-400" />
-                    <span>ثبت شماره پیگیری تراکنش یا بارگذاری تصویر فیش واریزی جهت تایید مدیریت</span>
+                  <h4 className="text-xs font-extrabold text-slate-400 flex items-center gap-1.5 line-through">
+                    <FileText className="w-4 h-4 text-slate-500" />
+                    <span>روش دوم: ثبت کد پیگیری یا تصویر فیش واریزی</span>
                   </h4>
-                  <span className="text-[11px] text-slate-400">بررسی و بازگشایی فوری پس از ارسال</span>
+                  <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] font-black">
+                    این حالت موقتاً غیرفعال می‌باشد
+                  </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+                <div className="p-3 rounded-xl bg-amber-950/50 border border-amber-500/40 text-xs font-bold text-amber-200 flex items-center gap-2 leading-relaxed">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>این حالت موقتاً غیرفعال می‌باشد. لطفاً جهت فعال‌سازی حساب فقط از طریق دکمه «پرداخت آنلاین» (درگاه بانکی شاپرک) اقدام فرمایید.</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 opacity-45 pointer-events-none">
                   <input
                     type="text"
-                    value={paymentRefNote}
-                    onChange={(e) => setPaymentRefNote(e.target.value)}
-                    placeholder="شماره پیگیری شاپرک یا کد ارجاع بانکی..."
-                    className="sm:col-span-2 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"
+                    disabled
+                    value=""
+                    placeholder="این حالت موقتاً غیرفعال می‌باشد..."
+                    className="sm:col-span-2 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-500 cursor-not-allowed"
                   />
-                  <label className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition">
-                    <Camera className="w-4 h-4 text-amber-400" />
-                    <span>{paymentReceiptPhoto ? 'تصویر فیش ضمیمه شد ✓' : 'انتخاب تصویر فیش'}</span>
-                    <input
-                      ref={receiptFileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePaymentReceiptPhotoUpload}
-                      className="hidden"
-                    />
-                  </label>
+                  <div className="px-4 py-2.5 bg-slate-900 text-slate-500 border border-slate-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-not-allowed">
+                    <Camera className="w-4 h-4 text-slate-600" />
+                    <span>انتخاب تصویر فیش (غیرفعال)</span>
+                  </div>
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-end opacity-50 pointer-events-none">
                   <button
-                    type="submit"
-                    className="w-full sm:w-auto px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                    type="button"
+                    disabled
+                    className="w-full sm:w-auto px-6 py-2.5 bg-slate-800 text-slate-400 font-black rounded-xl text-xs flex items-center justify-center gap-2 cursor-not-allowed"
                   >
-                    <CheckCircle className="w-4 h-4" />
-                    <span>ثبت و ارسال مشخصات پرداخت به مدیریت</span>
+                    <Lock className="w-4 h-4" />
+                    <span>ثبت فیش و کد پیگیری موقتاً غیرفعال می‌باشد</span>
                   </button>
                 </div>
-              </form>
+              </div>
 
               {/* Online Payment Status Box (Only when pending review, not rejected) */}
               {!isCurrentSeekerRejected && (isReferredToAdmin || currentSeeker.seekerPaymentStatus === 'paid' || Boolean(currentSeeker.seekerPaymentRefId)) && (

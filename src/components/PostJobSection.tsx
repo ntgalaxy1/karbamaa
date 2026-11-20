@@ -629,29 +629,36 @@ export const PostJobSection: React.FC = () => {
               </div>
             </div>
 
-            {/* Optional Direct Payment Reference / Receipt Submission */}
-            <div className="p-4 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-3 pt-3">
-              <span className="text-xs font-bold text-amber-300 block">
-                ثبت کد رهگیری تراکنش یا تصویر فیش (در صورت پرداخت قبلی):
-              </span>
-              <div className="flex flex-col sm:flex-row gap-2.5">
+            {/* Direct Payment Reference / Receipt Submission (Temporarily Disabled) */}
+            <div className="p-4 bg-slate-900/70 rounded-2xl border border-amber-500/40 space-y-3 pt-3 select-none">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-xs font-bold text-slate-400 line-through">
+                  روش دوم: ثبت کد پیگیری یا تصویر فیش واریزی
+                </span>
+                <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black">
+                  این حالت موقتاً غیرفعال می‌باشد
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-amber-950/50 border border-amber-500/40 text-xs font-bold text-amber-200 leading-relaxed">
+                ⚠️ این حالت موقتاً غیرفعال می‌باشد. لطفاً فقط از طریق دکمه «پرداخت آنلاین» درگاه بانکی اقدام فرمایید.
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2.5 opacity-45 pointer-events-none">
                 <input
                   type="text"
-                  value={referenceId}
-                  onChange={(e) => setReferenceId(e.target.value)}
-                  placeholder="شماره پیگیری تراکنش بانکی یا کد ارجاع شاپرک..."
-                  className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white"
+                  disabled
+                  value=""
+                  placeholder="این حالت موقتاً غیرفعال می‌باشد..."
+                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-500 cursor-not-allowed"
                 />
-                <label className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
-                  <span>{receiptImage ? 'تصویر فیش ضمیمه شد ✓' : 'بارگذاری تصویر فیش'}</span>
-                  <input type="file" accept="image/*" onChange={handleReceiptUpload} className="hidden" />
-                </label>
+                <span className="px-4 py-2 bg-slate-800 text-slate-500 border border-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed shrink-0">
+                  <span>بارگذاری تصویر فیش (غیرفعال)</span>
+                </span>
                 <button
                   type="button"
-                  onClick={handleSubmit}
-                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition cursor-pointer shrink-0"
+                  disabled
+                  className="px-5 py-2 bg-slate-800 text-slate-400 font-black rounded-xl text-xs cursor-not-allowed shrink-0"
                 >
-                  ثبت فیش و ارسال آگهی
+                  موقتاً غیرفعال
                 </button>
               </div>
             </div>

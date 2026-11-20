@@ -1034,33 +1034,43 @@ export const PartnerSection: React.FC = () => {
               </button>
             </div>
 
-            {/* Submit Payment Reference / Receipt Photo for Partner */}
-            <form onSubmit={handleSubmitPartnerPaymentToAdmin} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-              <span className="text-xs font-extrabold text-amber-300 block">
-                ثبت کد پیگیری پرداخت یا تصویر فیش واریزی اشتراک همکار:
-              </span>
-              <div className="flex flex-col sm:flex-row gap-2">
+            {/* Submit Payment Reference / Receipt Photo for Partner (Temporarily Disabled) */}
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-amber-500/40 space-y-3 select-none">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-xs font-extrabold text-slate-400 line-through">
+                  روش دوم: ثبت کد پیگیری یا تصویر فیش واریزی اشتراک همکار
+                </span>
+                <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black">
+                  موقتاً غیرفعال
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-amber-950/50 border border-amber-500/40 text-xs font-bold text-amber-200 leading-relaxed">
+                ⚠️ این حالت موقتاً غیرفعال می‌باشد. لطفاً فقط از طریق دکمه «پرداخت آنلاین» درگاه بانکی بالا اقدام فرمایید.
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 opacity-45 pointer-events-none">
                 <input
                   type="text"
-                  value={partnerPayRefInput}
-                  onChange={(e) => setPartnerPayRefInput(e.target.value)}
-                  placeholder="شماره پیگیری تراکنش شاپرک یا کد ارجاع بانکی..."
-                  className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                  disabled
+                  value=""
+                  placeholder="این حالت موقتاً غیرفعال می‌باشد..."
+                  className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-500 cursor-not-allowed"
                 />
-                <label className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
-                  <Upload className="w-4 h-4 text-amber-400" />
-                  <span>{partnerPayReceiptPhoto ? 'فیش ضمیمه شد ✓' : 'بارگذاری فیش'}</span>
-                  <input type="file" accept="image/*" onChange={handlePartnerReceiptUpload} className="hidden" />
-                </label>
+                <div className="px-4 py-2.5 bg-slate-900 text-slate-500 border border-slate-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed shrink-0">
+                  <Upload className="w-4 h-4 text-slate-600" />
+                  <span>بارگذاری فیش (غیرفعال)</span>
+                </div>
               </div>
               <button
-                type="submit"
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer"
+                type="button"
+                disabled
+                className="w-full py-2.5 bg-slate-800 text-slate-400 font-black rounded-xl text-xs flex items-center justify-center gap-2 cursor-not-allowed opacity-60"
               >
-                <Send className="w-4 h-4" />
-                <span>ارسال مشخصات پرداخت اشتراک جهت تایید مدیریت</span>
+                <Lock className="w-4 h-4" />
+                <span>این حالت موقتاً غیرفعال می‌باشد</span>
               </button>
-            </form>
+            </div>
           </div>
         </div>
       </div>
