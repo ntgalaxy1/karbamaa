@@ -32,15 +32,19 @@ function defaultStore() {
         'applications' => [],
         'addresses' => [],
         'notifications' => [],
+        'adminNotifications' => [],
         'chats' => [],
         'paymentSettings' => null,
         'partnerPlans' => null,
         'brokerSettings' => null,
+        'adminAlertSettings' => null,
         'deletedJobIds' => [],
         'deletedSeekerIds' => [],
         'deletedHotelIds' => [],
         'deletedNotificationIds' => [],
         'readNotificationIds' => [],
+        'deletedAdminNotificationIds' => [],
+        'readAdminNotificationIds' => [],
     ];
 }
 
@@ -118,15 +122,19 @@ if ($method === 'GET') {
         'applications' => array_values($store['applications']),
         'addresses' => array_values($store['addresses']),
         'notifications' => array_values($store['notifications']),
+        'adminNotifications' => array_values($store['adminNotifications']),
         'chats' => array_values($store['chats']),
         'paymentSettings' => $store['paymentSettings'],
         'partnerPlans' => $store['partnerPlans'],
         'brokerSettings' => $store['brokerSettings'],
+        'adminAlertSettings' => $store['adminAlertSettings'],
         'deletedJobIds' => array_values($store['deletedJobIds']),
         'deletedSeekerIds' => array_values($store['deletedSeekerIds']),
         'deletedHotelIds' => array_values($store['deletedHotelIds']),
         'deletedNotificationIds' => array_values($store['deletedNotificationIds']),
         'readNotificationIds' => array_values($store['readNotificationIds']),
+        'deletedAdminNotificationIds' => array_values($store['deletedAdminNotificationIds']),
+        'readAdminNotificationIds' => array_values($store['readAdminNotificationIds']),
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }
@@ -169,6 +177,9 @@ if ($method === 'POST') {
             } elseif (isset($payload['notification']) && is_array($payload['notification'])) {
                 $type = 'notification';
                 $record = $payload['notification'];
+            } elseif (isset($payload['adminNotification']) && is_array($payload['adminNotification'])) {
+                $type = 'admin_notification';
+                $record = $payload['adminNotification'];
             } elseif (isset($payload['chat']) && is_array($payload['chat'])) {
                 $type = 'chat';
                 $record = $payload['chat'];
@@ -203,6 +214,15 @@ if ($method === 'POST') {
             exit;
         }
 
+        if ($type === 'admin_alert_settings' && is_array($record)) {
+            $store['adminAlertSettings'] = is_array($store['adminAlertSettings'])
+                ? array_merge($store['adminAlertSettings'], $record)
+                : $record;
+            writeUsersStore($usersFile, $store);
+            echo json_encode(['ok' => true]);
+            exit;
+        }
+
         if (!is_array($record) || empty($record['id'])) {
             http_response_code(400);
             echo json_encode(['ok' => false, 'error' => 'Missing record id']);
@@ -225,6 +245,13 @@ if ($method === 'POST') {
             upsertArrayRecord($store['addresses'], $record);
         } elseif ($type === 'chat') {
             upsertArrayRecord($store['chats'], $record);
+        } elseif ($type === 'admin_notification') {
+            if (!in_array($recordId, $store['deletedAdminNotificationIds'], true)) {
+                if (in_array($recordId, $store['readAdminNotificationIds'], true)) {
+                    $record['read'] = true;
+                }
+                upsertArrayRecord($store['adminNotifications'], $record);
+            }
         } elseif ($type === 'notification') {
             if (!in_array($recordId, $store['deletedNotificationIds'], true)) {
                 upsertArrayRecord($store['notifications'], $record);
@@ -377,9 +404,59 @@ if ($method === 'POST') {
         exit;
     }
 
+    if ($action === 'mark_admin_notification_read') {
+        $id = (string)($payload['id'] ?? '');
+        $ids = isset($payload['ids']) && is_array($payload['ids']) ? $payload['ids'] : ($id !== '' ? [$id] : []);
+        foreach ($ids as $nid) {
+            addUniqueString($store['readAdminNotificationIds'], $nid);
+        }
+        foreach ($store['adminNotifications'] as $idx => $n) {
+            $nid = (string)($n['id'] ?? '');
+            if (in_array($nid, $ids, true)) {
+                $store['adminNotifications'][$idx]['read'] = true;
+            }
+        }
+        writeUsersStore($usersFile, $store);
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+
+    if ($action === 'delete_admin_notification') {
+        $id = (string)($payload['id'] ?? '');
+        if ($id !== '') {
+            addUniqueString($store['deletedAdminNotificationIds'], $id);
+            addUniqueString($store['readAdminNotificationIds'], $id);
+            $store['adminNotifications'] = array_values(array_filter($store['adminNotifications'], function ($n) use ($id) {
+                return ($n['id'] ?? '') !== $id;
+            }));
+            writeUsersStore($usersFile, $store);
+        }
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+
+    if ($action === 'clear_admin_notifications') {
+        $ids = isset($payload['ids']) && is_array($payload['ids']) ? $payload['ids'] : [];
+        foreach ($ids as $nid) {
+            addUniqueString($store['deletedAdminNotificationIds'], $nid);
+            addUniqueString($store['readAdminNotificationIds'], $nid);
+        }
+        foreach ($store['adminNotifications'] as $n) {
+            if (!empty($n['id'])) {
+                addUniqueString($store['deletedAdminNotificationIds'], $n['id']);
+                addUniqueString($store['readAdminNotificationIds'], $n['id']);
+            }
+        }
+        $store['adminNotifications'] = [];
+        writeUsersStore($usersFile, $store);
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+
     echo json_encode(['ok' => true]);
     exit;
 }
 
 http_response_code(405);
 echo json_encode(['ok' => false, 'error' => 'Method not allowed']);
+

@@ -34,6 +34,8 @@ import {
   AdminCreatePartnerInput,
   LiveChatSession,
   LiveChatMessage,
+  AdminNotification,
+  AdminAlertSettings,
 } from '../types';
 import {
   INITIAL_JOB_SEEKERS,
@@ -220,12 +222,16 @@ interface AppContextType {
   setHasCompletedOnboarding: (completed: boolean) => void;
 
   // Admin Notifications & Seeker Verification
-  adminNotifications: any[];
-  addAdminNotification: (notif: any) => void;
+  adminNotifications: AdminNotification[];
+  addAdminNotification: (notif: any) => AdminNotification;
   markAdminNotificationAsRead: (id: string) => void;
+  markAllAdminNotificationsAsRead: () => void;
   deleteAdminNotification: (id: string) => void;
   clearAdminNotifications: () => void;
   unreadAdminNotifCount: number;
+  adminAlertSettings: AdminAlertSettings;
+  updateAdminAlertSettings: (updates: Partial<AdminAlertSettings>) => void;
+  testAdminTelegramAlert: (token?: string, chatId?: string) => Promise<{ ok: boolean; error?: string }>;
   approveSeekerAccount: (seekerId: string, note?: string) => void;
   rejectSeekerAccount: (seekerId: string, reason: string) => void;
 
@@ -725,8 +731,118 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Admin Alert Settings (Email to info@karbama34.ir + Optional Telegram Bot)
+  const [adminAlertSettings, setAdminAlertSettings] = useState<AdminAlertSettings>(() => {
+    const defaults: AdminAlertSettings = {
+      adminEmail: 'info@karbama34.ir',
+      enableEmailAlerts: true,
+      enableTelegramAlerts: false,
+      telegramBotToken: '',
+      telegramAdminChatId: '',
+    };
+    try {
+      const raw = safeStorage.getItem('karbama_admin_alert_settings_v1');
+      if (raw) {
+        return { ...defaults, ...JSON.parse(raw) };
+      }
+    } catch {
+      // ignore
+    }
+    return defaults;
+  });
+
+  const updateAdminAlertSettings = (updates: Partial<AdminAlertSettings>) => {
+    setAdminAlertSettings((prev) => {
+      const next: AdminAlertSettings = {
+        ...prev,
+        ...updates,
+        adminEmail: (updates.adminEmail ?? prev.adminEmail ?? 'info@karbama34.ir').trim() || 'info@karbama34.ir',
+        updatedAt: new Date().toISOString(),
+      };
+      try {
+        safeStorage.setItem('karbama_admin_alert_settings_v1', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      fetch('/api/users.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'upsert', type: 'admin_alert_settings', record: next }),
+      }).catch(() => {});
+      return next;
+    });
+    showToast('تنظیمات اعلان خودکار ایمیل و تلگرام مدیر با موفقیت ذخیره شد.', 'success');
+  };
+
+  const testAdminTelegramAlert = async (
+    tokenOverride?: string,
+    chatIdOverride?: string
+  ): Promise<{ ok: boolean; error?: string }> => {
+    const botToken = (tokenOverride ?? adminAlertSettings.telegramBotToken ?? '').trim();
+    const chatId = (chatIdOverride ?? adminAlertSettings.telegramAdminChatId ?? '').trim();
+    if (!botToken || !chatId) {
+      return {
+        ok: false,
+        error: 'لطفاً ابتدا توکن ربات تلگرام (Telegram Bot Token) و شناسه چت مدیر (Admin Chat ID) را وارد کنید.',
+      };
+    }
+
+    try {
+      const res = await fetch('/api/admin-notify.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'test_telegram',
+          telegramBotToken: botToken,
+          telegramAdminChatId: chatId,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.ok) {
+          return { ok: true };
+        }
+        if (data && data.error) {
+          return { ok: false, error: data.error };
+        }
+      }
+    } catch {
+      // Fallback to direct Telegram API call from browser if server outbound connection is restricted
+    }
+
+    try {
+      const tgUrl = `https://api.telegram.org/bot${encodeURIComponent(botToken)}/sendMessage`;
+      const tgRes = await fetch(tgUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text:
+            `🔔 <b>تست اتصال ربات اعلان‌های مدیریت کارباما (karbama34.ir)</b>\n\n` +
+            `✅ اتصال ربات تلگرام با موفقیت برقرار شد!\n` +
+            `از این پس مشخصات کامل هر <b>کارجو</b> یا <b>همکار</b> جدید بلافاصله پس از ثبت‌نام به این چت ارسال خواهد شد.\n\n` +
+            `🕒 زمان تست: ${new Date().toLocaleString('fa-IR')}`,
+          parse_mode: 'HTML',
+        }),
+      });
+      const tgJson: any = await tgRes.json().catch(() => null);
+      if (tgRes.ok && tgJson && tgJson.ok) {
+        return { ok: true };
+      }
+      return {
+        ok: false,
+        error: tgJson?.description || 'خطا از سمت تلگرام: توکن یا Chat ID را بررسی کنید و مطمئن شوید ربات را Start کرده‌اید.',
+      };
+    } catch (err: any) {
+      return {
+        ok: false,
+        error: err?.message || 'خطا در برقراری ارتباط با سرور تلگرام',
+      };
+    }
+  };
+
   // Admin Live Notifications State (with persistent read & deleted tracking)
-  const [adminNotifications, setAdminNotifications] = useState<any[]>(() => {
+  const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>(() => {
     try {
       const deletedRaw = safeStorage.getItem('karbama_deleted_admin_notifs_v1');
       const deletedIds = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
@@ -735,21 +851,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const stored = safeStorage.getItem('karbama_admin_notifications_v4');
       const parsed: any[] = stored ? JSON.parse(stored) : [];
       if (!Array.isArray(parsed)) return [];
-      return parsed.filter((n) => n && n.id && !deletedIds.has(n.id) && !readIds.has(n.id) && !n.read);
+      return parsed
+        .filter((n) => n && n.id && !deletedIds.has(n.id))
+        .map((n) => ({
+          ...n,
+          read: Boolean(n.read || readIds.has(n.id)),
+        }));
     } catch {
       return [];
     }
   });
 
-  const addAdminNotification = (notif: { type: string; title: string; message: string; data?: any }) => {
-    const item = {
-      id: 'an-' + Date.now(),
+  const addAdminNotification = (notif: Partial<AdminNotification> & { type: any; title: string; message: string; data?: any }): AdminNotification => {
+    const item: AdminNotification = {
+      id: notif.id || `an-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
       ...notif,
       read: false,
-      createdAt: new Date().toISOString(),
+      createdAt: notif.createdAt || new Date().toISOString(),
     };
     setAdminNotifications((prev) => {
-      const next = [item, ...prev];
+      const filtered = prev.filter((p) => p.id !== item.id);
+      const next = [item, ...filtered];
       try {
         safeStorage.setItem('karbama_admin_notifications_v4', JSON.stringify(next));
       } catch (e) {
@@ -757,6 +879,114 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return next;
     });
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'upsert', type: 'admin_notification', record: item }),
+    }).catch(() => {});
+    return item;
+  };
+
+  // Non-blocking Multi-Channel Registration Alert Service (In-App + Email info@karbama34.ir + Telegram Bot)
+  const dispatchRegistrationAdminAlert = (params: {
+    accountType: 'seeker' | 'partner';
+    fullName: string;
+    companyName?: string;
+    phone?: string;
+    email?: string;
+    city?: string;
+    specialty?: string;
+    nationalId?: string;
+    username?: string;
+    partnerCode?: string;
+    title: string;
+    message: string;
+    data?: any;
+  }) => {
+    const nowIso = new Date().toISOString();
+    const formattedTimeFa = new Date(nowIso).toLocaleString('fa-IR');
+    const accountTypeLabel: 'کارجو' | 'همکار' = params.accountType === 'partner' ? 'همکار' : 'کارجو';
+    const recipientEmail = adminAlertSettings.enableEmailAlerts
+      ? adminAlertSettings.adminEmail || 'info@karbama34.ir'
+      : undefined;
+    const isTgConfigured = Boolean(
+      adminAlertSettings.enableTelegramAlerts &&
+        adminAlertSettings.telegramBotToken?.trim() &&
+        adminAlertSettings.telegramAdminChatId?.trim()
+    );
+
+    const notifItem = addAdminNotification({
+      id: `an-reg-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+      type: params.accountType === 'partner' ? 'partner_registered' : 'seeker_registered',
+      accountType: params.accountType,
+      accountTypeLabel,
+      fullName: params.fullName,
+      companyName: params.companyName,
+      phone: params.phone || 'ثبت نشده',
+      email: params.email || 'ثبت نشده',
+      city: params.city || 'ثبت نشده',
+      specialty: params.specialty || params.companyName || 'ثبت نشده',
+      nationalId: params.nationalId || 'ثبت نشده',
+      username: params.username || '',
+      partnerCode: params.partnerCode || '',
+      title: params.title,
+      message: params.message,
+      data: params.data,
+      emailSentTo: recipientEmail,
+      telegramSent: isTgConfigured,
+      createdAt: nowIso,
+    });
+
+    // Fire-and-forget async dispatch to backend (/api/admin-notify.php) for Email & Telegram without blocking user registration
+    (async () => {
+      try {
+        const res = await fetch('/api/admin-notify.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'notify_registration',
+            notification: {
+              ...notifItem,
+              formattedTimeFa,
+            },
+            adminEmail: adminAlertSettings.adminEmail || 'info@karbama34.ir',
+            enableEmailAlerts: adminAlertSettings.enableEmailAlerts,
+            enableTelegramAlerts: adminAlertSettings.enableTelegramAlerts,
+            telegramBotToken: adminAlertSettings.telegramBotToken,
+            telegramAdminChatId: adminAlertSettings.telegramAdminChatId,
+          }),
+        });
+        const json: any = await res.json().catch(() => null);
+        // Client-side direct Telegram fallback if server outbound cURL was blocked
+        if (isTgConfigured && (!res.ok || !json?.telegramDispatched)) {
+          const tgUrl = `https://api.telegram.org/bot${encodeURIComponent(
+            adminAlertSettings.telegramBotToken.trim()
+          )}/sendMessage`;
+          const tgText =
+            `🔔 <b>ثبت‌نام ${accountTypeLabel} جدید در کارباما</b>\n\n` +
+            `🏷 <b>نوع حساب:</b> ${accountTypeLabel}\n` +
+            `👤 <b>نام و نام خانوادگی:</b> ${params.fullName}\n` +
+            (params.companyName ? `🏢 <b>شرکت/دفتر:</b> ${params.companyName} (${params.partnerCode || ''})\n` : '') +
+            `📞 <b>شماره تلفن:</b> <code>${params.phone || 'ثبت نشده'}</code>\n` +
+            `✉️ <b>ایمیل:</b> ${params.email || 'ثبت نشده'}\n` +
+            `📍 <b>شهر:</b> ${params.city || 'ثبت نشده'}\n` +
+            `🛠 <b>تخصص/حوزه:</b> ${params.specialty || params.companyName || 'ثبت نشده'}\n` +
+            `🆔 <b>کد ملی:</b> <code>${params.nationalId || 'ثبت نشده'}</code>\n` +
+            `🕒 <b>زمان ثبت‌نام:</b> ${formattedTimeFa}`;
+          await fetch(tgUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: adminAlertSettings.telegramAdminChatId.trim(),
+              text: tgText,
+              parse_mode: 'HTML',
+            }),
+          }).catch(() => {});
+        }
+      } catch {
+        // Silent catch so registration experience is never interrupted
+      }
+    })();
   };
 
   const markAdminNotificationAsRead = (id: string) => {
@@ -769,7 +999,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // ignore
     }
     setAdminNotifications((prev) => {
-      const next = prev.filter((n) => n.id !== id);
+      const next = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
       try {
         safeStorage.setItem('karbama_admin_notifications_v4', JSON.stringify(next));
       } catch (e) {
@@ -777,6 +1007,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return next;
     });
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'mark_admin_notification_read', id }),
+    }).catch(() => {});
+  };
+
+  const markAllAdminNotificationsAsRead = () => {
+    const allIds = adminNotifications.map((n) => n.id).filter(Boolean);
+    if (allIds.length === 0) return;
+    try {
+      const readRaw = safeStorage.getItem('karbama_read_admin_notifs_v1');
+      const readIds = new Set<string>(readRaw ? JSON.parse(readRaw) : []);
+      allIds.forEach((id) => readIds.add(id));
+      safeStorage.setItem('karbama_read_admin_notifs_v1', JSON.stringify(Array.from(readIds)));
+    } catch {
+      // ignore
+    }
+    setAdminNotifications((prev) => {
+      const next = prev.map((n) => ({ ...n, read: true }));
+      try {
+        safeStorage.setItem('karbama_admin_notifications_v4', JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'mark_admin_notification_read', ids: allIds }),
+    }).catch(() => {});
+    showToast('تمامی اعلان‌های مدیریت به عنوان خوانده‌شده علامت‌گذاری شدند.', 'success');
   };
 
   const deleteAdminNotification = (id: string) => {
@@ -797,15 +1060,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return next;
     });
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete_admin_notification', id }),
+    }).catch(() => {});
   };
 
   const clearAdminNotifications = () => {
+    const allIds = adminNotifications.map((n) => n.id).filter(Boolean);
     try {
       const deletedRaw = safeStorage.getItem('karbama_deleted_admin_notifs_v1');
       const deletedIds = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
-      adminNotifications.forEach((n) => {
-        if (n?.id) deletedIds.add(n.id);
-      });
+      allIds.forEach((id) => deletedIds.add(id));
       safeStorage.setItem('karbama_deleted_admin_notifs_v1', JSON.stringify(Array.from(deletedIds)));
     } catch {
       // ignore
@@ -816,6 +1083,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       console.error(e);
     }
+    fetch('/api/users.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'clear_admin_notifications', ids: allIds }),
+    }).catch(() => {});
     showToast('اعلان‌های مدیریت پاکسازی شدند.', 'info');
   };
 
@@ -1782,6 +2054,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               return merged;
             });
           }
+          if (data.adminAlertSettings && typeof data.adminAlertSettings === 'object') {
+            setAdminAlertSettings((prev) => {
+              const merged = { ...prev, ...data.adminAlertSettings };
+              safeStorage.setItem('karbama_admin_alert_settings_v1', JSON.stringify(merged));
+              return merged;
+            });
+          }
+
+          // 9. Sync Admin Notifications in real time across devices
+          if (Array.isArray(data.deletedAdminNotificationIds) && data.deletedAdminNotificationIds.length > 0) {
+            addTombstoneIds('karbama_deleted_admin_notifs_v1', data.deletedAdminNotificationIds);
+          }
+          if (Array.isArray(data.readAdminNotificationIds) && data.readAdminNotificationIds.length > 0) {
+            addTombstoneIds('karbama_read_admin_notifs_v1', data.readAdminNotificationIds);
+          }
+          const deletedAdminNotifs = getTombstoneSet('karbama_deleted_admin_notifs_v1');
+          const readAdminNotifs = getTombstoneSet('karbama_read_admin_notifs_v1');
+          if (Array.isArray(data.adminNotifications) || deletedAdminNotifs.size > 0 || readAdminNotifs.size > 0) {
+            const serverAdminNotifs: AdminNotification[] = Array.isArray(data.adminNotifications)
+              ? data.adminNotifications
+              : [];
+            setAdminNotifications((prev) => {
+              const map = new Map<string, AdminNotification>();
+              [...serverAdminNotifs, ...prev].forEach((n) => {
+                if (!n || !n.id || deletedAdminNotifs.has(n.id)) return;
+                const existing = map.get(n.id);
+                const isRead = Boolean(n.read || existing?.read || readAdminNotifs.has(n.id));
+                map.set(n.id, { ...(existing || {}), ...n, read: isRead });
+              });
+              const merged = Array.from(map.values()).sort(
+                (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              );
+              safeStorage.setItem('karbama_admin_notifications_v4', JSON.stringify(merged));
+              return merged;
+            });
+          }
         } catch {
           // Ignore network error when offline
         }
@@ -2543,8 +2851,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setRole('jobseeker');
       setActiveTab('settings');
 
-      addAdminNotification({
-        type: 'seeker_registered',
+      const updatedSpecialty =
+        updatedSeeker.customProfession ||
+        (updatedSeeker.selectedJobs && updatedSeeker.selectedJobs.length > 0
+          ? updatedSeeker.selectedJobs.join('، ')
+          : updatedSeeker.skills.join('، '));
+      dispatchRegistrationAdminAlert({
+        accountType: 'seeker',
+        fullName: updatedSeeker.fullName,
+        phone: updatedSeeker.phone || updatedSeeker.phoneNumber,
+        email: updatedSeeker.email,
+        city: `${updatedSeeker.targetCountry || 'ترکیه'} - ${updatedSeeker.targetCity || 'استانبول'}`,
+        specialty: updatedSpecialty,
+        nationalId: updatedSeeker.nationalId,
+        username: updatedSeeker.username,
         title: '👤 تکمیل و ثبت پرونده کارجو',
         message: `کارجو «${updatedSeeker.fullName}» پرونده استخدامی و امضای رسمی خود را با موفقیت در سامانه ثبت نمود.`,
         data: { seekerId: updatedSeeker.id },
@@ -2617,8 +2937,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRole('jobseeker');
     setActiveTab('settings');
 
-    addAdminNotification({
-      type: 'seeker_registered',
+    const seekerSpecialty =
+      newSeeker.customProfession ||
+      (newSeeker.selectedJobs && newSeeker.selectedJobs.length > 0
+        ? newSeeker.selectedJobs.join('، ')
+        : newSeeker.skills.join('، '));
+    dispatchRegistrationAdminAlert({
+      accountType: 'seeker',
+      fullName: newSeeker.fullName,
+      phone: newSeeker.phone || newSeeker.phoneNumber,
+      email: newSeeker.email,
+      city: `${newSeeker.targetCountry || 'ترکیه'} - ${newSeeker.targetCity || 'استانبول'}`,
+      specialty: seekerSpecialty,
+      nationalId: newSeeker.nationalId,
+      username: newSeeker.username,
       title: '👤 ثبت‌نام کارجو جدید',
       message: `کارجو جدید «${newSeeker.fullName}» با کد/شناسه ${newSeeker.nationalId} در سامانه کارباما ثبت‌نام نمود.`,
       data: { seekerId: newSeeker.id },
@@ -3971,10 +4303,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRole('partner');
     setActiveTab('partner');
 
-    addAdminNotification({
-      type: 'partner_registered',
-      title: 'همکار جدید در سامانه ثبت‌نام کرد (در انتظار پرداخت)',
+    dispatchRegistrationAdminAlert({
+      accountType: 'partner',
+      fullName: newPartner.fullName,
+      companyName: newPartner.companyName,
+      phone: newPartner.phone,
+      email: newPartner.email,
+      city: newPartner.city || 'استانبول',
+      specialty: `${newPartner.companyName} (${newPartner.planTitle || 'همکار کارباما'})`,
+      nationalId: newPartner.nationalId || 'ثبت نشده',
+      username: newPartner.username,
+      partnerCode: newPartner.partnerCode,
+      title: '🏢 ثبت‌نام همکار جدید در سامانه',
       message: `همکار جدید «${newPartner.companyName}» با مدیریت ${newPartner.fullName} و کد همکاری ${newPartner.partnerCode} ثبت‌نام کرد و در انتظار پرداخت آنلاین و تایید مدیریت است.`,
+      data: { partnerId: newPartner.id, partnerCode: newPartner.partnerCode },
     });
 
     showToast(
@@ -4036,10 +4378,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
     syncPartnerToFirestore(newPartner);
 
-    addAdminNotification({
-      type: 'partner_registered',
-      title: 'همکار جدید توسط مدیر ثبت شد',
+    dispatchRegistrationAdminAlert({
+      accountType: 'partner',
+      fullName: newPartner.fullName,
+      companyName: newPartner.companyName,
+      phone: newPartner.phone,
+      email: newPartner.email,
+      city: newPartner.city || 'استانبول',
+      specialty: `${newPartner.companyName} (${newPartner.planTitle || 'همکار کارباما'})`,
+      username: newPartner.username,
+      partnerCode: newPartner.partnerCode,
+      title: '🏢 ثبت همکار جدید توسط مدیریت',
       message: `حساب کاربری همکار «${newPartner.companyName}» با مدیریت ${newPartner.fullName} و کد اختصاصی ${newPartner.partnerCode} در سامانه فعال گردید.`,
+      data: { partnerId: newPartner.id, partnerCode: newPartner.partnerCode },
     });
 
     showToast(`همکار جدید «${newPartner.companyName}» با کد همکاری ${newPartner.partnerCode} با موفقیت ثبت شد.`, 'success');
@@ -4325,11 +4676,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setJobSeekers((prev) => [newSeeker, ...prev]);
     syncUserToFirestore(newSeeker);
 
-    addAdminNotification({
-      type: 'seeker_registered',
-      title: '👤 ثبت کارجو توسط همکار',
+    dispatchRegistrationAdminAlert({
+      accountType: 'seeker',
+      fullName: newSeeker.fullName,
+      phone: newSeeker.phone || newSeeker.phoneNumber,
+      email: newSeeker.email || 'ثبت توسط همکار',
+      city: `${newSeeker.targetCountry || 'ترکیه'} - ${newSeeker.targetCity || 'استانبول'}`,
+      specialty: `${jobTitle} (ثبت توسط همکار: ${activePartnerObj.companyName})`,
+      nationalId: newSeeker.nationalId,
+      username: newSeeker.username,
+      partnerCode: activePartnerObj.partnerCode,
+      title: '👤 ثبت کارجو جدید توسط همکار',
       message: `کارجو «${newSeeker.fullName}» | شغل انتخابی: «${jobTitle}» | مبلغ پرداختی: ${newSeeker.seekerPaidAmount || 'ثبت نشده'} توسط همکار ${activePartnerObj.companyName} ثبت شد.`,
-      data: { seekerId: newSeeker.id },
+      data: { seekerId: newSeeker.id, partnerId: activePartnerObj.id },
     });
 
     showToast(`کارجو «${newSeeker.fullName}» با موفقیت ثبت گردید.`, 'success');
@@ -4783,9 +5142,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         adminNotifications,
         addAdminNotification,
         markAdminNotificationAsRead,
+        markAllAdminNotificationsAsRead,
         deleteAdminNotification,
         clearAdminNotifications,
         unreadAdminNotifCount,
+        adminAlertSettings,
+        updateAdminAlertSettings,
+        testAdminTelegramAlert,
         approveSeekerAccount,
         rejectSeekerAccount,
         // Partner system exports

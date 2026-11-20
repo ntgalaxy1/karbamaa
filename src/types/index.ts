@@ -240,11 +240,33 @@ export interface AdminCredentials {
 export interface AdminNotification {
   id: string;
   type: 'seeker_registered' | 'job_posted' | 'application_submitted' | 'hotel_booked' | 'partner_registered' | 'partner_payment';
+  accountType?: 'seeker' | 'partner';
+  accountTypeLabel?: 'کارجو' | 'همکار';
+  fullName?: string;
+  companyName?: string;
+  phone?: string;
+  email?: string;
+  city?: string;
+  specialty?: string;
+  nationalId?: string;
+  username?: string;
+  partnerCode?: string;
   title: string;
   message: string;
   data?: any;
   read: boolean;
+  emailSentTo?: string;
+  telegramSent?: boolean;
   createdAt: string;
+}
+
+export interface AdminAlertSettings {
+  adminEmail: string;             // پیش‌فرض: info@karbama34.ir
+  enableEmailAlerts: boolean;     // ارسال خودکار ایمیل در هر ثبت‌نام
+  enableTelegramAlerts: boolean;  // فعال‌سازی ارسال پیام به ربات تلگرام
+  telegramBotToken: string;       // Telegram Bot Token
+  telegramAdminChatId: string;    // Admin Chat ID
+  updatedAt?: string;
 }
 
 // ========================

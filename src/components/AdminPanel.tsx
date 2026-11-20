@@ -56,6 +56,8 @@ import {
   Flame,
   Loader2,
   AlertTriangle,
+  Bell,
+  Mail,
 } from 'lucide-react';
 
 export const AdminPanel: React.FC = () => {
@@ -92,8 +94,12 @@ export const AdminPanel: React.FC = () => {
     adminNotifications,
     unreadAdminNotifCount,
     markAdminNotificationAsRead,
+    markAllAdminNotificationsAsRead,
     deleteAdminNotification,
     clearAdminNotifications,
+    adminAlertSettings,
+    updateAdminAlertSettings,
+    testAdminTelegramAlert,
     approveSeekerAccount,
     rejectSeekerAccount,
     deleteSeekerRecord,
@@ -148,6 +154,31 @@ export const AdminPanel: React.FC = () => {
   const [seekerSearch, setSeekerSearch] = useState('');
   const [jobSearch, setJobSearch] = useState('');
   const [hotelSearch, setHotelSearch] = useState('');
+
+  // Top-bar real-time Notification Bell dropdown & Notification Center filters
+  const [showAdminBellDropdown, setShowAdminBellDropdown] = useState(false);
+  const [notifFilter, setNotifFilter] = useState<'all' | 'unread' | 'seeker' | 'partner'>('all');
+  const [showAlertConfigPanel, setShowAlertConfigPanel] = useState(false);
+
+  // Admin Multi-Channel Alert Settings (Email info@karbama34.ir + Telegram Bot Token & Admin Chat ID)
+  const [alertEmailInput, setAlertEmailInput] = useState(adminAlertSettings.adminEmail || 'info@karbama34.ir');
+  const [enableEmailAlertsInput, setEnableEmailAlertsInput] = useState<boolean>(
+    adminAlertSettings.enableEmailAlerts ?? true
+  );
+  const [enableTelegramAlertsInput, setEnableTelegramAlertsInput] = useState<boolean>(
+    adminAlertSettings.enableTelegramAlerts ?? false
+  );
+  const [telegramBotTokenInput, setTelegramBotTokenInput] = useState(
+    adminAlertSettings.telegramBotToken || ''
+  );
+  const [telegramAdminChatIdInput, setTelegramAdminChatIdInput] = useState(
+    adminAlertSettings.telegramAdminChatId || ''
+  );
+  const [isTestingTelegram, setIsTestingTelegram] = useState(false);
+  const [telegramTestFeedback, setTelegramTestFeedback] = useState<{
+    ok: boolean;
+    message: string;
+  } | null>(null);
 
   // Count pending payment jobs
   const pendingPaymentJobs = jobs.filter(
@@ -703,7 +734,133 @@ export const AdminPanel: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap relative">
+          {/* Real-Time Admin Notification Bell with Unread Counter Badge */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowAdminBellDropdown((prev) => !prev)}
+              className={`relative p-2.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer ${
+                unreadAdminNotifCount > 0
+                  ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/50 shadow-lg shadow-amber-500/10'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+              }`}
+              title="مرکز اعلان‌های لحظه‌ای ثبت‌نام کارجویان و همکاران"
+            >
+              <Bell className={`w-4 h-4 ${unreadAdminNotifCount > 0 ? 'animate-bounce text-amber-400' : ''}`} />
+              <span className="text-xs font-bold hidden md:inline">اعلان‌ها</span>
+              {unreadAdminNotifCount > 0 && (
+                <span className="px-1.5 py-0.5 min-w-[20px] h-5 rounded-full bg-red-600 text-white font-mono text-[11px] font-black flex items-center justify-center shadow-md">
+                  {unreadAdminNotifCount}
+                </span>
+              )}
+            </button>
+
+            {showAdminBellDropdown && (
+              <div className="absolute left-0 mt-2 w-80 sm:w-96 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                <div className="p-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs font-extrabold text-white">
+                      اعلان‌های لحظه‌ای مدیریت ({unreadAdminNotifCount} خوانده‌نشده)
+                    </span>
+                  </div>
+                  {unreadAdminNotifCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => markAllAdminNotificationsAsRead()}
+                      className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer"
+                    >
+                      خوانده‌شدن همه ✓
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-80 overflow-y-auto divide-y divide-slate-800/80">
+                  {adminNotifications.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-400">
+                      هیچ اعلان جدیدی ثبت نشده است.
+                    </div>
+                  ) : (
+                    adminNotifications.slice(0, 8).map((n) => {
+                      const isPartner = n.accountType === 'partner' || n.type === 'partner_registered';
+                      const roleBadgeText = n.accountTypeLabel || (isPartner ? 'همکار' : 'کارجو');
+                      return (
+                        <div
+                          key={n.id}
+                          className={`p-3 text-xs transition flex items-start justify-between gap-2.5 ${
+                            n.read ? 'bg-slate-900/60 text-slate-400' : 'bg-slate-950/90 text-white'
+                          }`}
+                        >
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
+                                  isPartner
+                                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                }`}
+                              >
+                                {roleBadgeText}
+                              </span>
+                              <span className="font-bold text-amber-300 truncate">
+                                {n.fullName || n.title}
+                              </span>
+                            </div>
+                            {n.phone && (
+                              <div className="text-[11px] text-slate-300 font-mono" dir="ltr">
+                                📞 {n.phone} {n.email && n.email !== 'ثبت نشده' ? `| ✉️ ${n.email}` : ''}
+                              </div>
+                            )}
+                            <div className="text-[10px] text-slate-400 font-mono" dir="ltr">
+                              🕒 {new Date(n.createdAt).toLocaleString('fa-IR')}
+                            </div>
+                          </div>
+
+                          {!n.read ? (
+                            <button
+                              type="button"
+                              onClick={() => markAdminNotificationAsRead(n.id)}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold shrink-0 cursor-pointer"
+                            >
+                              خوانده شد
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 shrink-0">خوانده‌شده ✓</span>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="p-2.5 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdminTab('admin-notifications');
+                      setShowAdminBellDropdown(false);
+                    }}
+                    className="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition text-center cursor-pointer"
+                  >
+                    مشاهده جدول کامل اعلان‌ها ({adminNotifications.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdminTab('admin-notifications');
+                      setShowAlertConfigPanel(true);
+                      setShowAdminBellDropdown(false);
+                    }}
+                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                  >
+                    تنظیمات تلگرام/ایمیل
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={() => setShowAddPartnerModal(true)}
             className="px-3.5 py-2 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 text-xs font-bold rounded-xl transition flex items-center gap-1.5"
@@ -1166,77 +1323,472 @@ export const AdminPanel: React.FC = () => {
         </div>
       )}
 
-      {/* -1. LIVE ADMIN NOTIFICATIONS TAB (Requested Feature) */}
+      {/* -1. LIVE ADMIN NOTIFICATIONS CENTER (In-App Structured Table + Email info@karbama34.ir + Telegram Bot Alert) */}
       {adminTab === 'admin-notifications' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5 shadow-xl">
+          {/* Header & Quick Action Bar */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
             <div>
               <h3 className="font-extrabold text-white text-base flex items-center gap-2">
-                <Clock className="w-5 h-5 text-amber-400" />
-                <span>اعلان‌های زنده و گزارشات لحظه‌ای مدیر کارباما</span>
+                <Bell className="w-5 h-5 text-amber-400" />
+                <span>مرکز اعلان‌های لحظه‌ای ثبت‌نام کارجویان و همکاران (Multi-Channel Admin Alerts)</span>
+                {unreadAdminNotifCount > 0 && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-red-600 text-white font-mono text-xs font-black">
+                    {unreadAdminNotifCount} خوانده‌نشده
+                  </span>
+                )}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                گزارش‌های فوری شامل ثبت‌نام کارجویان، واریزی‌های کاربران، ارسال رزومه‌ها و رزروهای هتل در این نوار ذخیره می‌شوند.
+                به محض ثبت‌نام هر <strong className="text-emerald-300">کارجو</strong> یا <strong className="text-indigo-300">همکار</strong> جدید، مشخصات کامل در این جدول ثبت شده، ایمیل HTML به{' '}
+                <code className="text-amber-300 font-mono">info@karbama34.ir</code> ارسال می‌شود و در صورت فعال بودن به ربات تلگرام مدیر نیز مخابره می‌گردد.
               </p>
             </div>
 
-            {adminNotifications.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={clearAdminNotifications}
-                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                onClick={() => setShowAlertConfigPanel((prev) => !prev)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer ${
+                  showAlertConfigPanel
+                    ? 'bg-indigo-600 text-white border-indigo-500'
+                    : 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-indigo-500/40'
+                }`}
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>پاکسازی اعلان‌ها</span>
+                <Send className="w-3.5 h-3.5" />
+                <span>تنظیمات ربات تلگرام و ایمیل ({adminAlertSettings.enableTelegramAlerts ? 'تلگرام فعال' : 'ایمیل فعال'})</span>
               </button>
+
+              {unreadAdminNotifCount > 0 && (
+                <button
+                  type="button"
+                  onClick={markAllAdminNotificationsAsRead}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>علامت‌گذاری همه به عنوان خوانده‌شده</span>
+                </button>
+              )}
+
+              {adminNotifications.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearAdminNotifications}
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-red-950/60 text-slate-300 hover:text-red-300 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>پاکسازی کل جدول</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Multi-Channel Delivery Status & Configurable Telegram Bot Settings */}
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold flex items-center gap-1.5">
+                  <Bell className="w-3.5 h-3.5" />
+                  <span>اعلان داخل پنل مدیریت: فعال ✓</span>
+                </span>
+                <span className="px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>ارسال خودکار ایمیل: {adminAlertSettings.adminEmail || 'info@karbama34.ir'} ✓</span>
+                </span>
+                <span
+                  className={`px-3 py-1.5 rounded-xl border font-bold flex items-center gap-1.5 ${
+                    adminAlertSettings.enableTelegramAlerts &&
+                    adminAlertSettings.telegramBotToken &&
+                    adminAlertSettings.telegramAdminChatId
+                      ? 'bg-sky-500/15 border-sky-500/40 text-sky-300'
+                      : 'bg-slate-900 border-slate-800 text-slate-400'
+                  }`}
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>
+                    ربات تلگرام:{' '}
+                    {adminAlertSettings.enableTelegramAlerts &&
+                    adminAlertSettings.telegramBotToken &&
+                    adminAlertSettings.telegramAdminChatId
+                      ? 'متصل و فعال ✓'
+                      : 'غیرفعال (قابل تنظیم)'}
+                  </span>
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAlertConfigPanel((prev) => !prev)}
+                className="text-xs text-amber-400 hover:text-amber-300 font-bold underline cursor-pointer"
+              >
+                {showAlertConfigPanel ? 'بستن تنظیمات کانال‌های اعلان' : 'ویرایش تنظیمات ایمیل و ربات تلگرام'}
+              </button>
+            </div>
+
+            {showAlertConfigPanel && (
+              <div className="pt-3 border-t border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                {/* Email Alert Config Box */}
+                <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-amber-300 flex items-center gap-1.5 text-sm">
+                      <Mail className="w-4 h-4" />
+                      <span>تنظیمات ارسال ایمیل آنی ثبت‌نام</span>
+                    </span>
+                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={enableEmailAlertsInput}
+                        onChange={(e) => setEnableEmailAlertsInput(e.target.checked)}
+                        className="w-4 h-4 accent-amber-500 rounded"
+                      />
+                      <span className="text-slate-300 font-bold">فعال</span>
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    در هر ثبت‌نام کارجو یا همکار، یک ایمیل HTML حاوی مشخصات کامل کاربر به آدرس زیر ارسال می‌شود:
+                  </p>
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">آدرس ایمیل دریافت‌کننده اعلان‌های مدیر</label>
+                    <input
+                      type="email"
+                      dir="ltr"
+                      value={alertEmailInput}
+                      onChange={(e) => setAlertEmailInput(e.target.value)}
+                      placeholder="info@karbama34.ir"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono text-left focus:border-amber-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Telegram Bot Alert Config Box */}
+                <div className="p-4 rounded-2xl bg-slate-900 border border-sky-500/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-sky-300 flex items-center gap-1.5 text-sm">
+                      <Send className="w-4 h-4" />
+                      <span>تنظیمات ربات تلگرام مدیر (Optional Telegram Alert)</span>
+                    </span>
+                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={enableTelegramAlertsInput}
+                        onChange={(e) => setEnableTelegramAlertsInput(e.target.checked)}
+                        className="w-4 h-4 accent-sky-500 rounded"
+                      />
+                      <span className="text-slate-300 font-bold">فعال‌سازی ارسال به تلگرام</span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">Telegram Bot Token</label>
+                      <input
+                        type="text"
+                        dir="ltr"
+                        value={telegramBotTokenInput}
+                        onChange={(e) => setTelegramBotTokenInput(e.target.value)}
+                        placeholder="123456789:ABCdefGHIjklMNOpqr..."
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-left focus:border-sky-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">Admin Chat ID</label>
+                      <input
+                        type="text"
+                        dir="ltr"
+                        value={telegramAdminChatIdInput}
+                        onChange={(e) => setTelegramAdminChatIdInput(e.target.value)}
+                        placeholder="مثلاً: 987654321 یا @channel"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-left focus:border-sky-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {telegramTestFeedback && (
+                    <div
+                      className={`p-2.5 rounded-xl text-[11px] font-bold border ${
+                        telegramTestFeedback.ok
+                          ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
+                          : 'bg-red-950/60 border-red-500/40 text-red-300'
+                      }`}
+                    >
+                      {telegramTestFeedback.message}
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateAdminAlertSettings({
+                          adminEmail: alertEmailInput.trim() || 'info@karbama34.ir',
+                          enableEmailAlerts: enableEmailAlertsInput,
+                          enableTelegramAlerts: enableTelegramAlertsInput,
+                          telegramBotToken: telegramBotTokenInput.trim(),
+                          telegramAdminChatId: telegramAdminChatIdInput.trim(),
+                        });
+                      }}
+                      className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>ذخیره تنظیمات اعلان‌ها</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isTestingTelegram}
+                      onClick={async () => {
+                        setIsTestingTelegram(true);
+                        setTelegramTestFeedback(null);
+                        const res = await testAdminTelegramAlert(
+                          telegramBotTokenInput.trim(),
+                          telegramAdminChatIdInput.trim()
+                        );
+                        setIsTestingTelegram(false);
+                        if (res.ok) {
+                          setTelegramTestFeedback({
+                            ok: true,
+                            message: '✅ پیام تست با موفقیت به تلگرام مدیر ارسال شد!',
+                          });
+                        } else {
+                          setTelegramTestFeedback({
+                            ok: false,
+                            message: `❌ ${res.error || 'خطا در ارسال پیام تست به تلگرام'}`,
+                          });
+                        }
+                      }}
+                      className="px-3.5 py-2 bg-sky-600/30 hover:bg-sky-600/50 text-sky-200 border border-sky-500/40 font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {isTestingTelegram ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Send className="w-3.5 h-3.5" />
+                      )}
+                      <span>تست ارسال پیام به تلگرام</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
-          {adminNotifications.length === 0 ? (
-            <div className="p-12 text-center text-xs text-slate-400 bg-slate-950/60 rounded-2xl border border-slate-800">
-              هیچ اعلانی هنوز ثبت نشده است.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {adminNotifications.map((notif) => (
-                <div
-                  key={notif.id}
-                  onClick={() => markAdminNotificationAsRead(notif.id)}
-                  className={`p-4 rounded-2xl border text-xs transition cursor-pointer flex items-start gap-3 ${
-                    notif.read
-                      ? 'bg-slate-950/60 border-slate-800 text-slate-400'
-                      : 'bg-slate-950 border-amber-500/50 text-slate-200 font-bold shadow-lg ring-1 ring-amber-500/20'
-                  }`}
-                >
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0 mt-0.5">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-extrabold text-amber-300 text-sm">{notif.title}</span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] text-slate-500 font-mono" dir="ltr">
-                          {new Date(notif.createdAt).toLocaleTimeString('fa-IR')}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteAdminNotification(notif.id);
-                          }}
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition"
-                          title="حذف دائمی این اعلان"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-slate-300 text-xs leading-relaxed">{notif.message}</p>
-                  </div>
+          {/* Filter Pills */}
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { id: 'all', label: `همه اعلان‌ها (${adminNotifications.length})` },
+              { id: 'unread', label: `خوانده‌نشده (${unreadAdminNotifCount})` },
+              {
+                id: 'seeker',
+                label: `ثبت‌نام کارجو (${
+                  adminNotifications.filter((n) => n.accountType === 'seeker' || n.type === 'seeker_registered').length
+                })`,
+              },
+              {
+                id: 'partner',
+                label: `ثبت‌نام همکار (${
+                  adminNotifications.filter((n) => n.accountType === 'partner' || n.type === 'partner_registered').length
+                })`,
+              },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setNotifFilter(tab.id as any)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  notifFilter === tab.id
+                    ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                    : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Structured Notifications Table / Log */}
+          {(() => {
+            const filteredAdminNotifs = adminNotifications.filter((n) => {
+              if (notifFilter === 'unread') return !n.read;
+              if (notifFilter === 'seeker')
+                return n.accountType === 'seeker' || n.type === 'seeker_registered';
+              if (notifFilter === 'partner')
+                return n.accountType === 'partner' || n.type === 'partner_registered';
+              return true;
+            });
+
+            if (filteredAdminNotifs.length === 0) {
+              return (
+                <div className="p-12 text-center text-xs text-slate-400 bg-slate-950/60 rounded-2xl border border-slate-800">
+                  هیچ اعلانی در این دسته‌بندی وجود ندارد.
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            }
+
+            return (
+              <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950">
+                <table className="w-full text-right border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-900/90 text-slate-300 border-b border-slate-800 text-[11px]">
+                      <th className="py-3.5 px-4 font-extrabold">نوع حساب</th>
+                      <th className="py-3.5 px-4 font-extrabold">نام و نام خانوادگی</th>
+                      <th className="py-3.5 px-4 font-extrabold">شماره تلفن</th>
+                      <th className="py-3.5 px-4 font-extrabold">ایمیل</th>
+                      <th className="py-3.5 px-4 font-extrabold">شهر / تخصص یا شرکت</th>
+                      <th className="py-3.5 px-4 font-extrabold">زمان دقیق ثبت‌نام</th>
+                      <th className="py-3.5 px-4 font-extrabold">کانال‌های ارسال</th>
+                      <th className="py-3.5 px-4 font-extrabold text-center">وضعیت / عملیات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/80">
+                    {filteredAdminNotifs.map((notif) => {
+                      const isPartner =
+                        notif.accountType === 'partner' ||
+                        notif.type === 'partner_registered' ||
+                        notif.type === 'partner_payment';
+                      const isRegistration =
+                        notif.type === 'seeker_registered' ||
+                        notif.type === 'partner_registered' ||
+                        Boolean(notif.accountType);
+                      const roleBadgeLabel =
+                        notif.accountTypeLabel || (isPartner ? 'همکار' : isRegistration ? 'کارجو' : 'سیستمی');
+
+                      return (
+                        <tr
+                          key={notif.id}
+                          className={`transition ${
+                            notif.read
+                              ? 'bg-slate-950/50 text-slate-400 hover:bg-slate-900/40'
+                              : 'bg-amber-500/5 text-white font-semibold hover:bg-amber-500/10'
+                          }`}
+                        >
+                          {/* Account Type Badge */}
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black border ${
+                                isPartner
+                                  ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40'
+                                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                              }`}
+                            >
+                              {isPartner ? <Building2 className="w-3 h-3" /> : <User className="w-3 h-3" />}
+                              <span>{roleBadgeLabel}</span>
+                            </span>
+                          </td>
+
+                          {/* Full Name */}
+                          <td className="py-3.5 px-4">
+                            <div className="font-extrabold text-white text-xs">
+                              {notif.fullName || notif.title}
+                            </div>
+                            {notif.nationalId && notif.nationalId !== 'ثبت نشده' && (
+                              <div className="text-[10px] text-slate-400 font-mono" dir="ltr">
+                                ID: {notif.nationalId}
+                              </div>
+                            )}
+                            {!notif.fullName && (
+                              <div className="text-[11px] text-slate-300 mt-0.5">{notif.message}</div>
+                            )}
+                          </td>
+
+                          {/* Phone Number */}
+                          <td className="py-3.5 px-4 whitespace-nowrap font-mono" dir="ltr">
+                            {notif.phone && notif.phone !== 'ثبت نشده' ? (
+                              <a
+                                href={`tel:${notif.phone.replace(/\s+/g, '')}`}
+                                className="text-emerald-300 hover:text-emerald-200 hover:underline font-bold"
+                              >
+                                {notif.phone}
+                              </a>
+                            ) : (
+                              <span className="text-slate-500">—</span>
+                            )}
+                          </td>
+
+                          {/* Email */}
+                          <td className="py-3.5 px-4 whitespace-nowrap font-mono text-[11px]" dir="ltr">
+                            {notif.email && notif.email !== 'ثبت نشده' ? (
+                              <a
+                                href={`mailto:${notif.email}`}
+                                className="text-amber-300 hover:underline"
+                              >
+                                {notif.email}
+                              </a>
+                            ) : (
+                              <span className="text-slate-500">—</span>
+                            )}
+                          </td>
+
+                          {/* City / Specialty */}
+                          <td className="py-3.5 px-4">
+                            <div className="text-slate-200 font-bold">
+                              {notif.city && notif.city !== 'ثبت نشده' ? notif.city : 'ترکیه / استانبول'}
+                            </div>
+                            {notif.specialty && notif.specialty !== 'ثبت نشده' && (
+                              <div className="text-[11px] text-slate-400 truncate max-w-xs">
+                                {notif.specialty}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Exact Registration Timestamp */}
+                          <td className="py-3.5 px-4 whitespace-nowrap font-mono text-[11px]" dir="ltr">
+                            <div className="text-slate-200">
+                              {new Date(notif.createdAt).toLocaleDateString('fa-IR')}
+                            </div>
+                            <div className="text-slate-400 text-[10px]">
+                              {new Date(notif.createdAt).toLocaleTimeString('fa-IR')}
+                            </div>
+                          </td>
+
+                          {/* Delivery Channels */}
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <div className="flex flex-col gap-1 text-[10px]">
+                              <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 w-fit">
+                                ✉️ {notif.emailSentTo || 'info@karbama34.ir'} ✓
+                              </span>
+                              {notif.telegramSent && (
+                                <span className="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 w-fit">
+                                  ✈️ تلگرام مدیر ✓
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Mark as Read & Delete Actions */}
+                          <td className="py-3.5 px-4 whitespace-nowrap text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              {!notif.read ? (
+                                <button
+                                  type="button"
+                                  onClick={() => markAdminNotificationAsRead(notif.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-md cursor-pointer"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>علامت‌گذاری خوانده‌شده</span>
+                                </button>
+                              ) : (
+                                <span className="px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-[11px] font-bold flex items-center gap-1">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                  <span>خوانده شد</span>
+                                </span>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => deleteAdminNotification(notif.id)}
+                                className="p-1.5 rounded-xl bg-slate-900 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-slate-800 transition cursor-pointer"
+                                title="حذف اعلان"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
         </div>
       )}
 

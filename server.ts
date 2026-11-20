@@ -45,15 +45,19 @@ interface ServerStore {
   applications: any[];
   addresses: any[];
   notifications: any[];
+  adminNotifications: any[];
   chats: any[];
   paymentSettings: any | null;
   partnerPlans: any[] | null;
   brokerSettings: any | null;
+  adminAlertSettings: any | null;
   deletedJobIds: string[];
   deletedSeekerIds: string[];
   deletedHotelIds: string[];
   deletedNotificationIds: string[];
   readNotificationIds: string[];
+  deletedAdminNotificationIds: string[];
+  readAdminNotificationIds: string[];
 }
 
 function defaultServerStore(): ServerStore {
@@ -65,15 +69,19 @@ function defaultServerStore(): ServerStore {
     applications: [],
     addresses: [],
     notifications: [],
+    adminNotifications: [],
     chats: [],
     paymentSettings: null,
     partnerPlans: null,
     brokerSettings: null,
+    adminAlertSettings: null,
     deletedJobIds: [],
     deletedSeekerIds: [],
     deletedHotelIds: [],
     deletedNotificationIds: [],
     readNotificationIds: [],
+    deletedAdminNotificationIds: [],
+    readAdminNotificationIds: [],
   };
 }
 
@@ -91,15 +99,23 @@ function readUsersStore(): ServerStore {
         applications: Array.isArray(parsed.applications) ? parsed.applications : [],
         addresses: Array.isArray(parsed.addresses) ? parsed.addresses : [],
         notifications: Array.isArray(parsed.notifications) ? parsed.notifications : [],
+        adminNotifications: Array.isArray(parsed.adminNotifications) ? parsed.adminNotifications : [],
         chats: Array.isArray(parsed.chats) ? parsed.chats : [],
         paymentSettings: parsed.paymentSettings || null,
         partnerPlans: Array.isArray(parsed.partnerPlans) ? parsed.partnerPlans : null,
         brokerSettings: parsed.brokerSettings || null,
+        adminAlertSettings: parsed.adminAlertSettings || null,
         deletedJobIds: Array.isArray(parsed.deletedJobIds) ? parsed.deletedJobIds : [],
         deletedSeekerIds: Array.isArray(parsed.deletedSeekerIds) ? parsed.deletedSeekerIds : [],
         deletedHotelIds: Array.isArray(parsed.deletedHotelIds) ? parsed.deletedHotelIds : [],
         deletedNotificationIds: Array.isArray(parsed.deletedNotificationIds) ? parsed.deletedNotificationIds : [],
         readNotificationIds: Array.isArray(parsed.readNotificationIds) ? parsed.readNotificationIds : [],
+        deletedAdminNotificationIds: Array.isArray(parsed.deletedAdminNotificationIds)
+          ? parsed.deletedAdminNotificationIds
+          : [],
+        readAdminNotificationIds: Array.isArray(parsed.readAdminNotificationIds)
+          ? parsed.readAdminNotificationIds
+          : [],
       };
     }
   } catch (err) {
@@ -171,6 +187,9 @@ app.post(['/api/users', '/api/users.php'], (req, res) => {
       } else if (payload.notification && typeof payload.notification === 'object') {
         type = 'notification';
         record = payload.notification;
+      } else if (payload.adminNotification && typeof payload.adminNotification === 'object') {
+        type = 'admin_notification';
+        record = payload.adminNotification;
       } else if (payload.chat && typeof payload.chat === 'object') {
         type = 'chat';
         record = payload.chat;
@@ -190,6 +209,11 @@ app.post(['/api/users', '/api/users.php'], (req, res) => {
     }
     if (type === 'broker_settings' && record && typeof record === 'object') {
       store.brokerSettings = { ...(store.brokerSettings || {}), ...record };
+      writeUsersStore(store);
+      return res.json({ ok: true });
+    }
+    if (type === 'admin_alert_settings' && record && typeof record === 'object') {
+      store.adminAlertSettings = { ...(store.adminAlertSettings || {}), ...record };
       writeUsersStore(store);
       return res.json({ ok: true });
     }
@@ -213,6 +237,13 @@ app.post(['/api/users', '/api/users.php'], (req, res) => {
       upsertRecordInList(store.addresses, record);
     } else if (type === 'chat') {
       upsertRecordInList(store.chats, record);
+    } else if (type === 'admin_notification') {
+      if (!store.deletedAdminNotificationIds.includes(recordId)) {
+        const enriched = store.readAdminNotificationIds.includes(recordId)
+          ? { ...record, read: true }
+          : record;
+        upsertRecordInList(store.adminNotifications, enriched);
+      }
     } else if (type === 'notification') {
       if (!store.deletedNotificationIds.includes(recordId)) {
         upsertRecordInList(store.notifications, record);
@@ -340,7 +371,322 @@ app.post(['/api/users', '/api/users.php'], (req, res) => {
     return res.json({ ok: true });
   }
 
+  if (action === 'mark_admin_notification_read') {
+    const id = String(payload.id || '');
+    const ids: string[] = Array.isArray(payload.ids) ? payload.ids.map(String) : id ? [id] : [];
+    ids.forEach((nid) => addUniqueStr(store.readAdminNotificationIds, nid));
+    store.adminNotifications = store.adminNotifications.map((n: any) => {
+      const nid = String(n?.id || '');
+      if (ids.includes(nid)) {
+        return { ...n, read: true };
+      }
+      return n;
+    });
+    writeUsersStore(store);
+    return res.json({ ok: true });
+  }
+
+  if (action === 'delete_admin_notification') {
+    const id = String(payload.id || '');
+    if (id) {
+      addUniqueStr(store.deletedAdminNotificationIds, id);
+      addUniqueStr(store.readAdminNotificationIds, id);
+      store.adminNotifications = store.adminNotifications.filter((n: any) => String(n?.id || '') !== id);
+      writeUsersStore(store);
+    }
+    return res.json({ ok: true });
+  }
+
+  if (action === 'clear_admin_notifications') {
+    const ids: string[] = Array.isArray(payload.ids) ? payload.ids.map(String) : [];
+    ids.forEach((nid) => {
+      addUniqueStr(store.deletedAdminNotificationIds, nid);
+      addUniqueStr(store.readAdminNotificationIds, nid);
+    });
+    store.adminNotifications.forEach((n: any) => {
+      if (n?.id) {
+        addUniqueStr(store.deletedAdminNotificationIds, String(n.id));
+        addUniqueStr(store.readAdminNotificationIds, String(n.id));
+      }
+    });
+    store.adminNotifications = [];
+    writeUsersStore(store);
+    return res.json({ ok: true });
+  }
+
   return res.json({ ok: true });
+});
+
+// ============================================================================
+// Automated Real-Time Admin Notification System (/api/admin-notify & /api/admin-notify.php)
+// Multi-channel delivery:
+// 1. In-App Admin Notification Center (stored in users.json -> adminNotifications)
+// 2. Instant Formatted HTML Email Alert to info@karbama34.ir
+// 3. Optional Telegram Bot Alert (when Telegram Bot Token & Admin Chat ID are configured)
+// ============================================================================
+const SENT_EMAILS_LOG_FILE = path.resolve(USERS_DATA_DIR, 'sent_emails_log.json');
+
+function escapeHtmlStr(val: string): string {
+  return String(val || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function sendTelegramBotMessage(
+  botToken: string,
+  chatId: string,
+  htmlText: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const url = `https://api.telegram.org/bot${encodeURIComponent(botToken.trim())}/sendMessage`;
+    const tgRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId.trim(),
+        text: htmlText,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+      }),
+    });
+    const json: any = await tgRes.json().catch(() => null);
+    if (tgRes.ok && json && json.ok) {
+      return { ok: true };
+    }
+    return {
+      ok: false,
+      error: json?.description || 'خطا از سمت سرور تلگرام (بررسی توکن و Chat ID)',
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: err?.message || 'خطا در برقراری ارتباط با API تلگرام',
+    };
+  }
+}
+
+app.post(['/api/admin-notify', '/api/admin-notify.php'], async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const store = readUsersStore();
+    const savedSettings = store.adminAlertSettings || {};
+    const action = payload.action || 'notify_registration';
+
+    if (action === 'test_telegram') {
+      const botToken = String(payload.telegramBotToken || savedSettings.telegramBotToken || '').trim();
+      const chatId = String(payload.telegramAdminChatId || savedSettings.telegramAdminChatId || '').trim();
+      if (!botToken || !chatId) {
+        return res.status(400).json({
+          ok: false,
+          error: 'لطفاً توکن ربات تلگرام (Telegram Bot Token) و شناسه چت مدیر (Admin Chat ID) را وارد نمایید.',
+        });
+      }
+      const testText =
+        `🔔 <b>تست اتصال ربات اعلان‌های مدیریت کارباما (karbama34.ir)</b>\n\n` +
+        `✅ اتصال ربات تلگرام با موفقیت برقرار شد!\n` +
+        `از این پس مشخصات کامل هر <b>کارجو</b> یا <b>همکار</b> جدید بلافاصله پس از ثبت‌نام به این چت ارسال خواهد شد.\n\n` +
+        `🕒 زمان تست: ${new Date().toLocaleString('fa-IR')}`;
+      const tgResult = await sendTelegramBotMessage(botToken, chatId, testText);
+      return res.json(tgResult);
+    }
+
+    const notif = payload.notification && typeof payload.notification === 'object' ? payload.notification : payload;
+    const notifId = String(notif.id || `an-${Date.now()}`);
+    const accountType: 'seeker' | 'partner' =
+      notif.accountType === 'partner' || notif.type === 'partner_registered' ? 'partner' : 'seeker';
+    const accountTypeLabel = accountType === 'partner' ? 'همکار' : 'کارجو';
+    const fullName = String(notif.fullName || 'کاربر جدید').trim();
+    const companyName = String(notif.companyName || '').trim();
+    const phone = String(notif.phone || 'ثبت نشده').trim();
+    const email = String(notif.email || 'ثبت نشده').trim();
+    const city = String(notif.city || 'ثبت نشده').trim();
+    const specialty = String(notif.specialty || companyName || 'ثبت نشده').trim();
+    const nationalId = String(notif.nationalId || 'ثبت نشده').trim();
+    const username = String(notif.username || '').trim();
+    const partnerCode = String(notif.partnerCode || '').trim();
+    const createdAt = String(notif.createdAt || new Date().toISOString());
+    const formattedTimeFa = String(
+      notif.formattedTimeFa || new Date(createdAt).toLocaleString('fa-IR')
+    );
+
+    const adminEmail =
+      String(payload.adminEmail || savedSettings.adminEmail || 'info@karbama34.ir').trim() ||
+      'info@karbama34.ir';
+    const enableEmailAlerts =
+      payload.enableEmailAlerts !== undefined
+        ? Boolean(payload.enableEmailAlerts)
+        : savedSettings.enableEmailAlerts !== undefined
+        ? Boolean(savedSettings.enableEmailAlerts)
+        : true;
+
+    const enableTelegramAlerts =
+      payload.enableTelegramAlerts !== undefined
+        ? Boolean(payload.enableTelegramAlerts)
+        : Boolean(savedSettings.enableTelegramAlerts);
+    const telegramBotToken = String(
+      payload.telegramBotToken || savedSettings.telegramBotToken || ''
+    ).trim();
+    const telegramAdminChatId = String(
+      payload.telegramAdminChatId || savedSettings.telegramAdminChatId || ''
+    ).trim();
+
+    // 1. Format & Dispatch Instant HTML Email Notification to info@karbama34.ir
+    const roleBadgeColor = accountType === 'partner' ? '#4f46e5' : '#059669';
+    const subjectText = `🔔 ثبت‌نام ${accountTypeLabel} جدید در کارباما: ${fullName}`;
+    const htmlEmailBody = `<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head><meta charset="UTF-8"><title>${escapeHtmlStr(subjectText)}</title></head>
+<body style="margin:0;padding:24px;background-color:#0f172a;font-family:Tahoma,Arial,sans-serif;direction:rtl;text-align:right;color:#f8fafc;">
+  <div style="max-width:600px;margin:0 auto;background-color:#1e293b;border:1px solid #334155;border-radius:16px;overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#dc2626,#d97706);padding:20px 24px;color:#ffffff;">
+      <h2 style="margin:0;font-size:18px;font-weight:bold;">🔔 اعلان فوری ثبت‌نام کاربر جدید در کارباما (karbama34.ir)</h2>
+      <p style="margin:6px 0 0;font-size:13px;opacity:0.95;">یک حساب کاربری جدید با نقش «${accountTypeLabel}» در سامانه ثبت گردید.</p>
+    </div>
+    <div style="padding:24px;">
+      <div style="margin-bottom:18px;">
+        <span style="display:inline-block;padding:6px 14px;border-radius:999px;background-color:${roleBadgeColor};color:#ffffff;font-size:13px;font-weight:bold;">
+          نوع حساب: ${accountTypeLabel}
+        </span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;background-color:#0f172a;border-radius:12px;overflow:hidden;">
+        <tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:12px 16px;color:#94a3b8;width:38%;">نام و نام خانوادگی:</td>
+          <td style="padding:12px 16px;color:#ffffff;font-weight:bold;">${escapeHtmlStr(fullName)}</td>
+        </tr>
+        ${
+          companyName
+            ? `<tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:12px 16px;color:#94a3b8;">نام شرکت / دفتر همکار:</td>
+          <td style="padding:12px 16px;color:#a5b4fc;font-weight:bold;">${escapeHtmlStr(companyName)} (${escapeHtmlStr(partnerCode)})</td>
+        </tr>`
+            : ''
+        }
+        <tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:12px 16px;color:#94a3b8;">شماره تماس / واتساپ:</td>
+          <td style="padding:12px 16px;color:#34d399;font-weight:bold;direction:ltr;text-align:right;">${escapeHtmlStr(phone)}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:12px 16px;color:#94a3b8;">آدرس ایمیل:</td>
+          <td style="padding:12px 16px;color:#fbbf24;direction:ltr;text-align:right;">${escapeHtmlStr(email)}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:12px 16px;color:#94a3b8;">شهر / مقصد:</td>
+          <td style="padding:12px 16px;color:#ffffff;">${escapeHtmlStr(city)}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:12px 16px;color:#94a3b8;">تخصص / حوزه فعالیت:</td>
+          <td style="padding:12px 16px;color:#ffffff;">${escapeHtmlStr(specialty)}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #1e293b;">
+          <td style="padding:12px 16px;color:#94a3b8;">کد ملی / شناسه:</td>
+          <td style="padding:12px 16px;color:#e2e8f0;">${escapeHtmlStr(nationalId)}</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 16px;color:#94a3b8;">زمان دقیق ثبت‌نام:</td>
+          <td style="padding:12px 16px;color:#cbd5e1;direction:ltr;text-align:right;">${escapeHtmlStr(formattedTimeFa)}</td>
+        </tr>
+      </table>
+      <div style="margin-top:20px;text-align:center;">
+        <a href="https://karbama34.ir/admin" style="display:inline-block;padding:12px 24px;background-color:#d97706;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:bold;font-size:13px;">
+          ورود به پنل مدیریت کارباما (/admin)
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    if (enableEmailAlerts) {
+      try {
+        let logs: any[] = [];
+        if (fs.existsSync(SENT_EMAILS_LOG_FILE)) {
+          logs = JSON.parse(fs.readFileSync(SENT_EMAILS_LOG_FILE, 'utf8'));
+          if (!Array.isArray(logs)) logs = [];
+        }
+        logs.unshift({
+          id: notifId,
+          to: adminEmail,
+          subject: subjectText,
+          accountTypeLabel,
+          fullName,
+          phone,
+          email,
+          city,
+          specialty,
+          htmlBody: htmlEmailBody,
+          createdAt,
+        });
+        fs.writeFileSync(SENT_EMAILS_LOG_FILE, JSON.stringify(logs.slice(0, 200), null, 2), 'utf8');
+      } catch (e) {
+        console.warn('Could not write sent_emails_log.json:', e);
+      }
+    }
+
+    // 2. Dispatch Optional Telegram Bot Alert if enabled & configured
+    let telegramDispatched = false;
+    let telegramError: string | undefined;
+    if (enableTelegramAlerts && telegramBotToken && telegramAdminChatId) {
+      const tgText =
+        `🔔 <b>ثبت‌نام ${accountTypeLabel} جدید در کارباما</b>\n\n` +
+        `🏷 <b>نوع حساب:</b> ${accountTypeLabel}\n` +
+        `👤 <b>نام و نام خانوادگی:</b> ${escapeHtmlStr(fullName)}\n` +
+        (companyName
+          ? `🏢 <b>شرکت/دفتر:</b> ${escapeHtmlStr(companyName)} (${escapeHtmlStr(partnerCode)})\n`
+          : '') +
+        `📞 <b>شماره تلفن:</b> <code>${escapeHtmlStr(phone)}</code>\n` +
+        `✉️ <b>ایمیل:</b> ${escapeHtmlStr(email)}\n` +
+        `📍 <b>شهر:</b> ${escapeHtmlStr(city)}\n` +
+        `🛠 <b>تخصص/حوزه:</b> ${escapeHtmlStr(specialty)}\n` +
+        `🆔 <b>کد ملی:</b> <code>${escapeHtmlStr(nationalId)}</code>\n` +
+        `🕒 <b>زمان ثبت‌نام:</b> ${escapeHtmlStr(formattedTimeFa)}\n\n` +
+        `🔗 <a href="https://karbama34.ir/admin">مشاهده در پنل مدیریت</a>`;
+
+      const tgRes = await sendTelegramBotMessage(telegramBotToken, telegramAdminChatId, tgText);
+      telegramDispatched = tgRes.ok;
+      telegramError = tgRes.error;
+    }
+
+    // 3. Persist in store.adminNotifications
+    const recordToSave = {
+      ...notif,
+      id: notifId,
+      type: accountType === 'partner' ? 'partner_registered' : 'seeker_registered',
+      accountType,
+      accountTypeLabel,
+      fullName,
+      companyName,
+      phone,
+      email,
+      city,
+      specialty,
+      nationalId,
+      username,
+      partnerCode,
+      read: store.readAdminNotificationIds.includes(notifId) ? true : Boolean(notif.read),
+      emailSentTo: enableEmailAlerts ? adminEmail : undefined,
+      telegramSent: telegramDispatched,
+      createdAt,
+    };
+
+    if (!store.deletedAdminNotificationIds.includes(notifId)) {
+      upsertRecordInList(store.adminNotifications, recordToSave);
+      writeUsersStore(store);
+    }
+
+    return res.json({
+      ok: true,
+      notificationId: notifId,
+      emailRecipient: enableEmailAlerts ? adminEmail : null,
+      emailDispatched: enableEmailAlerts,
+      telegramDispatched,
+      telegramError,
+    });
+  } catch (err: any) {
+    console.error('Admin notify error:', err);
+    return res.status(500).json({ ok: false, error: err?.message || 'Admin notify error' });
+  }
 });
 
 // Helper to parse image dimensions from buffer (JPEG, PNG, WebP)
