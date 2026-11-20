@@ -73,6 +73,8 @@ import {
   KARBAMA_LOGO_DATA_URI,
   KARBAMA_PARTNER_AVATAR_DATA_URI,
   getJobCategorySvgDataUri,
+  SHAPARAK_LOGO_DATA_URI,
+  SEP_LOGO_DATA_URI,
 } from '../utils/brandAssets';
 
 const CITIES = ['همه شهرها', 'استانبول', 'آنتالیا', 'آنکارا', 'ازمیر', 'بورسا'];
@@ -176,7 +178,7 @@ export const JobSearch: React.FC = () => {
   const computedFeeToman =
     paymentSettings.seekerFeeToman && paymentSettings.seekerFeeToman > 0
       ? paymentSettings.seekerFeeToman
-      : (paymentSettings.feeTL || 500) * (paymentSettings.exchangeRateToman || 5460);
+      : (paymentSettings.feeTL || 500) * (liveRates?.tryToman || paymentSettings.exchangeRateToman || 5460);
   const adminAmountUnit = paymentSettings.paymentAmountUnit || 'toman';
   const adminConfiguredAmount =
     paymentSettings.directPaymentAmount && paymentSettings.directPaymentAmount > 0
@@ -2097,20 +2099,30 @@ export const JobSearch: React.FC = () => {
 
               {/* Direct Online Payment Form (POST to https://karbama34.ir/pay.php) */}
               <div className="p-5 bg-gradient-to-r from-teal-950/70 via-slate-900 to-emerald-950/70 border-2 border-teal-500/50 rounded-2xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="space-y-1 text-right w-full sm:w-auto">
-                  <div className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-xl bg-teal-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-md">
-                      شاپرک
-                    </span>
-                    <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
-                      <span>پرداخت آنلاین از طریق درگاه بانکی</span>
+                <div className="space-y-2 text-right w-full sm:w-auto">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/95 border border-teal-400/50 shadow-md shrink-0">
+                      <img
+                        src={SHAPARAK_LOGO_DATA_URI}
+                        alt="شاپرک"
+                        className="w-6 h-6 rounded object-contain shrink-0"
+                      />
+                      <span className="w-px h-5 bg-slate-300" />
+                      <img
+                        src={SEP_LOGO_DATA_URI}
+                        alt="پرداخت الکترونیک سامان (سپ)"
+                        className="w-6 h-6 rounded object-contain shrink-0"
+                      />
+                    </div>
+                    <h4 className="text-sm font-extrabold text-white flex items-center gap-2 flex-wrap">
+                      <span>روش اول: پرداخت آنلاین آنی (شاپرک و پرداخت سپ)</span>
                       <span className="text-[10px] bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded-full font-bold">
-                        شتاب
+                        درگاه رسمی سامان (سپ)
                       </span>
                     </h4>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    با کلیک روی دکمه زیر، مستقیماً به درگاه پرداخت بانکی منتقل می‌شوید و پس از تکمیل پرداخت به سایت کارباما بازخواهید گشت.
+                    با کلیک روی دکمه زیر، مستقیماً به درگاه رسمی شاپرک و پرداخت الکترونیک سامان (سپ) منتقل می‌شوید و پس از تکمیل پرداخت به سایت کارباما بازخواهید گشت.
                   </p>
                   <div className="text-xs text-teal-300 font-bold font-mono">
                     مبلغ مصوب: {seekerFeeToman.toLocaleString('fa-IR')} تومان ({seekerFeeRial.toLocaleString('fa-IR')} ریال)
@@ -2192,7 +2204,7 @@ export const JobSearch: React.FC = () => {
                 </div>
               )}
             </div>
-          ) : currentPartner ? (
+          ) : !currentSeeker && currentPartner ? (
             <div className="text-center py-8 space-y-4 max-w-lg mx-auto">
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto border ${
                 currentPartner.subscriptionStatus === 'rejected' || currentPartner.paymentStatus === 'rejected'

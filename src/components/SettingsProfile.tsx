@@ -4,7 +4,11 @@ import { TurkishLevel, ResidenceStatus } from '../types';
 import { AuthModal } from './AuthModal';
 import { ResumeBuilder } from './ResumeBuilder';
 import { CVBuilder } from './CVBuilder';
-import { KARBAMA_USER_AVATAR_DATA_URI } from '../utils/brandAssets';
+import {
+  KARBAMA_USER_AVATAR_DATA_URI,
+  SHAPARAK_LOGO_DATA_URI,
+  SEP_LOGO_DATA_URI,
+} from '../utils/brandAssets';
 import {
   User,
   Users,
@@ -50,6 +54,7 @@ export const SettingsProfile: React.FC = () => {
     setActiveTab,
     paymentSettings,
     addAdminNotification,
+    liveRates,
   } = useApp();
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -57,10 +62,11 @@ export const SettingsProfile: React.FC = () => {
   const [trackingNote, setTrackingNote] = useState('');
   const [isPaymentSubmitted, setIsPaymentSubmitted] = useState(false);
 
+  const liveTryRate = liveRates?.tryToman || paymentSettings?.exchangeRateToman || 5460;
   const computedFeeToman =
     paymentSettings?.seekerFeeToman && paymentSettings.seekerFeeToman > 0
       ? paymentSettings.seekerFeeToman
-      : (paymentSettings?.feeTL || 500) * (paymentSettings?.exchangeRateToman || 5460);
+      : (paymentSettings?.feeTL || 500) * liveTryRate;
   const adminAmountUnit = paymentSettings?.paymentAmountUnit || 'toman';
   const adminConfiguredAmount =
     paymentSettings?.directPaymentAmount && paymentSettings.directPaymentAmount > 0
@@ -479,11 +485,55 @@ export const SettingsProfile: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-[#E2E8F0] dark:border-slate-800">
               {/* Option 1: Direct Online Payment */}
               <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-[#CBD5E1] dark:border-teal-500/40 flex flex-col justify-between gap-3">
-                <div className="space-y-1">
-                  <span className="text-xs font-black text-[#065F46] dark:text-teal-300 block">روش اول: پرداخت آنلاین آنی (شاپرک)</span>
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-xs font-black text-[#065F46] dark:text-teal-300 block">
+                      روش اول: پرداخت آنلاین آنی (شاپرک)
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#F8FAFC] dark:bg-slate-800 border border-[#CBD5E1] dark:border-slate-700 shadow-2xs">
+                        <img
+                          src={SHAPARAK_LOGO_DATA_URI}
+                          alt="شاپرک"
+                          className="w-5 h-5 rounded object-contain shrink-0"
+                        />
+                        <span className="text-[10px] font-black text-[#0F172A] dark:text-white">شاپرک</span>
+                      </div>
+                      <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#F8FAFC] dark:bg-slate-800 border border-[#CBD5E1] dark:border-slate-700 shadow-2xs">
+                        <img
+                          src={SEP_LOGO_DATA_URI}
+                          alt="پرداخت الکترونیک سامان (سپ)"
+                          className="w-5 h-5 rounded object-contain shrink-0"
+                        />
+                        <span className="text-[10px] font-black text-[#0369A1] dark:text-sky-300">پرداخت سپ</span>
+                      </div>
+                    </div>
+                  </div>
                   <p className="text-xs font-medium text-[#334155] dark:text-slate-300 leading-relaxed">
                     انتقال مستقیم به درگاه بانکی با مبلغ مصوب {seekerFeeToman.toLocaleString('fa-IR')} تومان:
                   </p>
+                  <div className="p-2.5 rounded-xl bg-[#F8FAFC] dark:bg-slate-950/70 border border-[#E2E8F0] dark:border-slate-800 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={SHAPARAK_LOGO_DATA_URI}
+                        alt="شبکه شاپرک"
+                        className="w-7 h-7 rounded-lg object-contain shrink-0 border border-slate-200 dark:border-slate-700 bg-white p-0.5"
+                      />
+                      <img
+                        src={SEP_LOGO_DATA_URI}
+                        alt="درگاه پرداخت سپ (سامان)"
+                        className="w-7 h-7 rounded-lg object-contain shrink-0 border border-slate-200 dark:border-slate-700 bg-white p-0.5"
+                      />
+                      <div className="text-[11px] leading-tight">
+                        <span className="font-black text-[#0F172A] dark:text-white block">
+                          درگاه رسمی شاپرک و پرداخت الکترونیک سامان (سپ)
+                        </span>
+                        <span className="text-[10px] font-bold text-[#475569] dark:text-slate-400">
+                          پشتیبانی از کلیه کارت‌های عضو شبکه شتاب
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <button
                   type="button"

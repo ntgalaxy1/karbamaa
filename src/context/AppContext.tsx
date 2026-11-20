@@ -567,6 +567,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           return next;
         });
+
+        setPartnerPlans((prev) =>
+          prev.map((pl) => ({
+            ...pl,
+            priceToman: Math.round((pl.priceTL || 1500) * cleanTryToman),
+          }))
+        );
       }
     };
 
@@ -1262,11 +1269,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [partnerPlans, setPartnerPlans] = useState<PartnerSubscriptionPlan[]>(() => {
+    const rate = liveRates?.tryToman || paymentSettings?.exchangeRateToman || 3410;
     try {
       const stored = safeStorage.getItem(STORAGE_KEYS.PARTNER_PLANS);
-      return stored ? JSON.parse(stored) : DEFAULT_PARTNER_PLANS;
+      const parsed: PartnerSubscriptionPlan[] = stored ? JSON.parse(stored) : DEFAULT_PARTNER_PLANS;
+      return parsed.map((pl) => ({
+        ...pl,
+        priceToman: Math.round((pl.priceTL || 1500) * rate),
+      }));
     } catch {
-      return DEFAULT_PARTNER_PLANS;
+      return DEFAULT_PARTNER_PLANS.map((pl) => ({
+        ...pl,
+        priceToman: Math.round((pl.priceTL || 1500) * rate),
+      }));
     }
   });
 
@@ -1425,9 +1440,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Find active seeker
   const currentSeeker = jobSeekers.find((s) => s.id === currentSeekerId) || null;
 
-  // Find active partner
-  const currentPartner = partners.find((p) => p.id === currentPartnerId) || null;
+  // Find active partner (Strictly hidden/disabled when a Job Seeker account is logged in)
+  const currentPartner =
+    !currentSeeker || isAdminLoggedIn
+      ? partners.find((p) => p.id === currentPartnerId) || null
+      : null;
   const isPartnerLoggedIn = Boolean(currentPartner);
+
+  // Enforce role isolation: if a Job Seeker is logged in, never allow activeTab === 'partner' or residual partner session
+  useEffect(() => {
+    if (currentSeeker && !isAdminLoggedIn) {
+      if (currentPartnerId) {
+        setCurrentPartnerId(null);
+        safeStorage.removeItem(STORAGE_KEYS.CURRENT_PARTNER_ID);
+      }
+      if (activeTab === 'partner') {
+        setActiveTab('jobs');
+      }
+    }
+  }, [currentSeeker, isAdminLoggedIn, currentPartnerId, activeTab]);
 
   // Persist state updates securely to safeStorage & IndexedDB (for offline SW access)
   useEffect(() => {
@@ -2504,7 +2535,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return next;
       });
       safeStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, updatedSeeker.id);
+      safeStorage.removeItem(STORAGE_KEYS.CURRENT_PARTNER_ID);
       syncUserToFirestore(updatedSeeker);
+      setCurrentPartnerId(null);
       setCurrentSeekerId(updatedSeeker.id);
       setIsAdminLoggedIn(false);
       setRole('jobseeker');
@@ -2576,7 +2609,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return next;
     });
     safeStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newSeeker.id);
+    safeStorage.removeItem(STORAGE_KEYS.CURRENT_PARTNER_ID);
     syncUserToFirestore(newSeeker);
+    setCurrentPartnerId(null);
     setCurrentSeekerId(newSeeker.id);
     setIsAdminLoggedIn(false);
     setRole('jobseeker');
@@ -2641,6 +2676,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     safeStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, seeker.id);
+    safeStorage.removeItem(STORAGE_KEYS.CURRENT_PARTNER_ID);
+    setCurrentPartnerId(null);
     setCurrentSeekerId(seeker.id);
     setIsAdminLoggedIn(false);
     setRole('jobseeker');
@@ -3839,6 +3876,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: 'نام کاربری یا رمز عبور همکار اشتباه است.' };
     }
 
+    setCurrentSeekerId(null);
+    safeStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+    setIsAdminLoggedIn(false);
     setCurrentPartnerId(found.id);
     setRole('partner');
     setActiveTab('partner');
@@ -3924,6 +3964,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return next;
     });
     syncPartnerToFirestore(newPartner);
+    setCurrentSeekerId(null);
+    safeStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+    setIsAdminLoggedIn(false);
     setCurrentPartnerId(newPartner.id);
     setRole('partner');
     setActiveTab('partner');

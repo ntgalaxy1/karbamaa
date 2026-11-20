@@ -39,7 +39,9 @@ import {
   XCircle,
   Clock,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react';
+import { SHAPARAK_LOGO_DATA_URI, SEP_LOGO_DATA_URI } from '../utils/brandAssets';
 
 export const PartnerSection: React.FC = () => {
   const {
@@ -69,7 +71,17 @@ export const PartnerSection: React.FC = () => {
     showToast,
     setActiveTab,
     isAdminLoggedIn,
+    liveRates,
+    refreshLiveRates,
+    formatTryToIrr,
   } = useApp();
+
+  const liveTryToman = liveRates?.tryToman || paymentSettings?.exchangeRateToman || 3410;
+  const liveTryRial = liveRates?.tryRial || liveTryToman * 10;
+  const getLivePlanToman = (pl?: { priceTL?: number; priceToman?: number } | null) =>
+    pl ? Math.round((pl.priceTL || 1500) * liveTryToman) : 0;
+  const getLivePlanRial = (pl?: { priceTL?: number; priceToman?: number } | null) =>
+    getLivePlanToman(pl) * 10;
 
   // Partner Dashboard Active Tab (when unlocked)
   const [partnerDashTab, setPartnerDashTab] = useState<'seekers' | 'jobs' | 'applications' | 'chat'>('seekers');
@@ -340,29 +352,12 @@ export const PartnerSection: React.FC = () => {
     );
   };
 
-  // Disable Partner Section for regular Job Seekers
+  // Completely hide Partner Section for Job Seeker accounts
   const { currentSeeker: activeSeeker } = useApp();
-  const isJobSeekerView = Boolean(activeSeeker && !isAdminLoggedIn && !currentPartner);
+  const isJobSeekerView = Boolean(activeSeeker && !isAdminLoggedIn);
 
   if (isJobSeekerView) {
-    return (
-      <div className="max-w-xl mx-auto py-12 px-4 text-center space-y-5">
-        <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center mx-auto">
-          <Lock className="w-7 h-7" />
-        </div>
-        <h2 className="text-xl font-black text-white">بخش ویژه همکاران</h2>
-        <p className="text-xs text-slate-400 leading-relaxed">
-          این بخش مخصوص ثبت و مدیریت کارجویان توسط همکاران است.
-        </p>
-        <button
-          onClick={() => setActiveTab('jobs')}
-          className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs transition inline-flex items-center gap-2"
-        >
-          <Briefcase className="w-4 h-4" />
-          <span>بازگشت به آگهی‌های شغلی</span>
-        </button>
-      </div>
-    );
+    return null;
   }
 
   // If neither Partner nor Admin is logged in -> Simple Login / Register
@@ -808,10 +803,8 @@ export const PartnerSection: React.FC = () => {
 
     const handlePartnerOnlinePayment = () => {
       const unit = paymentSettings.paymentAmountUnit || 'toman';
-      const configuredDirect = Number(paymentSettings.directPaymentAmount) || 0;
-      const planToman = activePlan ? activePlan.priceToman : 5000000;
-      const adminConfiguredAmount =
-        configuredDirect > 0 ? configuredDirect : unit === 'toman' ? planToman : planToman * 10;
+      const livePlanToman = activePlan ? getLivePlanToman(activePlan) : Math.round(1500 * liveTryToman);
+      const adminConfiguredAmount = unit === 'toman' ? livePlanToman : livePlanToman * 10;
 
       try {
         localStorage.setItem(
@@ -968,13 +961,34 @@ export const PartnerSection: React.FC = () => {
           )}
 
           <div className="space-y-4">
+            {/* Live Exchange Rate Banner for Partner Payment */}
+            <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-indigo-500/40 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-slate-300 font-bold">نرخ لحظه‌ای محاسبه اشتراک همکار:</span>
+                <span className="font-mono font-black text-emerald-400">
+                  ۱ لیر ترکیه (₺) = {liveTryToman.toLocaleString('fa-IR')} تومان ({liveTryRial.toLocaleString('fa-IR')} ریال)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => refreshLiveRates(false)}
+                className="px-3 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-400/40 text-indigo-200 text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${liveRates?.isRefreshing ? 'animate-spin' : ''}`} />
+                <span>به‌روزرسانی نرخ لحظه‌ای</span>
+              </button>
+            </div>
+
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-300">
-                انتخاب دوره اشتراک پنل همکاری (به‌روزرسانی آنی طبق تعرفه مدیریت):
+                انتخاب دوره اشتراک پنل همکاری (محاسبه زنده بر اساس نرخ لحظه‌ای لیر به تومان و ریال):
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {partnerPlans.map((pl) => {
                   const isSelected = selectedActivationPlanId === pl.id;
+                  const liveToman = getLivePlanToman(pl);
+                  const liveRial = getLivePlanRial(pl);
                   return (
                     <button
                       key={pl.id}
@@ -994,13 +1008,18 @@ export const PartnerSection: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center justify-between w-full pt-1 border-t border-slate-800/80">
-                        <span className="text-xs font-mono font-black text-emerald-400">
-                          {pl.priceToman.toLocaleString('fa-IR')} تومان
-                        </span>
-                        <span className="text-[11px] font-mono text-slate-400">
-                          ({pl.priceTL.toLocaleString('fa-IR')} لیر)
-                        </span>
+                      <div className="w-full pt-1.5 border-t border-slate-800/80 space-y-1">
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-xs font-mono font-black text-emerald-400">
+                            {liveToman.toLocaleString('fa-IR')} تومان
+                          </span>
+                          <span className="text-[11px] font-mono font-bold text-amber-300">
+                            {pl.priceTL.toLocaleString('fa-IR')} لیر (₺)
+                          </span>
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-400 text-right">
+                          معادل ریال: {liveRial.toLocaleString('fa-IR')} ریال
+                        </div>
                       </div>
                     </button>
                   );
@@ -1008,20 +1027,47 @@ export const PartnerSection: React.FC = () => {
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/30 space-y-3">
+            <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/40 space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap border-b border-slate-800 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-xl bg-white border border-slate-300 shadow-xs shrink-0">
+                    <img
+                      src={SHAPARAK_LOGO_DATA_URI}
+                      alt="شاپرک"
+                      className="w-6 h-6 rounded object-contain shrink-0"
+                    />
+                    <span className="w-px h-5 bg-slate-300" />
+                    <img
+                      src={SEP_LOGO_DATA_URI}
+                      alt="پرداخت الکترونیک سامان (سپ)"
+                      className="w-6 h-6 rounded object-contain shrink-0"
+                    />
+                  </div>
+                  <span className="text-xs font-black text-emerald-300">
+                    روش اول: پرداخت آنلاین آنی (شاپرک و پرداخت سپ)
+                  </span>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                  نرخ لحظه‌ای زنده
+                </span>
+              </div>
+
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-400">پلن انتخابی جهت فعال‌سازی:</span>
-                <span className="font-bold text-white">{activePlan?.title}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400">مبلغ قابل پرداخت در درگاه آنلاین:</span>
-                <span className="font-mono font-black text-emerald-400 text-sm">
-                  {(Number(paymentSettings.directPaymentAmount) > 0
-                    ? Number(paymentSettings.directPaymentAmount)
-                    : activePlan?.priceToman || 0
-                  ).toLocaleString('fa-IR')}{' '}
-                  {(paymentSettings.paymentAmountUnit || 'toman') === 'toman' ? 'تومان' : 'ریال'}
+                <span className="font-bold text-white">
+                  {activePlan?.title} ({activePlan?.priceTL.toLocaleString('fa-IR')} لیر)
                 </span>
+              </div>
+              <div className="flex items-center justify-between text-xs flex-wrap gap-1">
+                <span className="text-slate-400">مبلغ قابل پرداخت در درگاه آنلاین (به نرخ لحظه‌ای):</span>
+                <div className="text-left">
+                  <span className="font-mono font-black text-emerald-400 text-sm block">
+                    {getLivePlanToman(activePlan).toLocaleString('fa-IR')} تومان
+                  </span>
+                  <span className="font-mono text-[10px] text-slate-400 block">
+                    ({getLivePlanRial(activePlan).toLocaleString('fa-IR')} ریال)
+                  </span>
+                </div>
               </div>
 
               <button
@@ -1321,6 +1367,11 @@ export const PartnerSection: React.FC = () => {
                     onChange={(e) => setPartnerJobSalaryMin(Number(e.target.value))}
                     className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-emerald-300 font-mono font-bold"
                   />
+                  {partnerJobSalaryMin > 0 && (
+                    <span className="text-[10px] text-emerald-400 font-bold block mt-1">
+                      ≈ {formatTryToIrr(partnerJobSalaryMin).tomanText}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">حداکثر حقوق (لیر)</label>
@@ -1330,6 +1381,11 @@ export const PartnerSection: React.FC = () => {
                     onChange={(e) => setPartnerJobSalaryMax(Number(e.target.value))}
                     className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-emerald-300 font-mono font-bold"
                   />
+                  {partnerJobSalaryMax > 0 && (
+                    <span className="text-[10px] text-emerald-400 font-bold block mt-1">
+                      ≈ {formatTryToIrr(partnerJobSalaryMax).tomanText}
+                    </span>
+                  )}
                 </div>
                 <label className="flex items-center gap-2 px-3 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-white cursor-pointer mt-5">
                   <input

@@ -30,11 +30,14 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
     setActiveTab,
     setOpenedJobIdFromAlert,
     theme,
+    currentSeeker,
   } = useApp();
 
   if (!isOpen) return null;
 
-  const activeNotifications = jobNotifications.filter((n) => !n.read);
+  const activeNotifications = jobNotifications.filter(
+    (n) => !n.read && (!currentSeeker || n.targetRole !== 'partner')
+  );
 
   const handleCloseDrawer = () => {
     onClose();
@@ -43,7 +46,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   const handleOpenNotification = (notif: (typeof jobNotifications)[number]) => {
     markNotificationAsRead(notif.id);
     if (notif.notificationType === 'payment_approved' || notif.notificationType === 'payment_rejected') {
-      if (notif.targetRole === 'partner') {
+      if (!currentSeeker && notif.targetRole === 'partner') {
         setActiveTab('partner');
       } else {
         setActiveTab('settings');

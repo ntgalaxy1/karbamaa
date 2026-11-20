@@ -16,7 +16,7 @@ export const DEFAULT_PARTNER_PLANS: PartnerSubscriptionPlan[] = [
     title: 'اشتراک ۱ ماهه همکار',
     durationMonths: 1,
     priceTL: 1500,
-    priceToman: 3450000,
+    priceToman: 5115000,
     badge: 'شروع همکاری',
     features: [
       'امکان ثبت کارجویان موقت و رسمی نامحدود',
@@ -30,7 +30,7 @@ export const DEFAULT_PARTNER_PLANS: PartnerSubscriptionPlan[] = [
     title: 'اشتراک ۳ ماهه فصل کاری',
     durationMonths: 3,
     priceTL: 3900,
-    priceToman: 8970000,
+    priceToman: 13299000,
     discountPercentage: 13,
     badge: 'محبوب‌ترین',
     features: [
@@ -45,7 +45,7 @@ export const DEFAULT_PARTNER_PLANS: PartnerSubscriptionPlan[] = [
     title: 'اشتراک ۶ ماهه نیم‌سال',
     durationMonths: 6,
     priceTL: 7200,
-    priceToman: 16560000,
+    priceToman: 24552000,
     discountPercentage: 20,
     badge: 'پیشنهاد ویژه',
     features: [
@@ -60,7 +60,7 @@ export const DEFAULT_PARTNER_PLANS: PartnerSubscriptionPlan[] = [
     title: 'اشتراک ۱ ساله طلایی VIP',
     durationMonths: 12,
     priceTL: 12000,
-    priceToman: 27600000,
+    priceToman: 40920000,
     discountPercentage: 33,
     badge: 'بیشترین تخفیف',
     features: [

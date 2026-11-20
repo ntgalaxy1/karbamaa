@@ -384,8 +384,8 @@ export const Header: React.FC = () => {
                       )}
 
                       <div className="space-y-1">
-                        {/* Partner Panel (پنل ساده همکاران) */}
-                        {(isAdminLoggedIn || currentPartner) && (
+                        {/* Partner Panel (پنل ساده همکاران) — Strictly hidden for Job Seeker accounts */}
+                        {!currentSeeker && (isAdminLoggedIn || currentPartner) && (
                           <button
                             onClick={() => {
                               setActiveTab('partner');
@@ -662,7 +662,7 @@ export const Header: React.FC = () => {
                     <span className="px-1.5 py-0.2 rounded bg-amber-950/80 text-amber-200 text-[10px] font-bold">مدیریت</span>
                   </button>
                 </div>
-              ) : currentPartner ? (
+              ) : !currentSeeker && currentPartner ? (
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={() => setActiveTab('partner')}

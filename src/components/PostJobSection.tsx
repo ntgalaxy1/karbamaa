@@ -30,9 +30,10 @@ import { TURKEY_PROVINCES_AND_DISTRICTS } from '../data/turkeyCities';
 import { JOB_CATEGORIES_DATA } from '../data/jobCategories';
 import { getDistrictsForCity } from '../data/turkeyData';
 import { validatePhoneNumber } from '../utils/validators';
+import { SHAPARAK_LOGO_DATA_URI, SEP_LOGO_DATA_URI } from '../utils/brandAssets';
 
 export const PostJobSection: React.FC = () => {
-  const { paymentSettings, submitJobWithPayment, setActiveTab, showToast, formatTryToIrr } = useApp();
+  const { paymentSettings, submitJobWithPayment, setActiveTab, showToast, formatTryToIrr, liveRates } = useApp();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -71,12 +72,12 @@ export const PostJobSection: React.FC = () => {
   const [payerPhone, setPayerPhone] = useState('');
   const [createdJobId, setCreatedJobId] = useState<string | null>(null);
 
-  // Calculate equivalent Toman amount dynamically from Admin's vertical fee list
+  // Calculate equivalent Toman amount dynamically from Admin's vertical fee list & live currency rate
   const feeTL =
     paymentSettings.jobPostingFeeTL && paymentSettings.jobPostingFeeTL > 0
       ? paymentSettings.jobPostingFeeTL
       : paymentSettings.feeTL || 500;
-  const exchangeRate = paymentSettings.exchangeRateToman || 5460;
+  const exchangeRate = liveRates?.tryToman || paymentSettings.exchangeRateToman || 5460;
   const feeToman =
     paymentSettings.jobPostingFeeToman && paymentSettings.jobPostingFeeToman > 0
       ? paymentSettings.jobPostingFeeToman
@@ -586,15 +587,25 @@ export const PostJobSection: React.FC = () => {
           </div>
 
           <div className="p-6 bg-slate-950 border border-teal-500/40 rounded-2xl space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-black">
-                شاپرک
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white border border-teal-500/40 shadow-md shrink-0">
+                <img
+                  src={SHAPARAK_LOGO_DATA_URI}
+                  alt="شاپرک"
+                  className="w-7 h-7 rounded object-contain shrink-0"
+                />
+                <span className="w-px h-6 bg-slate-300" />
+                <img
+                  src={SEP_LOGO_DATA_URI}
+                  alt="پرداخت الکترونیک سامان (سپ)"
+                  className="w-7 h-7 rounded object-contain shrink-0"
+                />
               </div>
               <div>
-                <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                  <span>پرداخت آنلاین از طریق درگاه بانکی</span>
+                <h4 className="font-bold text-white text-sm flex items-center gap-2 flex-wrap">
+                  <span>روش اول: پرداخت آنلاین آنی (شاپرک و پرداخت سپ)</span>
                   <span className="text-[10px] bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded-full font-bold">
-                    پروتکل رسمی شاپرک
+                    شاپرک | پرداخت الکترونیک سامان (سپ)
                   </span>
                 </h4>
                 <p className="text-xs text-slate-400">

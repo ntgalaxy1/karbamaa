@@ -82,6 +82,7 @@ export const OnboardingFlow: React.FC = () => {
     brokerSettings,
     theme,
     toggleTheme,
+    liveRates,
   } = useApp();
 
   // Mode: 'language' | 'register' | 'login'
@@ -1123,28 +1124,31 @@ export const OnboardingFlow: React.FC = () => {
                     </div>
 
                     <div className="space-y-1 sm:col-span-2">
-                      <label className="text-slate-300 font-medium">انتخاب پلن اشتراک همکاری (قابل پرداخت آنلاین پس از ثبت‌نام)</label>
+                      <label className="text-slate-300 font-medium">انتخاب پلن اشتراک همکاری (محاسبه زنده به نرخ روز لیر: ۱ ₺ = {(liveRates?.tryToman || 3410).toLocaleString('fa-IR')} تومان)</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                        {partnerPlans.map((pl) => (
-                          <button
-                            key={pl.id}
-                            type="button"
-                            onClick={() => setPartnerPlanId(pl.id)}
-                            className={`p-3 rounded-xl border text-right transition flex items-center justify-between cursor-pointer ${
-                              partnerPlanId === pl.id
-                                ? 'bg-indigo-600/25 border-indigo-400 text-white font-bold'
-                                : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:border-slate-600'
-                            }`}
-                          >
-                            <div>
-                              <p className="text-xs font-bold text-white">{pl.title}</p>
-                              <p className="text-[10px] text-indigo-300 font-mono mt-0.5">
-                                {pl.priceToman.toLocaleString('fa-IR')} تومان ({pl.priceTL.toLocaleString('fa-IR')} لیر)
-                              </p>
-                            </div>
-                            {partnerPlanId === pl.id && <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0" />}
-                          </button>
-                        ))}
+                        {partnerPlans.map((pl) => {
+                          const liveToman = Math.round((pl.priceTL || 1500) * (liveRates?.tryToman || 3410));
+                          return (
+                            <button
+                              key={pl.id}
+                              type="button"
+                              onClick={() => setPartnerPlanId(pl.id)}
+                              className={`p-3 rounded-xl border text-right transition flex items-center justify-between cursor-pointer ${
+                                partnerPlanId === pl.id
+                                  ? 'bg-indigo-600/25 border-indigo-400 text-white font-bold'
+                                  : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:border-slate-600'
+                              }`}
+                            >
+                              <div>
+                                <p className="text-xs font-bold text-white">{pl.title}</p>
+                                <p className="text-[10px] text-emerald-400 font-mono mt-0.5 font-bold">
+                                  {liveToman.toLocaleString('fa-IR')} تومان ({pl.priceTL.toLocaleString('fa-IR')} لیر)
+                                </p>
+                              </div>
+                              {partnerPlanId === pl.id && <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0" />}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 

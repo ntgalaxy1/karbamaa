@@ -116,3 +116,51 @@ export const getJobCategorySvgDataUri = (category?: string, city?: string): stri
 </svg>
   `);
 };
+
+// Official Shaparak (شبکه الکترونیکی پرداخت کارت - شاپرک) Emblem SVG
+export const SHAPARAK_LOGO_DATA_URI = encodeSvgDataUri(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="shpGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#B45309" />
+    </linearGradient>
+    <linearGradient id="shpBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E40AF" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+    <linearGradient id="shpCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284C7" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="112" height="112" rx="24" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="3" />
+  <!-- Shaparak Tri-Wing Geometric Emblem -->
+  <polygon points="60,16 86,44 60,58 34,44" fill="url(#shpGold)" />
+  <polygon points="24,48 56,62 46,94 18,74" fill="url(#shpBlue)" />
+  <polygon points="96,48 102,74 74,94 64,62" fill="url(#shpCyan)" />
+  <circle cx="60" cy="58" r="6" fill="#FFFFFF" />
+  <text x="60" y="109" font-family="Tahoma, system-ui, sans-serif" font-size="14" font-weight="900" fill="#0F172A" text-anchor="middle">شاپرک</text>
+</svg>
+`);
+
+// Official SEP / Saman Electronic Payment (پرداخت الکترونیک سامان - سپ) Emblem SVG
+export const SEP_LOGO_DATA_URI = encodeSvgDataUri(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="sepBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284C7" />
+      <stop offset="50%" stop-color="#0369A1" />
+      <stop offset="100%" stop-color="#1E3A8A" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="112" height="112" rx="24" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="3" />
+  <!-- Saman SEP Circle & Dual Wave Emblem -->
+  <circle cx="60" cy="48" r="31" fill="url(#sepBlue)" />
+  <path d="M35 45 C45 32, 62 32, 72 44 C78 51, 84 48, 88 42" fill="none" stroke="#38BDF8" stroke-width="5.5" stroke-linecap="round" />
+  <path d="M32 55 C44 43, 60 44, 71 56 C77 62, 83 59, 86 53" fill="none" stroke="#FFFFFF" stroke-width="5.5" stroke-linecap="round" />
+  <text x="60" y="96" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="900" fill="#0369A1" text-anchor="middle" letter-spacing="1">SEP</text>
+  <text x="60" y="110" font-family="Tahoma, system-ui, sans-serif" font-size="11" font-weight="900" fill="#0F172A" text-anchor="middle">پرداخت سپ</text>
+</svg>
+`);
+

@@ -381,7 +381,7 @@ const MainContent: React.FC = () => {
           <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24">
             {activeTab === 'jobs' && <JobSearch />}
             {activeTab === 'post-job' && <PostJobSection />}
-            {activeTab === 'partner' && <PartnerSection />}
+            {activeTab === 'partner' && (!currentSeeker || isAdminLoggedIn) && <PartnerSection />}
             {activeTab === 'currency' && <CurrencyExchangeSection />}
             {activeTab === 'about-us' && <AboutUsSection />}
             {activeTab === 'privacy-policy' && <PrivacyPolicySection />}
